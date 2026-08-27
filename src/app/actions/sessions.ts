@@ -171,6 +171,32 @@ export async function deleteCheckIn(checkInId: string): Promise<Result> {
   return { ok: true };
 }
 
+/** Editar SOLO el rating de un check-in (poner/quitar). Solo el dueño. */
+export async function updateCheckIn(input: {
+  checkInId: string;
+  rating: number | null;
+}): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "No autenticado" };
+
+  const rating = input.rating;
+  if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
+    return { ok: false, error: "Rating inválido" };
+  }
+
+  const ci = await prisma.checkIn.findUnique({
+    where: { id: input.checkInId },
+    select: { sessionId: true, session: { select: { userId: true } } },
+  });
+  if (!ci || ci.session.userId !== userId)
+    return { ok: false, error: "No es tu salida" };
+
+  await prisma.checkIn.update({ where: { id: input.checkInId }, data: { rating } });
+  revalidatePath("/");
+  revalidatePath(`/sessions/${ci.sessionId}`);
+  return { ok: true };
+}
+
 export async function addTag(input: {
   sessionId: string;
   taggedUserId?: string | null;

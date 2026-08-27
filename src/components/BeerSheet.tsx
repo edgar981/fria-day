@@ -79,8 +79,9 @@ export function BeerSheet({
     setRating(0);
     setError(null);
   }
-  function close() {
-    reset();
+  // Cerrar sin agregar CONSERVA el borrador (item A.1-7b): al reabrir sigue lo
+  // que se había elegido/escrito. Solo un commit exitoso limpia el estado.
+  function dismiss() {
     onClose();
   }
 
@@ -111,12 +112,13 @@ export function BeerSheet({
     setBusy(true);
     await onAdd({ beer, format, rating });
     setBusy(false);
-    close();
+    reset(); // add exitoso: sí limpiamos para el próximo
+    onClose();
   }
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>
-      <div onClick={close} style={{ position: "absolute", inset: 0, background: "rgba(10,7,4,.62)" }} />
+      <div onClick={dismiss} style={{ position: "absolute", inset: 0, background: "rgba(10,7,4,.62)" }} />
       <div
         style={{
           position: "absolute",

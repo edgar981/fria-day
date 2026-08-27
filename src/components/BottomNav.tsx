@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/Icon";
 
@@ -18,23 +18,34 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function Tab({ item, active }: { item: Item; active: boolean }) {
+// Marca la pestaña destino en el instante del toque (item A.1-5): useLinkStatus
+// da `pending` mientras Next navega, antes de que el servidor responda.
+function TabInner({ item, active }: { item: Item; active: boolean }) {
+  const { pending } = useLinkStatus();
+  const on = active || pending;
   return (
-    <Link
-      href={item.href}
+    <span
       aria-current={active ? "page" : undefined}
       style={{
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         gap: 3,
-        textDecoration: "none",
-        color: active ? "var(--color-ambar)" : "var(--color-tenue)",
-        font: `${active ? 700 : 500} 11px var(--font-sans)`,
+        color: on ? "var(--color-ambar)" : "var(--color-tenue)",
+        font: `${on ? 700 : 500} 11px var(--font-sans)`,
+        transition: "color .1s ease",
       }}
     >
       <Icon name={item.icon} size={23} />
       {item.label}
+    </span>
+  );
+}
+
+function Tab({ item, active }: { item: Item; active: boolean }) {
+  return (
+    <Link href={item.href} style={{ textDecoration: "none" }}>
+      <TabInner item={item} active={active} />
     </Link>
   );
 }

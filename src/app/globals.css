@@ -175,6 +175,32 @@ textarea.field {
   scrollbar-width: none;
 }
 
+/* Esqueletos de carga (imitan la forma real, no spinners) */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-barra) 25%,
+    var(--color-barra-alta) 37%,
+    var(--color-barra) 63%
+  );
+  background-size: 400% 100%;
+  animation: fd-shimmer 1.4s ease infinite;
+  border-radius: 12px;
+}
+@keyframes fd-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+  }
+}
+
 /* Motivo: franja de espuma */
 .foam {
   border-radius: 18px 18px 0 0;

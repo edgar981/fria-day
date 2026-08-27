@@ -11,6 +11,7 @@ export function InviteGenerator() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
+  const [shared, setShared] = useState(false);
 
   const link = code && typeof window !== "undefined" ? `${window.location.origin}/register?code=${code}` : "";
 
@@ -41,6 +42,28 @@ export function InviteGenerator() {
     }
   }
 
+  // Item A.1-4: compartir con navigator.share; respaldo = copiar al portapapeles.
+  async function share() {
+    if (!code) return;
+    setError(null);
+    const text = `Únete a FriaDay con mi código: ${code}\n${link}`;
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({ title: "FriaDay", text });
+      } catch {
+        /* el usuario canceló: no es error */
+      }
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setShared(true);
+      setTimeout(() => setShared(false), 1800);
+    } catch {
+      setError("No se pudo compartir; copia el código manualmente.");
+    }
+  }
+
   return (
     <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="eyebrow">Generar código</div>
@@ -61,6 +84,9 @@ export function InviteGenerator() {
             <div style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue)", letterSpacing: ".1em" }}>CÓDIGO</div>
             <div style={{ font: "700 30px var(--font-display)", letterSpacing: ".18em", color: "var(--color-espuma)", marginTop: 4 }}>{code}</div>
           </div>
+          <button type="button" className="btn btn-primary" style={{ width: "100%", height: 48 }} onClick={share}>
+            {shared ? "✓ Copiado al portapapeles" : "Compartir"}
+          </button>
           <div style={{ display: "flex", gap: 9 }}>
             <button type="button" className="btn btn-ghost" style={{ flex: 1, height: 44 }} onClick={() => copy(code, "code")}>
               {copied === "code" ? "✓ Copiado" : "Copiar código"}

@@ -8,7 +8,7 @@ import { Icon } from "@/components/Icon";
 import { RatingCell } from "@/components/Glasses";
 import { Tally } from "@/components/Tally";
 import { AddCheckInButton } from "@/components/AddCheckInButton";
-import { CheckInDeleteButton } from "@/components/CheckInDeleteButton";
+import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { FORMAT_LABEL, formatDay } from "@/lib/format";
 import { sessionTotalUnits } from "@/lib/domain";
@@ -94,6 +94,19 @@ export default async function SessionDetailPage({
           <div className="eyebrow" style={{ marginBottom: 11 }}>Las cervezas</div>
           {s.checkIns.length === 0 ? (
             <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Sin cervezas registradas.</p>
+          ) : isOwner ? (
+            <OwnerCheckInList
+              sessionId={s.id}
+              checkIns={s.checkIns.map((c) => ({
+                id: c.id,
+                quantity: c.quantity,
+                format: c.format,
+                rating: c.rating,
+                beerId: c.beerId,
+                beerName: c.beer.name,
+                brewery: c.beer.brewery,
+              }))}
+            />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {s.checkIns.map((c, i) => (
@@ -106,7 +119,6 @@ export default async function SessionDetailPage({
                       <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{c.beer.brewery} · {FORMAT_LABEL[c.format]}</div>
                     </div>
                     <RatingCell value={c.rating} size="sm" />
-                    {isOwner && <CheckInDeleteButton checkInId={c.id} />}
                   </div>
                 </div>
               ))}

@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/Icon";
 import { AvatarPicker } from "@/components/AvatarPicker";
-import { registerWithInvite } from "@/app/actions/auth";
+import { registerWithInvite, validateInviteCode } from "@/app/actions/auth";
 
 function Progress({ step }: { step: number }) {
   return (
@@ -26,11 +26,17 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
   const [password, setPassword] = useState("");
   const [avatar, setAvatar] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [pending, start] = useTransition();
 
-  function next1() {
+  // Item A.1-3: validar el código al pasar del paso 1 al 2 (no crea cuenta).
+  async function next1() {
     setError(null);
     if (!code.trim()) return setError("Escribe tu código de invitación");
+    setChecking(true);
+    const res = await validateInviteCode(code.trim());
+    setChecking(false);
+    if (!res.ok) return setError(res.error);
     setStep(2);
   }
   function next2() {
@@ -94,7 +100,9 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
               Te lo manda alguien que ya está adentro. Cada código sirve una sola vez.
             </p>
           </div>
-          <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={next1}>Continuar</button>
+          <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={next1} disabled={checking}>
+            {checking ? "Verificando…" : "Continuar"}
+          </button>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ flex: 1, height: 1, background: "#241A12" }} />
             <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>o</span>

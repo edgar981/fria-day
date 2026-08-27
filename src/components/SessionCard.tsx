@@ -173,16 +173,13 @@ export function SessionCard({
           </div>
         )}
 
-        {/* Pie: total */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid #241A12", paddingTop: 11 }}>
-          <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
-            {checkIns.length} check-in{checkIns.length !== 1 ? "s" : ""}
-          </span>
-          <span style={{ display: "flex", alignItems: "center", gap: 9 }}>
-            {totalUnits > 0 && <Tally count={totalUnits} barW={2.5} barH={14} gap={3} maxGroups={6} />}
-            <span style={{ font: "700 15px var(--font-sans)", color: "var(--color-ambar)" }}>
-              {totalUnits} unidad{totalUnits !== 1 ? "es" : ""}
-            </span>
+        {/* Pie: total (marcas de conteo + unidades). Sin "N check-ins": es un
+            detalle de implementación. El total conserva las marcas de conteo,
+            distinto del número-en-chip de cada cerveza (item A.1-8). */}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, borderTop: "1px solid #241A12", paddingTop: 11 }}>
+          {totalUnits > 0 && <Tally count={totalUnits} barW={2.5} barH={14} gap={3} maxGroups={6} />}
+          <span style={{ font: "700 15px var(--font-sans)", color: "var(--color-ambar)" }}>
+            {totalUnits} unidad{totalUnits !== 1 ? "es" : ""}
           </span>
         </div>
       </div>

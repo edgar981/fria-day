@@ -64,6 +64,24 @@ export async function registerWithInvite(
   redirect("/");
 }
 
+/**
+ * Verifica un código de invitación SIN crear cuenta ni reclamarlo. Se usa al
+ * pasar del paso 1 al paso 2 del onboarding. La reclamación atómica sigue en
+ * registerWithInvite (submit final).
+ */
+export async function validateInviteCode(
+  code: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const c = code.trim();
+  if (!c) return { ok: false, error: "Escribe tu código de invitación" };
+  const invite = await prisma.invitation.findUnique({ where: { code: c } });
+  if (!invite) return { ok: false, error: "Código de invitación inválido" };
+  if (invite.usedById) return { ok: false, error: "Ese código ya fue usado" };
+  if (invite.expiresAt && invite.expiresAt.getTime() < Date.now())
+    return { ok: false, error: "Ese código ya expiró" };
+  return { ok: true };
+}
+
 export async function loginAction(
   _prev: AuthState,
   formData: FormData,

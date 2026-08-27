@@ -3,6 +3,41 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada A.1 — Fricción y reversibilidad
+
+`domain.ts` intacto; los 20 tests siguen pasando sin tocarse (+2 tests nuevos de
+fecha → 22/22).
+
+1. **Editar rating de un check-in guardado**: acción `updateCheckIn` (solo el
+   rating; cantidad/formato quedan). Solo el dueño. Punto de entrada: el detalle
+   de la salida, tocando los vasos del check-in (poner y quitar).
+2. **Deshacer al quitar un check-in**: la X aplica el borrado de inmediato y
+   muestra "Cerveza eliminada · Deshacer" ~6 s; Deshacer restaura con los mismos
+   valores (nuevo id). Sin diálogo. Borrar la salida completa SÍ mantiene diálogo
+   con conteo. Se distinguen visualmente (X pequeña vs "Borrar" rojo en el header).
+3. **Validar el código en el paso 1**: acción `validateInviteCode` (solo verifica:
+   existe, no usada, no expirada; NO crea ni reclama). La reclamación atómica se
+   queda en el submit final. Código inválido → vuelve al paso 1 con error.
+4. **Compartir el código**: botón que llama `navigator.share()`; respaldo = copiar
+   al portapapeles con confirmación visible.
+5. **Transiciones**: `loading.tsx` por ruta con **esqueletos** que imitan la forma
+   real (tarjetas del feed, filas del catálogo, bloques del perfil, etc.). La barra
+   inferior marca la pestaña destino al instante con `useLinkStatus` (API vigente
+   de Next 16, verificada).
+6. **Fecha por defecto**: `todayInputValue()` YA usaba componentes locales
+   (`getFullYear/Month/Date`), no `toISOString()`. **No había bug.** Se agregó test
+   con hora simulada (20:00 America/Bogota → devuelve el día en curso, no el
+   siguiente).
+7. **Rastro del borrador**: (a) `CheckInForm.getDraft()` ya se había eliminado en
+   el rediseño (no quedaba código muerto). (b) La hoja de cerveza ahora **conserva
+   el borrador** al cerrarse sin agregar (toque afuera): al reabrir sigue lo
+   elegido; solo un "Agregar" exitoso limpia el estado.
+8. **Pie de la tarjeta de salida**: se quitó "N check-ins" (detalle de
+   implementación). "N unidades" ocupa esa posición, conservando las **marcas de
+   conteo** para el total — distinto del **número-en-chip** de cada cerveza. El
+   formato se muestra en cada fila, así dos check-ins de la misma cerveza se leen
+   como registros legítimos, no como error.
+
 ## Pasada A — Rediseño (solo presentación)
 
 Implementación del entregable de Claude Design (`FriaDay.dc.html`). Solo tocó
