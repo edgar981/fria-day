@@ -1,24 +1,19 @@
 import { requireUser } from "@/lib/session";
 import { getMyInvitations } from "@/lib/queries";
 import { InviteGenerator } from "@/components/InviteGenerator";
+import { ShareCodeButton } from "@/components/ShareCodeButton";
 import { BottomNav } from "@/components/BottomNav";
 import { formatDay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-function statusOf(inv: { usedBy: { displayName: string } | null; expiresAt: Date | null }): { label: string; color: string } {
-  if (inv.usedBy) return { label: `Usada por ${inv.usedBy.displayName}`, color: "var(--color-tenue)" };
-  if (inv.expiresAt && inv.expiresAt.getTime() < Date.now()) return { label: "Expirada", color: "var(--color-alerta)" };
-  return { label: "Disponible", color: "var(--color-ambar)" };
-}
-
 export default async function InvitePage() {
   const user = await requireUser();
-  const invites = await getMyInvitations(user.id);
+  const invites = await getMyInvitations(user.id); // solo disponibles
 
   return (
     <div className="pb-nav">
-      <main style={{ padding: "18px 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+      <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
           <h1 style={{ font: "800 28px/1 var(--font-display)", letterSpacing: "-.02em" }}>Invitar al parche</h1>
           <p style={{ font: "400 14px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: "8px 0 0" }}>
@@ -29,26 +24,25 @@ export default async function InvitePage() {
         <InviteGenerator />
 
         <section>
-          <div className="eyebrow" style={{ marginBottom: 11 }}>Tus invitaciones</div>
+          <div className="eyebrow" style={{ marginBottom: 11 }}>Códigos disponibles</div>
           {invites.length === 0 ? (
-            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Aún no has generado ninguna.</p>
+            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>
+              No tienes códigos disponibles. Genera uno arriba.
+            </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              {invites.map((inv) => {
-                const st = statusOf(inv);
-                return (
-                  <div key={inv.id} className="card" style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                    <div>
-                      <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)" }}>{inv.code}</div>
-                      <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>
-                        Creada {formatDay(inv.createdAt)}
-                        {inv.expiresAt ? ` · expira ${formatDay(inv.expiresAt)}` : ""}
-                      </div>
+              {invites.map((inv) => (
+                <div key={inv.id} className="card" style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)" }}>{inv.code}</div>
+                    <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>
+                      Creada {formatDay(inv.createdAt)}
+                      {inv.expiresAt ? ` · expira ${formatDay(inv.expiresAt)}` : ""}
                     </div>
-                    <span style={{ font: "600 12.5px var(--font-sans)", color: st.color }}>{st.label}</span>
                   </div>
-                );
-              })}
+                  <ShareCodeButton code={inv.code} />
+                </div>
+              ))}
             </div>
           )}
         </section>

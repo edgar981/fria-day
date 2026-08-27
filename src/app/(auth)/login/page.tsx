@@ -8,7 +8,7 @@ export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined);
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 26px", gap: 24 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "calc(24px + env(safe-area-inset-top)) 26px 24px", gap: 24 }}>
       <div style={{ textAlign: "center" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/friaday-icon.png" alt="" width={72} height={72} style={{ borderRadius: 20, display: "block", margin: "0 auto 14px" }} />

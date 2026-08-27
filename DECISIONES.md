@@ -3,6 +3,48 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada A.2 — Bugs visuales y consolidación
+
+`domain.ts` se tocó SOLO para el punto 5. Los 22 tests previos pasan sin cambios;
++6 nuevos → 28/28.
+
+1. **Logo roto (causa raíz)**: no era la ruta ni el caché. El **matcher del proxy**
+   excluía `_next`, `favicon.ico`, `manifest.webmanifest`, `icons/` — pero NO
+   `/friaday-icon.png`. En pantallas sin sesión (`/login`, onboarding) el proxy
+   redirigía la imagen a `/login` → `<img>` recibía HTML → imagen rota. En el feed
+   (con sesión) cargaba. Fix: el matcher ahora excluye CUALQUIER archivo con
+   extensión (`.*\\..*`). Verificado por curl: `/friaday-icon.png` sin cookie →
+   `200 image/png` (antes 307→/login), y `/` sigue protegido.
+2. **Safe area**: `env(safe-area-inset-top)` en todos los headers (AppHeader,
+   BackHeader, catálogo, perfil, invitar, onboarding, login); `inset-bottom` ya
+   estaba en la barra inferior y las hojas. (`viewport-fit=cover` ya estaba.)
+   Edgar verifica en iPhone standalone.
+3. **Campos que desbordan**: `.field` con `max-width/min-width`; `input[type=date]`
+   con `-webkit-appearance:none`. El avatar de "Con quién" ahora va en una caja de
+   tamaño constante (borde transparente si no está seleccionado) para que el anillo
+   no cambie el layout ni se salga. Edgar verifica en iPhone.
+4. **Aviso de deshacer**: 6 s → 8 s.
+5. **Consolidación (dominio)**: al agregar un check-in con la MISMA `beerId` y el
+   MISMO `format` que uno existente, se suma la cantidad en vez de crear fila. El
+   rating existente nunca se sobrescribe (para eso está `updateCheckIn`); si el
+   existente es null y el nuevo trae rating, se toma el nuevo. Formato distinto =
+   check-in aparte. Funciones puras `planCheckInAdd` / `consolidateNewCheckIns` /
+   `mergeCheckInRating` en `domain.ts`, con 6 tests. Aplica en `createSession`,
+   `addCheckIn` (detalle + quick-add) y en la lista local de nueva salida. **No se
+   migran datos existentes** (las dos filas de Club en "Bolirana" quedan). Nota: el
+   "deshacer" de un borrado re-usa `addCheckIn`, así que restaurar un check-in
+   borrado también consolida si ya existe uno igual — solo afecta a los datos
+   legados con filas duplicadas; para datos nuevos no hay duplicados que fusionar.
+6. **Invitaciones**: la lista muestra SOLO códigos disponibles (sin usar y sin
+   expirar). El botón Compartir (`navigator.share` + respaldo al portapapeles)
+   funciona para CUALQUIER código de la lista, no solo el recién generado.
+
+Verificación: 28/28 tests; consolidación probada contra los datos reales del gate
+(Club/Botella 2× + add → merge a 3× sin pisar el rating; formato distinto → create);
+logo por curl; invitaciones por curl. El panel de navegador quedó inestable a mitad
+de sesión (clics con timeout), así que las pruebas interactivas restantes se
+hicieron por curl/script; los puntos 2 y 3 los verifica Edgar en iPhone real.
+
 ## Pasada A.1 — Fricción y reversibilidad
 
 `domain.ts` intacto; los 20 tests siguen pasando sin tocarse (+2 tests nuevos de

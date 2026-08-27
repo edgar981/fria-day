@@ -30,7 +30,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="pb-nav">
-      <main style={{ padding: "18px 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+      <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} since={since} />
 
         {/* Total histórico */}

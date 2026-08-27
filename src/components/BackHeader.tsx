@@ -16,7 +16,7 @@ export function BackHeader({
         position: "sticky",
         top: 0,
         zIndex: 30,
-        padding: "12px 18px",
+        padding: "calc(12px + env(safe-area-inset-top)) 18px 12px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",

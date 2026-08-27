@@ -156,6 +156,81 @@ export function isBeerFormat(v: unknown): v is BeerFormat {
   return typeof v === "string" && (BEER_FORMATS as readonly string[]).includes(v);
 }
 
+// ----------------------------------------------------------------------------
+// Consolidación de check-ins (misma cerveza + mismo formato en una salida).
+// Un formato distinto (botella vs jarra) es un check-in aparte.
+// ----------------------------------------------------------------------------
+
+/**
+ * Rating al fusionar: NUNCA se sobrescribe un rating ya puesto. Si el existente
+ * es null, se toma el del nuevo. (Para cambiar un rating existente está
+ * updateCheckIn.)
+ */
+export function mergeCheckInRating(
+  existing: number | null,
+  incoming: number | null,
+): number | null {
+  return existing != null ? existing : incoming;
+}
+
+export interface CheckInAddInput {
+  beerId: string;
+  format: BeerFormat;
+  quantity: number;
+  rating: number | null;
+}
+
+export interface ExistingCheckIn {
+  id: string;
+  beerId: string;
+  format: BeerFormat;
+  quantity: number;
+  rating: number | null;
+}
+
+export type CheckInAddPlan =
+  | { action: "merge"; targetId: string; quantity: number; rating: number | null }
+  | { action: "create"; quantity: number; rating: number | null };
+
+/**
+ * Decide si un check-in nuevo se fusiona con uno existente (misma beerId Y
+ * mismo format) o se crea aparte.
+ */
+export function planCheckInAdd(
+  existing: ExistingCheckIn[],
+  incoming: CheckInAddInput,
+): CheckInAddPlan {
+  const match = existing.find(
+    (c) => c.beerId === incoming.beerId && c.format === incoming.format,
+  );
+  if (!match) {
+    return { action: "create", quantity: incoming.quantity, rating: incoming.rating };
+  }
+  return {
+    action: "merge",
+    targetId: match.id,
+    quantity: match.quantity + incoming.quantity,
+    rating: mergeCheckInRating(match.rating, incoming.rating),
+  };
+}
+
+/** Consolida una lista de check-ins nuevos (misma beerId+format se fusiona). */
+export function consolidateNewCheckIns(
+  items: CheckInAddInput[],
+): CheckInAddInput[] {
+  const out: CheckInAddInput[] = [];
+  for (const it of items) {
+    const match = out.find((c) => c.beerId === it.beerId && c.format === it.format);
+    if (!match) {
+      out.push({ ...it });
+    } else {
+      match.quantity += it.quantity;
+      match.rating = mergeCheckInRating(match.rating, it.rating);
+    }
+  }
+  return out;
+}
+
 /** Regla SessionTag: exactamente uno de taggedUserId | freeText. */
 export function isValidTag(tag: {
   taggedUserId?: string | null;

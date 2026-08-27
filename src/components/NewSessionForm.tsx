@@ -111,8 +111,20 @@ export function NewSessionForm() {
   function addText(text: string) {
     setTags((cur) => [...cur, { key: newKey(), kind: "text", label: text, text }]);
   }
+  // Consolida en la lista local: misma cerveza+formato suma cantidad; el rating
+  // existente no se sobrescribe (punto A.2-5). Feedback inmediato en pantalla.
+  function addLocalCheckIn(beer: BeerOption, format: BeerFormat, rating: number) {
+    setCheckIns((cur) => {
+      const idx = cur.findIndex((c) => c.beer.id === beer.id && c.format === format);
+      if (idx === -1) return [...cur, { key: newKey(), beer, format, rating, quantity: 1 }];
+      const copy = [...cur];
+      const ex = copy[idx];
+      copy[idx] = { ...ex, quantity: ex.quantity + 1, rating: ex.rating >= 1 ? ex.rating : rating };
+      return copy;
+    });
+  }
   function addFromSheet(d: SheetDraft) {
-    setCheckIns((cur) => [...cur, { key: newKey(), beer: d.beer, format: d.format, rating: d.rating, quantity: 1 }]);
+    addLocalCheckIn(d.beer, d.format, d.rating);
   }
   function quickAdd(b: BeerOption) {
     let lastFormat: BeerFormat = "BOTELLA";
@@ -120,7 +132,7 @@ export function NewSessionForm() {
       const v = window.localStorage.getItem("fd:lastFormat");
       if (v === "BOTELLA" || v === "LATA" || v === "JARRA" || v === "PINTA") lastFormat = v;
     } catch {}
-    setCheckIns((cur) => [...cur, { key: newKey(), beer: b, format: lastFormat, rating: 0, quantity: 1 }]);
+    addLocalCheckIn(b, lastFormat, 0);
   }
 
   async function submit() {
@@ -190,9 +202,11 @@ export function NewSessionForm() {
             {users.map((u) => {
               const on = tags.some((t) => t.userId === u.id);
               return (
-                <button key={u.id} type="button" onClick={() => toggleUser(u)} style={{ textAlign: "center", width: 46, flex: "none", background: "transparent", border: "none", cursor: "pointer", opacity: on ? 1 : 0.5 }}>
-                  <span style={{ display: "inline-block", borderRadius: 14, outline: on ? "2.5px solid var(--color-ambar)" : "none", outlineOffset: 2 }}>
-                    <Avatar avatar={u.avatar} size={46} radius={14} />
+                <button key={u.id} type="button" onClick={() => toggleUser(u)} style={{ textAlign: "center", width: 58, flex: "none", background: "transparent", border: "none", cursor: "pointer", padding: 0, opacity: on ? 1 : 0.5 }}>
+                  {/* Caja de tamaño constante: el borde (transparente si no está
+                      seleccionado) no cambia el layout y el avatar no se sale. */}
+                  <span style={{ width: 52, height: 52, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "2.5px solid var(--color-ambar)" : "2.5px solid transparent", boxSizing: "border-box" }}>
+                    <Avatar avatar={u.avatar} size={44} radius={13} />
                   </span>
                   <span style={{ display: "block", marginTop: 5, font: `${on ? 600 : 500} 11.5px var(--font-sans)`, color: on ? "var(--color-crema)" : "var(--color-tenue)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.displayName}</span>
                 </button>

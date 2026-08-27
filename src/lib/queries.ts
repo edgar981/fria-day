@@ -232,10 +232,14 @@ export async function getBeerOptions(search?: string) {
   });
 }
 
+/** Solo invitaciones DISPONIBLES (sin usar y sin expirar) — item A.2-6. */
 export async function getMyInvitations(userId: string) {
   return prisma.invitation.findMany({
-    where: { createdById: userId },
+    where: {
+      createdById: userId,
+      usedById: null,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
     orderBy: { createdAt: "desc" },
-    include: { usedBy: { select: { displayName: true } } },
   });
 }

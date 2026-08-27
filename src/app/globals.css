@@ -125,6 +125,8 @@ body {
 /* Campo de texto */
 .field {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
   height: 52px;
   border: 1px solid var(--color-borde);
   border-radius: 16px;
@@ -133,6 +135,15 @@ body {
   font: 400 16px var(--font-sans);
   padding: 0 15px;
   outline: none;
+}
+/* iOS: el <input type="date"> nativo ignora el ancho y se desborda. */
+input[type="date"].field {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+}
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
 }
 .field::placeholder {
   color: var(--color-tenue);

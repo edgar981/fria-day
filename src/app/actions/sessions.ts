@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay } from "@/lib/format";
 import { sessionSchema, checkInSchema } from "@/lib/validation";
+import { planCheckInAdd, consolidateNewCheckIns } from "@/lib/domain";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -59,14 +60,16 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
         placeName: data.placeName ? data.placeName : null,
         notes: data.notes ? data.notes : null,
         tags: { create: buildTags(data.tags, userId) },
+        // Consolida misma cerveza+formato en una sola fila (punto A.2-5).
         checkIns: {
-          create: data.checkIns.map((c) => ({
-            beerId: c.beerId,
-            quantity: c.quantity,
-            format: c.format,
-            rating: c.rating ?? null,
-            photoUrl: c.photoUrl ? c.photoUrl : null,
-          })),
+          create: consolidateNewCheckIns(
+            data.checkIns.map((c) => ({
+              beerId: c.beerId,
+              format: c.format,
+              quantity: c.quantity,
+              rating: c.rating ?? null,
+            })),
+          ),
         },
       },
       select: { id: true },
@@ -137,16 +140,36 @@ export async function addCheckIn(input: unknown): Promise<Result> {
     return { ok: false, error: "No es tu salida" };
 
   const c = parsed.data;
-  await prisma.checkIn.create({
-    data: {
-      sessionId,
-      beerId: c.beerId,
-      quantity: c.quantity,
-      format: c.format,
-      rating: c.rating ?? null,
-      photoUrl: c.photoUrl ? c.photoUrl : null,
-    },
+
+  // Consolida con un check-in existente de la MISMA cerveza y formato (A.2-5).
+  const existing = await prisma.checkIn.findMany({
+    where: { sessionId },
+    select: { id: true, beerId: true, format: true, quantity: true, rating: true },
   });
+  const plan = planCheckInAdd(existing, {
+    beerId: c.beerId,
+    format: c.format,
+    quantity: c.quantity,
+    rating: c.rating ?? null,
+  });
+
+  if (plan.action === "merge") {
+    await prisma.checkIn.update({
+      where: { id: plan.targetId },
+      data: { quantity: plan.quantity, rating: plan.rating },
+    });
+  } else {
+    await prisma.checkIn.create({
+      data: {
+        sessionId,
+        beerId: c.beerId,
+        quantity: c.quantity,
+        format: c.format,
+        rating: c.rating ?? null,
+        photoUrl: c.photoUrl ? c.photoUrl : null,
+      },
+    });
+  }
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   revalidatePath(`/sessions/${sessionId}/edit`);

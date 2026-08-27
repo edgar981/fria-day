@@ -9,8 +9,11 @@ import {
   isValidRating,
   isValidQuantity,
   isValidTag,
+  planCheckInAdd,
+  consolidateNewCheckIns,
   type SessionData,
   type UserRef,
+  type ExistingCheckIn,
 } from "./domain";
 
 // Usuarios de prueba
@@ -208,5 +211,78 @@ describe("validaciones", () => {
     expect(isValidTag({ taggedUserId: "u1", freeText: "x" })).toBe(false);
     expect(isValidTag({})).toBe(false);
     expect(isValidTag({ freeText: "   " })).toBe(false);
+  });
+});
+
+describe("consolidación de check-ins (misma cerveza + formato) — punto A.2-5", () => {
+  const existing = (over: Partial<ExistingCheckIn>): ExistingCheckIn => ({
+    id: "x",
+    beerId: "b1",
+    format: "BOTELLA",
+    quantity: 1,
+    rating: null,
+    ...over,
+  });
+
+  it("misma cerveza, mismo formato, 1× + 1× → un check-in de 2×", () => {
+    const plan = planCheckInAdd([existing({ quantity: 1 })], {
+      beerId: "b1",
+      format: "BOTELLA",
+      quantity: 1,
+      rating: null,
+    });
+    expect(plan).toEqual({ action: "merge", targetId: "x", quantity: 2, rating: null });
+  });
+
+  it("misma cerveza, formato distinto → dos check-ins (create)", () => {
+    const plan = planCheckInAdd([existing({ format: "BOTELLA" })], {
+      beerId: "b1",
+      format: "JARRA",
+      quantity: 1,
+      rating: null,
+    });
+    expect(plan.action).toBe("create");
+  });
+
+  it("existente con rating 4 + nuevo sin rating → queda en 4", () => {
+    const plan = planCheckInAdd([existing({ rating: 4 })], {
+      beerId: "b1",
+      format: "BOTELLA",
+      quantity: 1,
+      rating: null,
+    });
+    expect(plan).toMatchObject({ action: "merge", rating: 4 });
+  });
+
+  it("existente sin rating + nuevo con rating 3 → queda en 3", () => {
+    const plan = planCheckInAdd([existing({ rating: null })], {
+      beerId: "b1",
+      format: "BOTELLA",
+      quantity: 1,
+      rating: 3,
+    });
+    expect(plan).toMatchObject({ action: "merge", rating: 3 });
+  });
+
+  it("existente con rating 4 + nuevo con rating 2 → queda en 4 (no sobrescribe)", () => {
+    const plan = planCheckInAdd([existing({ rating: 4 })], {
+      beerId: "b1",
+      format: "BOTELLA",
+      quantity: 1,
+      rating: 2,
+    });
+    expect(plan).toMatchObject({ action: "merge", rating: 4 });
+  });
+
+  it("consolidateNewCheckIns fusiona en crear salida (mismo beer+formato) y separa por formato", () => {
+    const out = consolidateNewCheckIns([
+      { beerId: "b1", format: "BOTELLA", quantity: 1, rating: null },
+      { beerId: "b1", format: "BOTELLA", quantity: 1, rating: 4 },
+      { beerId: "b1", format: "JARRA", quantity: 1, rating: null },
+    ]);
+    expect(out).toEqual([
+      { beerId: "b1", format: "BOTELLA", quantity: 2, rating: 4 },
+      { beerId: "b1", format: "JARRA", quantity: 1, rating: null },
+    ]);
   });
 });

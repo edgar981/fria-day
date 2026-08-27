@@ -67,7 +67,7 @@ export function OwnerCheckInList({
     setRemoved((s) => new Set(s).add(c.id));
     setUndo(c);
     if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setUndo(null), 6000);
+    timer.current = setTimeout(() => setUndo(null), 8000);
     void deleteCheckIn(c.id).then(() => router.refresh());
   }
 

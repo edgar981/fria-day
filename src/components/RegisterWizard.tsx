@@ -74,7 +74,7 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
   if (step === 1) {
     return (
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-        <div style={{ background: "linear-gradient(160deg,#D2700C,#A85207)", padding: "36px 26px 0" }}>
+        <div style={{ background: "linear-gradient(160deg,#D2700C,#A85207)", padding: "calc(36px + env(safe-area-inset-top)) 26px 0" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/friaday-icon.png" alt="" width={86} height={86} style={{ borderRadius: 24, display: "block", boxShadow: "0 12px 30px rgba(0,0,0,.28)" }} />
           <div style={{ font: "800 48px/.95 var(--font-display)", letterSpacing: "-.035em", color: "var(--color-espuma)", marginTop: 20 }}>FriaDay</div>
@@ -116,7 +116,7 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
 
   if (step === 2) {
     return (
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 26px 0", gap: 20 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "calc(16px + env(safe-area-inset-top)) 26px 0", gap: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>{backBtn(() => setStep(1))}<span style={{ font: "800 21px var(--font-display)", letterSpacing: "-.02em" }}>Tus datos</span></div>
         <Progress step={2} />
         {errorLine}
@@ -135,7 +135,7 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 26px 0", gap: 20 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "calc(16px + env(safe-area-inset-top)) 26px 0", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>{backBtn(() => setStep(2))}</div>
       <Progress step={3} />
       <div>
