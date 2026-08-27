@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { registerSchema, loginSchema } from "@/lib/validation";
+import { isAvatarKey } from "@/lib/avatars";
 
 export type AuthState = { error?: string } | undefined;
 
@@ -22,6 +23,8 @@ export async function registerWithInvite(
     return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
   const { displayName, email, password, code } = parsed.data;
+  const rawAvatar = formData.get("avatar");
+  const avatar = isAvatarKey(rawAvatar) ? rawAvatar : null; // null = anónimo
 
   // 1. La invitación debe existir, no estar usada y no estar expirada (regla 5).
   const invite = await prisma.invitation.findUnique({ where: { code } });
@@ -35,7 +38,7 @@ export async function registerWithInvite(
   let userId: string;
   try {
     const res = await auth.api.signUpEmail({
-      body: { email, password, name: displayName, displayName },
+      body: { email, password, name: displayName, displayName, avatar },
       headers: await headers(),
     });
     userId = res.user.id;

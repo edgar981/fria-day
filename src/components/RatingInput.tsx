@@ -1,37 +1,45 @@
 "use client";
 
+// Medidor de rating interactivo: vasos que se llenan. 0 = sin calificar.
 export function RatingInput({
   value,
   onChange,
-  size = "1.9rem",
 }: {
   value: number;
   onChange: (n: number) => void;
-  size?: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <div role="radiogroup" aria-label="Rating" style={{ display: "flex", gap: "0.15rem" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div role="radiogroup" aria-label="Rating" style={{ display: "flex", gap: 2 }}>
         {[1, 2, 3, 4, 5].map((n) => (
           <button
             key={n}
             type="button"
             role="radio"
             aria-checked={value === n}
-            aria-label={`${n} estrella${n > 1 ? "s" : ""}`}
-            // Toca la misma estrella para limpiar el rating (opcional).
+            aria-label={`${n} de 5`}
             onClick={() => onChange(value === n ? 0 : n)}
             style={{
-              fontSize: size,
-              lineHeight: 1,
-              padding: "0.1rem",
-              color: n <= value ? "var(--star)" : "var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "9px 3px",
+              minWidth: 22,
+              minHeight: 44,
               background: "transparent",
               border: "none",
               cursor: "pointer",
             }}
           >
-            ★
+            <span
+              style={{
+                width: 14,
+                height: 26,
+                borderRadius: 4,
+                background: n <= value ? "var(--color-ambar)" : "#3A2A1A",
+                display: "block",
+              }}
+            />
           </button>
         ))}
       </div>
@@ -39,12 +47,21 @@ export function RatingInput({
         <button
           type="button"
           onClick={() => onChange(0)}
-          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: "0.75rem", cursor: "pointer", textDecoration: "underline" }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--color-tenue)",
+            font: "500 12.5px var(--font-sans)",
+            cursor: "pointer",
+            textDecoration: "underline",
+          }}
         >
           Limpiar
         </button>
       ) : (
-        <span style={{ color: "var(--muted)", fontSize: "0.75rem" }}>Opcional</span>
+        <span style={{ color: "var(--color-tenue-2)", font: "400 12px var(--font-sans)" }}>
+          Opcional
+        </span>
       )}
     </div>
   );

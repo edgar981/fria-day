@@ -1,4 +1,4 @@
-import { RegisterForm } from "@/components/RegisterForm";
+import { RegisterWizard } from "@/components/RegisterWizard";
 
 export const dynamic = "force-dynamic";
 
@@ -8,5 +8,5 @@ export default async function RegisterPage({
   searchParams: Promise<{ code?: string }>;
 }) {
   const { code } = await searchParams;
-  return <RegisterForm initialCode={code ?? ""} />;
+  return <RegisterWizard initialCode={code ?? ""} />;
 }

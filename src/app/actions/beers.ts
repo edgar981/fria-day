@@ -115,7 +115,7 @@ export async function searchUsersAction(query: string) {
           }
         : {}),
     },
-    select: { id: true, displayName: true },
+    select: { id: true, displayName: true, avatar: true },
     orderBy: { displayName: "asc" },
     take: 8,
   });

@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getBeerDetail } from "@/lib/queries";
-import { Stars, RatingDisplay } from "@/components/Stars";
+import { BackHeader } from "@/components/BackHeader";
+import { Avatar } from "@/components/Avatar";
+import { Glasses, RatingCell } from "@/components/Glasses";
 import { FORMAT_LABEL, formatAbv, formatDay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -19,59 +21,53 @@ export default async function BeerDetailPage({
   const { beer, avgRating, ratingsCount, recent } = data;
 
   return (
-    <div style={{ display: "grid", gap: "1rem" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <Link href="/beers" className="btn btn-ghost" style={{ padding: "0.35rem 0.6rem" }}>
-          ←
-        </Link>
-        <h1 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Cerveza</h1>
-      </div>
-
-      <section className="card" style={{ padding: "1.1rem", display: "grid", gap: "0.5rem" }}>
-        <div style={{ fontSize: "1.25rem", fontWeight: 800 }}>{beer.name}</div>
-        <div style={{ color: "var(--muted)" }}>
-          {beer.brewery}
-          {beer.style ? ` · ${beer.style}` : ""}
-          {formatAbv(beer.abv) ? ` · ${formatAbv(beer.abv)}` : ""}
+    <div>
+      <BackHeader title="Cerveza" href="/beers" />
+      <main style={{ padding: "18px 18px 40px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <div>
+          <div style={{ font: "800 30px/1.05 var(--font-display)", letterSpacing: "-.025em" }}>{beer.name}</div>
+          <div style={{ font: "500 14.5px var(--font-sans)", color: "var(--color-tenue)", marginTop: 6 }}>
+            {beer.brewery}
+            {beer.style ? ` · ${beer.style}` : ""}
+            {formatAbv(beer.abv) ? ` · ${formatAbv(beer.abv)}` : ""}
+          </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginTop: "0.4rem" }}>
+
+        <div className="card" style={{ padding: 18, display: "flex", alignItems: "center", gap: 14 }}>
           {avgRating != null ? (
             <>
-              <Stars value={avgRating} size="1.1rem" />
-              <span style={{ fontWeight: 700 }}>{avgRating.toFixed(1)}</span>
-              <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>
-                · {ratingsCount} rating{ratingsCount !== 1 ? "s" : ""} del grupo
-              </span>
+              <Glasses value={Math.round(avgRating)} size="lg" />
+              <div>
+                <div style={{ font: "800 26px/1 var(--font-display)", color: "var(--color-espuma)" }}>{avgRating.toFixed(1)}</div>
+                <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{ratingsCount} rating{ratingsCount !== 1 ? "s" : ""} del grupo</div>
+              </div>
             </>
           ) : (
-            <span style={{ color: "var(--muted)" }}>Sin calificar</span>
+            <span style={{ font: "500 14px var(--font-sans)", color: "var(--color-tenue-2)", border: "1px dashed #3A2A1A", borderRadius: 999, padding: "8px 14px" }}>Sin calificar</span>
           )}
         </div>
-        <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
-          Agregada por {beer.createdBy.displayName}
-        </div>
-      </section>
+        <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: -8 }}>Agregada por {beer.createdBy.displayName}</div>
 
-      <section style={{ display: "grid", gap: "0.6rem" }}>
-        <h2 style={{ fontWeight: 700 }}>Ratings recientes</h2>
-        {recent.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>Todavía nadie la ha registrado.</p>
-        ) : (
-          <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.4rem" }}>
-            {recent.map((c) => (
-              <li key={c.id} className="card" style={{ padding: "0.6rem 0.8rem", display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
-                <Link href={`/sessions/${c.session.id}`} style={{ textDecoration: "none", color: "var(--text)", minWidth: 0 }}>
-                  <div style={{ fontWeight: 600 }}>{c.session.user.displayName}</div>
-                  <div style={{ fontSize: "0.76rem", color: "var(--muted)" }}>
-                    {formatDay(c.session.date)} · {c.quantity}× {FORMAT_LABEL[c.format]}
+        <section>
+          <div className="eyebrow" style={{ marginBottom: 11 }}>Registros recientes</div>
+          {recent.length === 0 ? (
+            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Todavía nadie la ha registrado.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+              {recent.map((c) => (
+                <Link key={c.id} href={`/sessions/${c.session.id}`} className="card" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11, textDecoration: "none", color: "var(--color-crema)" }}>
+                  <Avatar avatar={c.session.user.avatar} size={36} radius={11} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ font: "600 15px var(--font-sans)" }}>{c.session.user.displayName}</div>
+                    <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{formatDay(c.session.date)} · {c.quantity}× {FORMAT_LABEL[c.format]}</div>
                   </div>
+                  <RatingCell value={c.rating} size="xs" />
                 </Link>
-                <RatingDisplay value={c.rating} size="0.85rem" />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              ))}
+            </div>
+          )}
+        </section>
+      </main>
     </div>
   );
 }

@@ -3,6 +3,53 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada A — Rediseño (solo presentación)
+
+Implementación del entregable de Claude Design (`FriaDay.dc.html`). Solo tocó
+presentación salvo la excepción de avatares. `src/lib/domain.ts` y los 20 tests
+quedaron INTACTOS (20/20 pasan sin modificarse).
+
+- **Sistema**: tokens `@theme` de Tailwind v4 (nombres semánticos: `noche`,
+  `barra`, `barra-alta`, `borde`, `ambar`, `marca`, `espuma`, `botella`, `crema`,
+  `tenue`, `tenue-2`, `alerta`), **solo tema oscuro** (sin claro ni toggle).
+  Tipografía **Syne + Outfit vía `next/font`** (no el `<link>` de Google del
+  mockup). Dos motivos propios: **franja de espuma** (radial-gradient, cero
+  imágenes) y **marcas de conteo** para totales. Rating con **vasos que se
+  llenan** (no estrellas); "Sin calificar" nunca se dibuja como cero.
+- **Sprite**: los 11 avatares + 8 iconos vienen como `<symbol>` del entregable,
+  embebidos una sola vez en el layout (`src/components/Sprite.tsx`, generado del
+  `.dc.html`), referenciados con `<use href="#av-…">`.
+- **Guardarraíles de contraste** (los números del doc estaban mal): `tenue-2` y
+  `botella` solo sobre `noche`/`barra`, nunca sobre `barra-alta`. El distintivo
+  "te etiquetó" usa `#6FC79C` (verde claro) sobre chip translúcido, no `botella`.
+- **AVATARES = única excepción de esquema, y toca algo de servidor.** `User.avatar`
+  (migración `user_avatar`). Para persistirlo hizo falta plumbing **mínimo y
+  aditivo**: `avatar` como additionalField de Better Auth, leerlo en
+  `registerWithInvite`, y una acción nueva `updateAvatar` (editar desde el perfil).
+  La regla "no tocar server actions" y "avatar editable" están en tensión; se
+  resolvió con lo mínimo indispensable, sin cambiar el comportamiento de las
+  acciones existentes. Sin subida de imágenes.
+- **Flujo de nueva salida** rediseñado (hoja inferior + lista). La regla de la
+  ronda 2 ("no perder el check-in a medio llenar") se preserva por construcción:
+  agregar una cerveza es SIEMPRE explícito (hoja "Agregar a la salida" o quick-add
+  "+"), y "Guardar salida" con lista vacía → "Agrega al menos una cerveza". No
+  queda un formulario inline a medio llenar que se pueda perder.
+- **Editar el rating de un check-in YA guardado**: no soportado en esta pasada
+  (requeriría una acción `updateCheckIn`, fuera de "no tocar server actions"). El
+  rating se fija al agregar (en la hoja) o, en una salida nueva, en la lista local
+  antes de guardar. En el detalle, un check-in sin rating muestra "Sin calificar".
+  → follow-up.
+- **Catálogo**: chip "Mejor calificadas" (orden por defecto) + sección
+  "SIN CALIFICAR · N". Se omitieron los tabs "Más tomadas"/"A–Z" (requerían orden
+  en servidor; fuera de "solo presentación").
+- **Perfil**: se omitió el stat "viernes seguidos" (racha = Pasada B); en su lugar
+  "salidas registradas". Se conservó "por estilo" (dato v1 real).
+- **Onboarding**: código en un solo campo estilizado (no 7 casillas). La validez
+  del código se comprueba en el submit final; si es inválido vuelve al paso 1.
+- **Verificación**: navegador Chromium real (más fuerte que jsdom; no hay
+  deliverable HTML/JS suelto que meter en jsdom en una app SSR). 20/20 tests sin
+  tocar. Build de producción OK. Migraciones aplicadas a Neon.
+
 ## Ajustes post-gate visual (ronda 2)
 
 Tres ajustes de fricción encontrados por Edgar en el gate:

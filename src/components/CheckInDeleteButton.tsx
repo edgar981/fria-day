@@ -19,8 +19,19 @@ export function CheckInDeleteButton({ checkInId }: { checkInId: string }) {
           router.refresh();
         })
       }
-      className="btn btn-ghost"
-      style={{ padding: "0.25rem 0.5rem", fontSize: "0.9rem", opacity: pending ? 0.5 : 1 }}
+      style={{
+        width: 30,
+        height: 30,
+        borderRadius: 9,
+        border: "1px solid var(--color-borde)",
+        background: "transparent",
+        color: "var(--color-tenue)",
+        cursor: "pointer",
+        fontSize: 15,
+        lineHeight: 1,
+        flex: "none",
+        opacity: pending ? 0.5 : 1,
+      }}
     >
       ×
     </button>

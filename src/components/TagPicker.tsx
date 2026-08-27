@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { searchUsersAction } from "@/app/actions/beers";
 
 export interface DisplayTag {
-  key: string; // id local o de servidor
+  key: string;
   label: string;
   kind: "user" | "text";
 }
@@ -49,51 +49,23 @@ export function TagPicker({
     return () => document.removeEventListener("mousedown", onDown);
   }, []);
 
+  const chip = (t: DisplayTag) => (
+    <span key={t.key} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: t.kind === "user" ? "var(--color-barra-alta)" : "transparent", border: `1px ${t.kind === "user" ? "solid var(--color-borde)" : "dashed #4A3A28"}`, borderRadius: 999, padding: "5px 10px", font: "500 12.5px var(--font-sans)", color: "var(--color-crema)" }}>
+      {t.kind === "user" ? "👤" : ""} {t.label}
+      <button type="button" onClick={() => onRemove(t.key)} aria-label={`Quitar ${t.label}`} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-tenue)", fontSize: 15, lineHeight: 1 }}>×</button>
+    </span>
+  );
+
   return (
-    <div style={{ display: "grid", gap: "0.6rem" }}>
-      {tags.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-          {tags.map((t) => (
-            <span key={t.key} className="chip">
-              <span aria-hidden>{t.kind === "user" ? "👤" : "✎"}</span>
-              {t.label}
-              <button
-                type="button"
-                onClick={() => onRemove(t.key)}
-                aria-label={`Quitar ${t.label}`}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--muted)", fontSize: "1rem", lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
+    <div style={{ display: "grid", gap: 10 }}>
+      {tags.length > 0 && <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{tags.map(chip)}</div>}
 
       <div ref={boxRef} style={{ position: "relative" }}>
-        <input
-          className="input"
-          placeholder="Etiquetar a alguien de la app…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setOpen(true)}
-        />
+        <input className="field" placeholder="Etiquetar a alguien de la app…" value={query} onChange={(e) => setQuery(e.target.value)} onFocus={() => setOpen(true)} />
         {open && results.length > 0 && (
-          <div
-            className="card"
-            style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, padding: "0.35rem", maxHeight: 220, overflowY: "auto" }}
-          >
+          <div className="card" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, padding: 6, maxHeight: 220, overflowY: "auto" }}>
             {results.map((u) => (
-              <button
-                key={u.id}
-                type="button"
-                onClick={() => {
-                  onAddUser(u);
-                  setQuery("");
-                  setOpen(false);
-                }}
-                style={{ display: "block", width: "100%", textAlign: "left", padding: "0.5rem", borderRadius: "0.5rem", background: "transparent", border: "none", cursor: "pointer", color: "var(--text)" }}
-              >
+              <button key={u.id} type="button" onClick={() => { onAddUser(u); setQuery(""); setOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px", borderRadius: 12, background: "transparent", border: "none", cursor: "pointer", color: "var(--color-crema)", font: "500 15px var(--font-sans)" }}>
                 👤 {u.displayName}
               </button>
             ))}
@@ -101,34 +73,9 @@ export function TagPicker({
         )}
       </div>
 
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <input
-          className="input"
-          placeholder="…o compañía sin app (texto libre)"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              if (text.trim()) {
-                onAddText(text.trim());
-                setText("");
-              }
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="btn btn-ghost"
-          onClick={() => {
-            if (text.trim()) {
-              onAddText(text.trim());
-              setText("");
-            }
-          }}
-        >
-          Agregar
-        </button>
+      <div style={{ display: "flex", gap: 7 }}>
+        <input className="field" style={{ height: 48 }} placeholder="…o compañía sin app" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (text.trim()) { onAddText(text.trim()); setText(""); } } }} />
+        <button type="button" className="btn btn-ghost" style={{ height: 48 }} onClick={() => { if (text.trim()) { onAddText(text.trim()); setText(""); } }}>Agregar</button>
       </div>
     </div>
   );

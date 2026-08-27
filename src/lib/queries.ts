@@ -17,14 +17,14 @@ export async function getFeed(userId: string) {
     },
     orderBy: [{ date: "desc" }, { createdAt: "desc" }],
     include: {
-      user: { select: { id: true, displayName: true } },
+      user: { select: { id: true, displayName: true, avatar: true } },
       tags: {
-        include: { taggedUser: { select: { id: true, displayName: true } } },
+        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
         orderBy: { createdAt: "asc" },
       },
       checkIns: {
         include: {
-          beer: { select: { id: true, name: true, brewery: true, style: true } },
+          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -44,14 +44,14 @@ export async function getSessionDetail(id: string) {
   return prisma.session.findUnique({
     where: { id },
     include: {
-      user: { select: { id: true, displayName: true } },
+      user: { select: { id: true, displayName: true, avatar: true } },
       tags: {
-        include: { taggedUser: { select: { id: true, displayName: true } } },
+        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
         orderBy: { createdAt: "asc" },
       },
       checkIns: {
         include: {
-          beer: { select: { id: true, name: true, brewery: true, style: true } },
+          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -127,7 +127,7 @@ export async function getBeerDetail(id: string) {
         select: {
           id: true,
           date: true,
-          user: { select: { displayName: true } },
+          user: { select: { displayName: true, avatar: true } },
         },
       },
     },
@@ -140,9 +140,10 @@ export async function getBeerDetail(id: string) {
 async function loadMetricsInputs(): Promise<{
   users: UserRef[];
   sessions: SessionData[];
+  avatarById: Record<string, string | null>;
 }> {
   const [users, sessions] = await Promise.all([
-    prisma.user.findMany({ select: { id: true, displayName: true } }),
+    prisma.user.findMany({ select: { id: true, displayName: true, avatar: true } }),
     prisma.session.findMany({
       select: {
         id: true,
@@ -174,7 +175,10 @@ async function loadMetricsInputs(): Promise<{
     })),
   }));
 
-  return { users, sessions: mapped };
+  const avatarById: Record<string, string | null> = {};
+  for (const u of users) avatarById[u.id] = u.avatar;
+
+  return { users, sessions: mapped, avatarById };
 }
 
 export async function getLeaderboard() {
@@ -183,10 +187,11 @@ export async function getLeaderboard() {
 }
 
 export async function getProfile(userId: string) {
-  const { users, sessions } = await loadMetricsInputs();
+  const { users, sessions, avatarById } = await loadMetricsInputs();
   return {
     stats: userStats(userId, sessions),
     board: leaderboard(users, sessions),
+    avatarById,
   };
 }
 

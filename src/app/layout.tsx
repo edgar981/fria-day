@@ -1,15 +1,31 @@
 import type { Metadata, Viewport } from "next";
+import { Syne, Outfit } from "next/font/google";
+import { Sprite } from "@/components/Sprite";
 import "./globals.css";
+
+const syne = Syne({
+  subsets: ["latin"],
+  weight: ["600", "700", "800"],
+  variable: "--font-syne",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-outfit",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "FriaDay",
-  description: "Registra tus cervezas por salida, con amigos.",
+  description: "El parche lleva la cuenta. Nadie más está invitado.",
   manifest: "/manifest.webmanifest",
   applicationName: "FriaDay",
   appleWebApp: {
     capable: true,
     title: "FriaDay",
-    statusBarStyle: "default",
+    statusBarStyle: "black-translucent",
   },
   icons: {
     icon: [{ url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" }],
@@ -18,7 +34,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#d97706",
+  themeColor: "#120E0A",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -30,8 +46,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es">
-      <body>{children}</body>
+    <html lang="es" className={`${syne.variable} ${outfit.variable}`}>
+      <body>
+        <Sprite />
+        {children}
+      </body>
     </html>
   );
 }

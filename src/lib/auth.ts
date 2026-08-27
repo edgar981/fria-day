@@ -24,6 +24,8 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       displayName: { type: "string", required: true, input: true },
+      // Avatar elegido en el registro (paso 3, saltable). null = anónimo.
+      avatar: { type: "string", required: false, input: true },
     },
   },
 

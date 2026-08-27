@@ -12,9 +12,7 @@ export function InviteGenerator() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
 
-  const link = code && typeof window !== "undefined"
-    ? `${window.location.origin}/register?code=${code}`
-    : "";
+  const link = code && typeof window !== "undefined" ? `${window.location.origin}/register?code=${code}` : "";
 
   async function generate() {
     setError(null);
@@ -44,41 +42,36 @@ export function InviteGenerator() {
   }
 
   return (
-    <section className="card" style={{ padding: "1rem", display: "grid", gap: "0.8rem" }}>
-      <h2 style={{ fontWeight: 700 }}>Generar invitación</h2>
+    <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="eyebrow">Generar código</div>
       <div>
-        <label className="label" htmlFor="exp">Expira en (días, opcional)</label>
-        <input
-          id="exp"
-          className="input"
-          inputMode="numeric"
-          placeholder="Sin expiración"
-          value={expiresInDays}
-          onChange={(e) => setExpiresInDays(e.target.value.replace(/[^\d]/g, ""))}
-        />
+        <label style={{ display: "block", font: "500 13px var(--font-sans)", color: "var(--color-tenue)", marginBottom: 6 }} htmlFor="exp">
+          Expira en (días, opcional)
+        </label>
+        <input id="exp" className="field" inputMode="numeric" placeholder="Sin expiración" value={expiresInDays} onChange={(e) => setExpiresInDays(e.target.value.replace(/[^\d]/g, ""))} />
       </div>
-      {error && <p style={{ color: "var(--danger)", fontSize: "0.82rem", margin: 0 }}>{error}</p>}
-      <button type="button" className="btn btn-primary" onClick={generate} disabled={busy}>
+      {error && <p style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
+      <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={generate} disabled={busy}>
         {busy ? "Generando…" : "Generar código"}
       </button>
 
       {code && (
-        <div className="card" style={{ padding: "0.85rem", display: "grid", gap: "0.6rem", background: "var(--surface-2)" }}>
+        <div style={{ background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 18, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>Código</div>
-            <div style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "0.15em" }}>{code}</div>
+            <div style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue)", letterSpacing: ".1em" }}>CÓDIGO</div>
+            <div style={{ font: "700 30px var(--font-display)", letterSpacing: ".18em", color: "var(--color-espuma)", marginTop: 4 }}>{code}</div>
           </div>
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => copy(code, "code")}>
+          <div style={{ display: "flex", gap: 9 }}>
+            <button type="button" className="btn btn-ghost" style={{ flex: 1, height: 44 }} onClick={() => copy(code, "code")}>
               {copied === "code" ? "✓ Copiado" : "Copiar código"}
             </button>
-            <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => copy(link, "link")}>
+            <button type="button" className="btn btn-ghost" style={{ flex: 1, height: 44 }} onClick={() => copy(link, "link")}>
               {copied === "link" ? "✓ Copiado" : "Copiar link"}
             </button>
           </div>
-          <p style={{ fontSize: "0.75rem", color: "var(--muted)", margin: 0, wordBreak: "break-all" }}>{link}</p>
+          <p style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue-2)", margin: 0, wordBreak: "break-all" }}>{link}</p>
         </div>
       )}
-    </section>
+    </div>
   );
 }

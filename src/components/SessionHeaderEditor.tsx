@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateSessionHeader } from "@/app/actions/sessions";
 
+const labelStyle: React.CSSProperties = { display: "block", font: "500 13px var(--font-sans)", color: "var(--color-tenue)", marginBottom: 6 };
+
 export function SessionHeaderEditor({
   session,
 }: {
@@ -32,26 +34,26 @@ export function SessionHeaderEditor({
   }
 
   return (
-    <section className="card" style={{ padding: "1rem", display: "grid", gap: "0.8rem" }}>
-      <h2 style={{ fontWeight: 700 }}>Detalles</h2>
+    <section className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div className="eyebrow">Detalles</div>
       <div>
-        <label className="label" htmlFor="e-date">Fecha</label>
-        <input id="e-date" type="date" className="input" value={date} onChange={(e) => { setDate(e.target.value); setSaved(false); }} />
+        <label style={labelStyle} htmlFor="e-date">Fecha</label>
+        <input id="e-date" type="date" className="field" value={date} onChange={(e) => { setDate(e.target.value); setSaved(false); }} />
       </div>
       <div>
-        <label className="label" htmlFor="e-place">Lugar</label>
-        <input id="e-place" className="input" value={placeName} onChange={(e) => { setPlaceName(e.target.value); setSaved(false); }} placeholder="Bar, casa, parque…" />
+        <label style={labelStyle} htmlFor="e-place">Lugar</label>
+        <input id="e-place" className="field" value={placeName} onChange={(e) => { setPlaceName(e.target.value); setSaved(false); }} placeholder="Bar, casa, parque…" />
       </div>
       <div>
-        <label className="label" htmlFor="e-notes">Notas</label>
-        <textarea id="e-notes" className="input" rows={2} value={notes} onChange={(e) => { setNotes(e.target.value); setSaved(false); }} />
+        <label style={labelStyle} htmlFor="e-notes">Notas</label>
+        <textarea id="e-notes" className="field" rows={2} value={notes} onChange={(e) => { setNotes(e.target.value); setSaved(false); }} />
       </div>
-      {error && <p style={{ color: "var(--danger)", fontSize: "0.82rem", margin: 0 }}>{error}</p>}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-        <button type="button" className="btn btn-primary" onClick={save} disabled={pending}>
+      {error && <p style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button type="button" className="btn btn-primary" style={{ height: 48 }} onClick={save} disabled={pending}>
           {pending ? "Guardando…" : "Guardar detalles"}
         </button>
-        {saved && <span style={{ color: "var(--muted)", fontSize: "0.85rem" }}>✓ Guardado</span>}
+        {saved && <span style={{ color: "var(--color-tenue)", font: "500 14px var(--font-sans)" }}>✓ Guardado</span>}
       </div>
     </section>
   );

@@ -8,48 +8,35 @@ export default function LoginPage() {
   const [state, action, pending] = useActionState(loginAction, undefined);
 
   return (
-    <>
-      <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
-        <div style={{ fontSize: "3rem" }} aria-hidden>
-          🍺
-        </div>
-        <h1 style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
-          FriaDay
-        </h1>
-        <p style={{ color: "var(--muted)", fontSize: "0.9rem" }}>
-          Tus cervezas, salida por salida.
-        </p>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 26px", gap: 24 }}>
+      <div style={{ textAlign: "center" }}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/friaday-icon.png" alt="" width={72} height={72} style={{ borderRadius: 20, display: "block", margin: "0 auto 14px" }} />
+        <div style={{ font: "800 40px/1 var(--font-display)", letterSpacing: "-.03em", color: "var(--color-espuma)" }}>FriaDay</div>
+        <p style={{ font: "500 15px var(--font-sans)", color: "var(--color-tenue)", margin: "10px 0 0" }}>El parche lleva la cuenta.</p>
       </div>
 
-      <form action={action} className="card" style={{ padding: "1.25rem", display: "grid", gap: "0.9rem" }}>
-        <h2 style={{ fontWeight: 700 }}>Entrar</h2>
+      <form action={action} style={{ display: "grid", gap: 14 }}>
         {state?.error && (
-          <p
-            role="alert"
-            style={{ color: "var(--danger)", fontSize: "0.85rem", margin: 0 }}
-          >
-            {state.error}
-          </p>
+          <p role="alert" style={{ color: "var(--color-alerta)", font: "500 14px var(--font-sans)", margin: 0 }}>{state.error}</p>
         )}
         <div>
-          <label className="label" htmlFor="email">Email</label>
-          <input id="email" name="email" type="email" autoComplete="email" required className="input" />
+          <label style={{ display: "block", font: "500 13px var(--font-sans)", color: "var(--color-tenue)", marginBottom: 6 }} htmlFor="email">Email</label>
+          <input id="email" name="email" type="email" autoComplete="email" required className="field" />
         </div>
         <div>
-          <label className="label" htmlFor="password">Contraseña</label>
-          <input id="password" name="password" type="password" autoComplete="current-password" required className="input" />
+          <label style={{ display: "block", font: "500 13px var(--font-sans)", color: "var(--color-tenue)", marginBottom: 6 }} htmlFor="password">Contraseña</label>
+          <input id="password" name="password" type="password" autoComplete="current-password" required className="field" />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={pending}>
+        <button type="submit" className="btn btn-primary" style={{ width: "100%" }} disabled={pending}>
           {pending ? "Entrando…" : "Entrar"}
         </button>
       </form>
 
-      <p style={{ textAlign: "center", marginTop: "1rem", fontSize: "0.9rem", color: "var(--muted)" }}>
+      <p style={{ textAlign: "center", font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>
         ¿No tienes cuenta?{" "}
-        <Link href="/register" style={{ color: "var(--accent)", fontWeight: 600 }}>
-          Regístrate con tu código
-        </Link>
+        <Link href="/register" style={{ color: "var(--color-ambar)", fontWeight: 600 }}>Regístrate con tu código</Link>
       </p>
-    </>
+    </div>
   );
 }

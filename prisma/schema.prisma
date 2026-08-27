@@ -27,8 +27,11 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
-  // Campo extra de dominio (además de las tablas de Better Auth).
+  // Campos extra de dominio (además de las tablas de Better Auth).
   displayName   String
+  // Clave del avatar elegido (capibara, tucan, …, oso-andino) o null = anónimo.
+  // No hay subida de imágenes; se elige de un set fijo de fauna.
+  avatar        String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

@@ -1,130 +1,173 @@
 @import "tailwindcss";
 
-/* ---- Tokens de diseño (paleta cálida ámbar, mobile-first) ---- */
+/* ---- Sistema FriaDay · solo tema oscuro ---- */
+/* Tailwind v4 emite cada token como var(--color-<name>) en :root, así que
+   estos nombres sirven tanto como utilidades (bg-noche, text-crema) como en
+   estilos inline: var(--color-ambar). */
 @theme {
-  --color-cream: #fbf7ef;
-  --color-ink: #1c1917;
-  --color-amber: #d97706;
-  --color-amber-deep: #b45309;
-  --color-foam: #fef3c7;
+  --color-noche: #120e0a;
+  --color-barra: #1c1611;
+  --color-barra-alta: #271e16;
+  --color-borde: #33261c;
+  --color-ambar: #f2a016;
+  --color-marca: #c4620a;
+  --color-espuma: #fbf0d5;
+  --color-botella: #3e8f6b;
+  --color-crema: #f7efdd;
+  --color-tenue: #a08d72;
+  --color-tenue-2: #95815f;
+  --color-alerta: #e4614a;
 
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
+  /* tono de texto sobre ámbar/espuma (fondos claros) */
+  --color-tinta: #241609;
+
+  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
-  --bg: #fbf7ef;
-  --surface: #ffffff;
-  --surface-2: #f5efe3;
-  --border: #e7ddc9;
-  --text: #1c1917;
-  --muted: #78716c;
-  --accent: #d97706;
-  --accent-contrast: #ffffff;
-  --danger: #dc2626;
-  --star: #f59e0b;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #17130f;
-    --surface: #211b15;
-    --surface-2: #2a221a;
-    --border: #3a2f24;
-    --text: #f5eee2;
-    --muted: #a89a86;
-    --accent: #f59e0b;
-    --accent-contrast: #17130f;
-    --danger: #f87171;
-    --star: #fbbf24;
-  }
+  color-scheme: dark;
 }
 
 html {
-  color-scheme: light dark;
+  background: var(--color-noche);
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
+  margin: 0;
+  min-height: 100dvh;
+  background: var(--color-noche);
+  color: var(--color-crema);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  min-height: 100dvh;
 }
 
-/* Utilidades semánticas apoyadas en las CSS vars */
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 1rem;
+* {
+  box-sizing: border-box;
 }
-.input {
-  width: 100%;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  color: var(--text);
-  font-size: 1rem;
-  outline: none;
+
+.font-display {
+  font-family: var(--font-display);
 }
-.input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+
+/* Contenedor de app (mobile-first, centrado) */
+.app-shell {
+  max-width: 440px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  position: relative;
 }
+
+/* Etiqueta en versalitas */
+.eyebrow {
+  font: 700 11px/1 var(--font-sans);
+  letter-spacing: 0.16em;
+  color: var(--color-tenue);
+  text-transform: uppercase;
+}
+
+/* Botones */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.75rem;
-  padding: 0.625rem 1rem;
-  font-weight: 600;
-  font-size: 0.95rem;
+  border: none;
   cursor: pointer;
-  border: 1px solid transparent;
-  transition: filter 0.15s ease, background 0.15s ease;
+  font-family: var(--font-sans);
+  transition: filter 0.15s ease;
 }
 .btn:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 .btn-primary {
-  background: var(--accent);
-  color: var(--accent-contrast);
+  height: 56px;
+  border-radius: 17px;
+  background: var(--color-ambar);
+  color: var(--color-tinta);
+  font-weight: 700;
+  font-size: 17px;
+  padding: 0 22px;
 }
 .btn-primary:not(:disabled):hover {
-  filter: brightness(1.05);
+  filter: brightness(1.06);
 }
 .btn-ghost {
+  height: 48px;
+  border-radius: 16px;
   background: transparent;
-  border-color: var(--border);
-  color: var(--text);
+  border: 1px solid var(--color-borde);
+  color: var(--color-crema);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 0 18px;
+}
+.btn-dashed {
+  height: 52px;
+  border-radius: 16px;
+  background: transparent;
+  border: 1px dashed #6b5334;
+  color: var(--color-ambar);
+  font-weight: 600;
+  font-size: 15.5px;
+  padding: 0 18px;
 }
 .btn-danger {
   background: transparent;
-  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
-  color: var(--danger);
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.8rem;
-}
-.label {
-  font-size: 0.8rem;
+  border: none;
+  color: var(--color-alerta);
   font-weight: 600;
-  color: var(--muted);
-  margin-bottom: 0.3rem;
-  display: block;
+  font-size: 14.5px;
+  cursor: pointer;
 }
 
-/* Ocultar scrollbar en carruseles horizontales */
+/* Campo de texto */
+.field {
+  width: 100%;
+  height: 52px;
+  border: 1px solid var(--color-borde);
+  border-radius: 16px;
+  background: var(--color-barra-alta);
+  color: var(--color-crema);
+  font: 400 16px var(--font-sans);
+  padding: 0 15px;
+  outline: none;
+}
+.field::placeholder {
+  color: var(--color-tenue);
+}
+.field:focus {
+  border-color: var(--color-ambar);
+}
+textarea.field {
+  height: auto;
+  padding: 12px 15px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+/* Tarjeta */
+.card {
+  background: var(--color-barra);
+  border: 1px solid var(--color-borde);
+  border-radius: 24px;
+}
+
+/* Píldora / chip */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  font-family: var(--font-sans);
+}
+
+/* Área segura del bottom nav */
+.pb-nav {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -132,7 +175,17 @@ body {
   scrollbar-width: none;
 }
 
-/* Área segura para el bottom nav (PWA en iOS) */
-.pb-safe {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 5rem);
+/* Motivo: franja de espuma */
+.foam {
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+}
+.foam-scallop {
+  height: 8px;
+  background: radial-gradient(
+      circle at 50% 100%,
+      var(--color-espuma) 6px,
+      transparent 6.5px
+    )
+    0 0 / 13px 8px repeat-x;
 }

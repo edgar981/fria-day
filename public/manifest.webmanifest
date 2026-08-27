@@ -1,13 +1,13 @@
 {
   "name": "FriaDay",
   "short_name": "FriaDay",
-  "description": "Registra tus cervezas por salida, con amigos.",
+  "description": "El parche lleva la cuenta. Registra tus cervezas por salida.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#fbf7ef",
-  "theme_color": "#d97706",
+  "background_color": "#120E0A",
+  "theme_color": "#120E0A",
   "icons": [
     {
       "src": "/icons/icon-192.png",
