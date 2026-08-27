@@ -1,0 +1,203 @@
+// FriaDay — esquema v1
+// Reglas de dominio (ver DECISIONES.md / spec):
+//  - Etiquetar NO acredita cervezas: los totales de un usuario salen SOLO de sus
+//    propios check-ins (Session.userId). SessionTag es solo compañía visible.
+//  - La sesión es personal: solo su dueño (Session.userId) la crea/edita/borra.
+//  - Formato se guarda SIEMPRE en cada check-in (ponderación futura sin migrar).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  // Prisma 7: las URLs viven en prisma.config.ts (migraciones) y en el driver
+  // adapter del runtime (src/lib/prisma.ts). El schema solo declara el provider.
+  provider = "postgresql"
+}
+
+// ----------------------------------------------------------------------------
+// Better Auth (email + password). El modelo de sesión de auth se llama
+// AuthSession (tabla auth_session) para NO chocar con el modelo de dominio
+// Session (la salida a tomar cerveza).
+// ----------------------------------------------------------------------------
+
+model User {
+  id            String   @id
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  // Campo extra de dominio (además de las tablas de Better Auth).
+  displayName   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Better Auth
+  authSessions AuthSession[]
+  accounts     Account[]
+
+  // Dominio
+  sessions           Session[]    // salidas propias (dueño)
+  createdBeers       Beer[]       @relation("BeerCreatedBy")
+  createdInvitations Invitation[] @relation("InvitationCreatedBy")
+  usedInvitation     Invitation?  @relation("InvitationUsedBy")
+  taggedIn           SessionTag[] @relation("SessionTagTaggedUser")
+
+  @@map("user")
+}
+
+model AuthSession {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("auth_session")
+}
+
+model Account {
+  id                    String    @id
+  issuer                String
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@unique([issuer, accountId])
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verification")
+}
+
+// ----------------------------------------------------------------------------
+// Dominio FriaDay
+// ----------------------------------------------------------------------------
+
+model Invitation {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  createdById String
+  createdBy   User      @relation("InvitationCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  // Un usuario "consume" a lo sumo una invitación (1:1).
+  usedById    String?   @unique
+  usedBy      User?     @relation("InvitationUsedBy", fields: [usedById], references: [id], onDelete: SetNull)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@map("invitation")
+}
+
+model Beer {
+  id      String   @id @default(cuid())
+  name    String
+  brewery String
+  style   String?
+  abv     Decimal? @db.Decimal(4, 2)
+
+  // Claves normalizadas (lower(trim(...))) que la app mantiene, para el único
+  // compuesto case-insensitive. Ver DECISIONES.md: se usa columnas normalizadas
+  // en vez de un índice funcional para mantenerse 100% nativo de Prisma.
+  nameKey    String
+  breweryKey String
+
+  createdById String
+  createdBy   User     @relation("BeerCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  checkIns CheckIn[]
+
+  @@unique([nameKey, breweryKey], map: "beer_name_brewery_ci")
+  @@index([createdById])
+  @@map("beer")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Editable: registro retroactivo ("ayer fueron 6"). Default: hoy (se fija en la app).
+  date      DateTime
+  placeName String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  checkIns CheckIn[]
+  tags     SessionTag[]
+
+  @@index([userId])
+  @@index([date])
+  @@map("session")
+}
+
+model SessionTag {
+  id        String  @id @default(cuid())
+  sessionId String
+  session   Session @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  // Exactamente uno de los dos (constraint a nivel de aplicación):
+  //  - taggedUserId: usuario de la app (compañía que suma a SU propio leaderboard
+  //    solo con sus propios check-ins, nunca por este tag)
+  //  - freeText: compañía sin app ("los primos de Medellín")
+  taggedUserId String?
+  taggedUser   User?   @relation("SessionTagTaggedUser", fields: [taggedUserId], references: [id], onDelete: Cascade)
+  freeText     String?
+
+  createdAt DateTime @default(now())
+
+  // Un mismo usuario no puede etiquetarse dos veces en la misma sesión.
+  // (NULLs son distintos en Postgres → varios freeText por sesión están OK.)
+  @@unique([sessionId, taggedUserId])
+  @@index([sessionId])
+  @@index([taggedUserId])
+  @@map("session_tag")
+}
+
+model CheckIn {
+  id        String     @id @default(cuid())
+  sessionId String
+  session   Session    @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  beerId    String
+  beer      Beer       @relation(fields: [beerId], references: [id], onDelete: Restrict)
+  quantity  Int        @default(1) // >= 1 (validado en la app)
+  format    BeerFormat // se guarda SIEMPRE (regla 4)
+  rating    Int        // 1..5 (validado en la app)
+  photoUrl  String?
+  createdAt DateTime   @default(now())
+
+  @@index([sessionId])
+  @@index([beerId])
+  @@map("check_in")
+}
+
+enum BeerFormat {
+  BOTELLA
+  LATA
+  JARRA
+  PINTA
+}
