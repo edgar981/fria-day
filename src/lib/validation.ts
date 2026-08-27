@@ -26,7 +26,10 @@ export const checkInSchema = z.object({
   beerId: z.string().min(1, "Elige una cerveza"),
   quantity: z.coerce.number().int().min(1, "Mínimo 1").max(99),
   format: z.enum(BEER_FORMATS),
-  rating: z.coerce.number().int().min(1, "Rating 1–5").max(5, "Rating 1–5"),
+  // Rating opcional: null/ausente = sin calificar. Si viene, debe ser 1..5.
+  rating: z
+    .union([z.null(), z.coerce.number().int().min(1, "Rating 1–5").max(5, "Rating 1–5")])
+    .optional(),
   photoUrl: z.string().trim().url().optional().or(z.literal("")),
 });
 

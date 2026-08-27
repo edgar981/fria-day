@@ -30,7 +30,7 @@ export default async function ProfilePage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.6rem" }}>
         <StatTile value={stats.totalUnits} label="unidades" />
         <StatTile value={stats.distinctBeers} label="cervezas distintas" />
-        <StatTile value={stats.sessionsCount} label="sesiones" />
+        <StatTile value={stats.sessionsCount} label="salidas" />
       </div>
 
       <section style={{ display: "grid", gap: "0.6rem" }}>

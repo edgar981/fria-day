@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckInForm, type CheckInDraft } from "@/components/CheckInForm";
+import {
+  CheckInForm,
+  type CheckInDraft,
+  type CheckInFormHandle,
+} from "@/components/CheckInForm";
 import { TagPicker, type DisplayTag } from "@/components/TagPicker";
 import { Stars } from "@/components/Stars";
 import { createSession } from "@/app/actions/sessions";
@@ -36,6 +40,7 @@ export function NewSessionForm() {
   const [tags, setTags] = useState<LocalTag[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const checkInFormRef = useRef<CheckInFormHandle>(null);
 
   let seq = 0;
   const newKey = () => `${Date.now()}-${seq++}-${Math.round(performance.now())}`;
@@ -60,6 +65,35 @@ export function NewSessionForm() {
 
   async function submit() {
     setError(null);
+
+    // No perder el check-in a medio llenar: si el formulario tiene una cerveza
+    // seleccionada, lo intentamos agregar antes de enviar.
+    const flush = checkInFormRef.current?.getDraft();
+    if (flush?.status === "invalid") {
+      // El propio formulario ya muestra el error del campo que falla. No enviar.
+      return;
+    }
+    const pending: LocalCheckIn[] =
+      flush?.status === "valid"
+        ? [
+            {
+              key: newKey(),
+              beerId: flush.draft.beer.id,
+              beerName: flush.draft.beer.name,
+              brewery: flush.draft.beer.brewery,
+              quantity: flush.draft.quantity,
+              format: flush.draft.format,
+              rating: flush.draft.rating,
+            },
+          ]
+        : [];
+
+    const finalCheckIns = [...checkIns, ...pending];
+    if (finalCheckIns.length === 0) {
+      setError("Agrega al menos una cerveza");
+      return;
+    }
+
     setBusy(true);
     try {
       const res = await createSession({
@@ -69,11 +103,11 @@ export function NewSessionForm() {
         tags: tags.map((t) =>
           t.kind === "user" ? { taggedUserId: t.userId } : { freeText: t.text },
         ),
-        checkIns: checkIns.map((c) => ({
+        checkIns: finalCheckIns.map((c) => ({
           beerId: c.beerId,
           quantity: c.quantity,
           format: c.format,
-          rating: c.rating,
+          rating: c.rating >= 1 ? c.rating : null,
         })),
       });
       if (!res.ok) {
@@ -144,7 +178,12 @@ export function NewSessionForm() {
                     {c.quantity}× {c.beerName}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "var(--muted)" }}>
-                    {c.brewery} · {FORMAT_LABEL[c.format]} · <Stars value={c.rating} size="0.8rem" />
+                    {c.brewery} · {FORMAT_LABEL[c.format]} ·{" "}
+                    {c.rating >= 1 ? (
+                      <Stars value={c.rating} size="0.8rem" />
+                    ) : (
+                      <span>Sin calificar</span>
+                    )}
                   </div>
                 </div>
                 <button type="button" className="btn btn-ghost" style={{ padding: "0.3rem 0.55rem" }} onClick={() => setCheckIns((cur) => cur.filter((x) => x.key !== c.key))} aria-label="Quitar">
@@ -155,13 +194,13 @@ export function NewSessionForm() {
           </ul>
         )}
 
-        <CheckInForm onSubmit={addCheckIn} submitLabel="Agregar a la lista" />
+        <CheckInForm ref={checkInFormRef} onSubmit={addCheckIn} submitLabel="Agregar a la lista" />
       </section>
 
       {error && <p style={{ color: "var(--danger)", fontSize: "0.85rem", margin: 0 }}>{error}</p>}
 
       <button type="button" className="btn btn-primary" style={{ padding: "0.85rem", fontSize: "1rem" }} onClick={submit} disabled={busy}>
-        {busy ? "Creando…" : "Crear sesión"}
+        {busy ? "Creando…" : "Crear salida"}
       </button>
     </div>
   );

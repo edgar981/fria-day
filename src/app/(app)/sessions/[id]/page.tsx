@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getSessionDetail } from "@/lib/queries";
-import { Stars } from "@/components/Stars";
+import { RatingDisplay } from "@/components/Stars";
 import { FORMAT_LABEL, formatDay } from "@/lib/format";
 import { sessionTotalUnits } from "@/lib/domain";
 import { QuickAddCheckIn } from "@/components/QuickAddCheckIn";
@@ -33,7 +33,7 @@ export default async function SessionDetailPage({
         <Link href="/" className="btn btn-ghost" style={{ padding: "0.35rem 0.6rem" }}>
           ←
         </Link>
-        <h1 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Sesión</h1>
+        <h1 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Salida</h1>
       </div>
 
       <section className="card" style={{ padding: "1rem", display: "grid", gap: "0.6rem" }}>
@@ -94,7 +94,7 @@ export default async function SessionDetailPage({
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <Stars value={c.rating} size="0.9rem" />
+                  <RatingDisplay value={c.rating} size="0.9rem" />
                   {isOwner && <CheckInDeleteButton checkInId={c.id} />}
                 </div>
               </li>
@@ -119,7 +119,7 @@ export default async function SessionDetailPage({
         </>
       ) : (
         <p style={{ color: "var(--muted)", fontSize: "0.85rem", textAlign: "center" }}>
-          Estás viendo la sesión de {s.user.displayName} en solo lectura.
+          Estás viendo la salida de {s.user.displayName} en solo lectura.
         </p>
       )}
     </div>

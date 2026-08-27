@@ -157,6 +157,24 @@ describe("beerRanking", () => {
     ]);
     expect(rows.map((r) => r.beerId)).toEqual(["mucho", "poco"]);
   });
+
+  it("CASO EXPLÍCITO: check-in sin rating (null) NO baja el promedio ni suma al conteo", () => {
+    // Una cerveza con dos check-ins: uno con rating 4, otro sin rating.
+    // Promedio = 4 (no 2), conteo = 1 (no 2).
+    const rows = beerRanking([
+      { beerId: "x", rating: 4 },
+      { beerId: "x", rating: null },
+    ]);
+    expect(rows).toEqual([{ beerId: "x", avgRating: 4, ratingsCount: 1 }]);
+  });
+
+  it("cerveza sin ningún rating no aparece en el ranking (→ 'Sin calificar' en UI)", () => {
+    const rows = beerRanking([
+      { beerId: "sinrating", rating: null },
+      { beerId: "sinrating", rating: null },
+    ]);
+    expect(rows).toEqual([]);
+  });
 });
 
 describe("normalizeKey", () => {

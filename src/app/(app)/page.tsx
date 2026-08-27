@@ -23,7 +23,7 @@ export default async function FeedPage() {
           <div style={{ fontSize: "2.5rem" }} aria-hidden>🍺</div>
           <p style={{ fontWeight: 700, marginTop: "0.5rem" }}>Aún no hay salidas</p>
           <p style={{ color: "var(--muted)", fontSize: "0.9rem", margin: "0.35rem 0 1rem" }}>
-            Registra tu primera sesión de cervezas.
+            Registra tu primera salida de cervezas.
           </p>
           <Link href="/sessions/new" className="btn btn-primary">Crear la primera</Link>
         </div>

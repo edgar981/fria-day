@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { forwardRef, useImperativeHandle, useState } from "react";
 import { BeerPicker, type BeerOption } from "@/components/BeerPicker";
 import { FormatPicker } from "@/components/FormatPicker";
 import { RatingInput } from "@/components/RatingInput";
@@ -10,7 +10,19 @@ export interface CheckInDraft {
   beer: BeerOption;
   quantity: number;
   format: BeerFormat;
+  /** 0 = sin calificar; el padre lo convierte a null. */
   rating: number;
+}
+
+/** Resultado de "vaciar" el formulario en curso al enviar la salida. */
+export type CheckInFlush =
+  | { status: "empty" }
+  | { status: "invalid" }
+  | { status: "valid"; draft: CheckInDraft };
+
+export interface CheckInFormHandle {
+  /** Valida el formulario en curso sin resetearlo. */
+  getDraft: () => CheckInFlush;
 }
 
 const LAST_FORMAT_KEY = "fd:lastFormat";
@@ -26,35 +38,49 @@ function readLastFormat(): BeerFormat {
   return "BOTELLA";
 }
 
-export function CheckInForm({
-  onSubmit,
-  submitLabel = "Agregar cerveza",
-}: {
+function persistFormat(format: BeerFormat) {
+  try {
+    window.localStorage.setItem(LAST_FORMAT_KEY, format);
+  } catch {
+    /* ignore */
+  }
+}
+
+export const CheckInForm = forwardRef<CheckInFormHandle, {
   onSubmit: (draft: CheckInDraft) => Promise<boolean> | boolean;
   submitLabel?: string;
-}) {
+}>(function CheckInForm({ onSubmit, submitLabel = "Agregar cerveza" }, ref) {
   const [beer, setBeer] = useState<BeerOption | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [format, setFormat] = useState<BeerFormat>(readLastFormat);
-  const [rating, setRating] = useState(0);
+  const [rating, setRating] = useState(0); // 0 = sin calificar (opcional)
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  useImperativeHandle(ref, () => ({
+    getDraft(): CheckInFlush {
+      setError(null);
+      if (!beer) return { status: "empty" };
+      if (quantity < 1) {
+        setError("Cantidad mínima 1");
+        return { status: "invalid" };
+      }
+      persistFormat(format);
+      return { status: "valid", draft: { beer, quantity, format, rating } };
+    },
+  }));
 
   async function submit() {
     setError(null);
     if (!beer) return setError("Elige una cerveza");
-    if (rating < 1) return setError("Pon un rating de 1 a 5");
     if (quantity < 1) return setError("Cantidad mínima 1");
+    // Rating es opcional: 0 = sin calificar.
 
     setBusy(true);
     try {
       const ok = await onSubmit({ beer, quantity, format, rating });
       if (ok) {
-        try {
-          window.localStorage.setItem(LAST_FORMAT_KEY, format);
-        } catch {
-          /* ignore */
-        }
+        persistFormat(format);
         setBeer(null);
         setQuantity(1);
         setRating(0);
@@ -104,4 +130,4 @@ export function CheckInForm({
       </button>
     </div>
   );
-}
+});

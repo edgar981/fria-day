@@ -23,7 +23,7 @@ export default async function BeersPage({
 
       {beers.length === 0 ? (
         <div className="card" style={{ padding: "1.5rem", textAlign: "center", color: "var(--muted)" }}>
-          {q ? "Ninguna cerveza coincide." : "El catálogo está vacío. Se irá llenando al registrar cervezas en tus sesiones."}
+          {q ? "Ninguna cerveza coincide." : "El catálogo está vacío. Se irá llenando al registrar cervezas en tus salidas."}
         </div>
       ) : (
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: "0.5rem" }}>
@@ -56,7 +56,7 @@ export default async function BeersPage({
                       </div>
                     </>
                   ) : (
-                    <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>sin ratings</span>
+                    <span style={{ fontSize: "0.72rem", color: "var(--muted)" }}>Sin calificar</span>
                   )}
                 </div>
               </Link>

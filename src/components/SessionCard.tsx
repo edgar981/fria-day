@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Stars } from "@/components/Stars";
+import { RatingDisplay } from "@/components/Stars";
 import { FORMAT_LABEL, relativeDay } from "@/lib/format";
 import type { FeedSession } from "@/lib/queries";
 
@@ -64,7 +64,7 @@ export function SessionCard({
                 <strong>{c.quantity}×</strong> {c.beer.name}
                 <span style={{ color: "var(--muted)" }}> · {FORMAT_LABEL[c.format]}</span>
               </span>
-              <Stars value={c.rating} size="0.82rem" />
+              <RatingDisplay value={c.rating} size="0.82rem" />
             </li>
           ))}
         </ul>

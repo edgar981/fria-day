@@ -3,6 +3,32 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Ajustes post-gate visual (ronda 2)
+
+Tres ajustes de fricción encontrados por Edgar en el gate:
+
+1. **Rating opcional.** `CheckIn.rating` pasó a `Int?` (migración
+   `rating_optional`). En el formulario, sin estrella seleccionada = sin rating
+   (no cero); se puede limpiar tocando la estrella activa o el botón "Limpiar".
+   El ranking del grupo (`beerRanking`) promedia SOLO los check-ins con rating: un
+   check-in sin calificar no baja el promedio ni suma al conteo. Cerveza sin
+   ningún rating → "Sin calificar" (no "0"). Test explícito añadido.
+2. **Vocabulario "sesión" → "salida"** en TODO el copy visible (títulos, botones,
+   confirmaciones, vacíos, errores). El modelo Prisma `Session` y todo el código
+   se quedan igual — solo cambia la interfaz.
+3. **No perder el check-in a medio llenar.** Al enviar la salida, si el formulario
+   de check-in tiene una cerveza seleccionada y es válido, se agrega
+   automáticamente (sin exigir "Agregar a la lista"). Si es inválido, no se envía
+   y se muestra el error. Si formulario y lista están vacíos → "Agrega al menos
+   una cerveza". Implementado con un handle imperativo (`CheckInForm.getDraft()`)
+   que el formulario de crear salida consulta al enviar.
+   - **Nota sobre editar salida:** en esta arquitectura los check-ins de una salida
+     existente se agregan uno por uno de forma inmediata (botón "Agregar cerveza"
+     en el detalle, cada uno su propia acción validada). No hay un "guardar salida"
+     por lotes en edición que pueda descartar un check-in pendiente, así que el
+     problema del descarte silencioso solo aplica a **crear salida**, donde quedó
+     resuelto.
+
 ## Stack / versiones
 
 - **Next 16.3.3**, **React 19.2.8**, **Tailwind v4.3.3**, **Better Auth 1.7.2**,

@@ -19,7 +19,7 @@ export function DeleteSessionButton({
   if (!confirming) {
     return (
       <button type="button" className="btn btn-danger" onClick={() => setConfirming(true)}>
-        Borrar sesión
+        Borrar salida
       </button>
     );
   }
@@ -27,7 +27,7 @@ export function DeleteSessionButton({
   return (
     <div className="card" style={{ padding: "0.85rem", display: "grid", gap: "0.6rem", borderColor: "var(--danger)" }}>
       <p style={{ margin: 0, fontSize: "0.9rem" }}>
-        Vas a borrar esta sesión
+        Vas a borrar esta salida
         {checkInCount > 0 ? (
           <>
             {" "}y se perderán <strong>{checkInCount} check-in{checkInCount !== 1 ? "s" : ""}</strong>

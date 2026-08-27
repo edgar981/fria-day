@@ -10,7 +10,7 @@ export default function NewSessionPage() {
         <Link href="/" className="btn btn-ghost" style={{ padding: "0.35rem 0.6rem" }}>
           ←
         </Link>
-        <h1 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Nueva sesión</h1>
+        <h1 style={{ fontSize: "1.4rem", fontWeight: 800 }}>Nueva salida</h1>
       </div>
       <NewSessionForm />
     </div>

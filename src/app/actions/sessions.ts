@@ -64,7 +64,7 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
             beerId: c.beerId,
             quantity: c.quantity,
             format: c.format,
-            rating: c.rating,
+            rating: c.rating ?? null,
             photoUrl: c.photoUrl ? c.photoUrl : null,
           })),
         },
@@ -74,7 +74,7 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
     revalidatePath("/");
     return { ok: true, id: session.id };
   } catch {
-    return { ok: false, error: "No se pudo crear la sesión" };
+    return { ok: false, error: "No se pudo crear la salida" };
   }
 }
 
@@ -87,7 +87,7 @@ export async function updateSessionHeader(input: {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "No autenticado" };
   if (!(await assertOwner(input.id, userId)))
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   const parsed = sessionSchema
     .pick({ date: true, placeName: true, notes: true })
@@ -113,7 +113,7 @@ export async function deleteSession(id: string): Promise<Result> {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "No autenticado" };
   if (!(await assertOwner(id, userId)))
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   await prisma.session.delete({ where: { id } }); // cascada a check-ins y tags
   revalidatePath("/");
@@ -129,12 +129,12 @@ export async function addCheckIn(input: unknown): Promise<Result> {
       ? (input as { sessionId?: string }).sessionId
       : undefined;
   const parsed = checkInSchema.safeParse(input);
-  if (!sessionId) return { ok: false, error: "Falta la sesión" };
+  if (!sessionId) return { ok: false, error: "Falta la salida" };
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
   }
   if (!(await assertOwner(sessionId, userId)))
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   const c = parsed.data;
   await prisma.checkIn.create({
@@ -143,7 +143,7 @@ export async function addCheckIn(input: unknown): Promise<Result> {
       beerId: c.beerId,
       quantity: c.quantity,
       format: c.format,
-      rating: c.rating,
+      rating: c.rating ?? null,
       photoUrl: c.photoUrl ? c.photoUrl : null,
     },
   });
@@ -162,7 +162,7 @@ export async function deleteCheckIn(checkInId: string): Promise<Result> {
     select: { sessionId: true, session: { select: { userId: true } } },
   });
   if (!ci || ci.session.userId !== userId)
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   await prisma.checkIn.delete({ where: { id: checkInId } });
   revalidatePath("/");
@@ -179,7 +179,7 @@ export async function addTag(input: {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "No autenticado" };
   if (!(await assertOwner(input.sessionId, userId)))
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   const [tag] = buildTags([input], userId);
   if (!tag) return { ok: false, error: "Etiqueta inválida" };
@@ -204,7 +204,7 @@ export async function removeTag(tagId: string): Promise<Result> {
     select: { sessionId: true, session: { select: { userId: true } } },
   });
   if (!tag || tag.session.userId !== userId)
-    return { ok: false, error: "No es tu sesión" };
+    return { ok: false, error: "No es tu salida" };
 
   await prisma.sessionTag.delete({ where: { id: tagId } });
   revalidatePath("/");

@@ -25,7 +25,7 @@ export default async function EditSessionPage({
         <Link href={`/sessions/${id}`} className="btn btn-ghost" style={{ padding: "0.35rem 0.6rem" }}>
           ←
         </Link>
-        <h1 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Editar sesión</h1>
+        <h1 style={{ fontSize: "1.3rem", fontWeight: 800 }}>Editar salida</h1>
       </div>
 
       <SessionHeaderEditor
@@ -48,7 +48,7 @@ export default async function EditSessionPage({
       />
 
       <Link href={`/sessions/${id}`} className="btn btn-primary" style={{ justifyContent: "center" }}>
-        Gestionar cervezas y ver la sesión →
+        Gestionar cervezas y ver la salida →
       </Link>
     </div>
   );

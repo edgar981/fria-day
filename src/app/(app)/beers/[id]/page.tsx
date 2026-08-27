@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getBeerDetail } from "@/lib/queries";
-import { Stars } from "@/components/Stars";
+import { Stars, RatingDisplay } from "@/components/Stars";
 import { FORMAT_LABEL, formatAbv, formatDay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -44,7 +44,7 @@ export default async function BeerDetailPage({
               </span>
             </>
           ) : (
-            <span style={{ color: "var(--muted)" }}>Aún sin ratings del grupo.</span>
+            <span style={{ color: "var(--muted)" }}>Sin calificar</span>
           )}
         </div>
         <div style={{ fontSize: "0.75rem", color: "var(--muted)" }}>
@@ -66,7 +66,7 @@ export default async function BeerDetailPage({
                     {formatDay(c.session.date)} · {c.quantity}× {FORMAT_LABEL[c.format]}
                   </div>
                 </Link>
-                <Stars value={c.rating} size="0.85rem" />
+                <RatingDisplay value={c.rating} size="0.85rem" />
               </li>
             ))}
           </ul>

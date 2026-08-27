@@ -13,7 +13,7 @@ export function QuickAddCheckIn({ sessionId }: { sessionId: string }) {
       beerId: d.beer.id,
       quantity: d.quantity,
       format: d.format,
-      rating: d.rating,
+      rating: d.rating >= 1 ? d.rating : null,
     });
     if (!res.ok) throw new Error(res.error);
     router.refresh();

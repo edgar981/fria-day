@@ -186,7 +186,7 @@ model CheckIn {
   beer      Beer       @relation(fields: [beerId], references: [id], onDelete: Restrict)
   quantity  Int        @default(1) // >= 1 (validado en la app)
   format    BeerFormat // se guarda SIEMPRE (regla 4)
-  rating    Int        // 1..5 (validado en la app)
+  rating    Int?       // 1..5 opcional (null = sin calificar, no cuenta al promedio)
   photoUrl  String?
   createdAt DateTime   @default(now())
 

@@ -14,7 +14,8 @@ export interface CheckInData {
   beerStyle?: string | null;
   quantity: number;
   format: BeerFormat;
-  rating: number;
+  /** 1..5 o null = sin calificar (no cuenta al promedio del grupo). */
+  rating: number | null;
 }
 
 export interface SessionData {
@@ -111,15 +112,16 @@ export function userStats(userId: string, sessions: SessionData[]): UserStats {
 
 /**
  * Ranking del grupo por cerveza: promedio de rating y número de ratings.
- * Agrega TODOS los check-ins recibidos (el ranking de una cerveza sí considera
- * las valoraciones de todos, porque valorar es sobre la cerveza, no sobre el
- * total del usuario). Ordena por promedio desc, luego por nº de ratings desc.
+ * SOLO cuenta check-ins CON rating: uno sin calificar (rating null) no baja el
+ * promedio ni suma al conteo. Una cerveza sin ningún rating no aparece aquí.
+ * Ordena por promedio desc, luego por nº de ratings desc.
  */
 export function beerRanking(
-  checkIns: { beerId: string; rating: number }[],
+  checkIns: { beerId: string; rating: number | null }[],
 ): BeerRankingRow[] {
   const acc = new Map<string, { sum: number; count: number }>();
   for (const c of checkIns) {
+    if (c.rating == null) continue; // sin calificar → no cuenta
     const cur = acc.get(c.beerId) ?? { sum: 0, count: 0 };
     cur.sum += c.rating;
     cur.count += 1;
