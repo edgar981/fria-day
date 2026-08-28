@@ -141,7 +141,15 @@ export function beerRanking(
  * Colapsa espacios internos, recorta y baja a minúsculas.
  */
 export function normalizeKey(value: string): string {
-  return value.trim().replace(/\s+/g, " ").toLowerCase();
+  // Quita diacríticos (NFD + elimina marcas combinantes) para que la clave sea
+  // insensible a acentos: "Águila", "aguila" y "AGUILA" comparten clave (G.2).
+  // El nombre visible (Beer.name) NO cambia; solo la clave de búsqueda/único.
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
 }
 
 export function isValidRating(n: unknown): n is number {

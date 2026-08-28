@@ -3,6 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
 import { Tally } from "@/components/Tally";
+import { FoamStrip } from "@/components/FoamStrip";
 import { FORMAT_LABEL, formatAbv, relativeDay, pendingLabel } from "@/lib/format";
 import type { FeedSession } from "@/lib/queries";
 
@@ -34,7 +35,7 @@ function QtyChip({ n, onDark = false }: { n: number; onDark?: boolean }) {
 function BeerHero({ c }: { c: CheckIn }) {
   return (
     <div style={{ borderRadius: 18, overflow: "hidden", background: "linear-gradient(180deg,#4A3413,#2A1E0E)" }}>
-      <div style={{ height: 8, background: "radial-gradient(circle at 50% 100%,#FBF0D5 6px,transparent 6.5px) 0 0/13px 8px repeat-x" }} />
+      <FoamStrip size="md" />
       <div style={{ height: 10, background: "#FBF0D5" }} />
       <div style={{ padding: "12px 15px 13px" }}>
         <div style={{ font: "700 22px/1.1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)" }}>
@@ -69,7 +70,9 @@ function BeerHero({ c }: { c: CheckIn }) {
 
 function CompactRow({ c }: { c: CheckIn }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "5px 0", borderTop: "1px solid #241A12" }}>
+    <div>
+      <FoamStrip size="sm" />
+      <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "6px 0 8px" }}>
       <QtyChip n={c.quantity} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ font: "600 15px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -80,6 +83,7 @@ function CompactRow({ c }: { c: CheckIn }) {
         </div>
       </div>
       <RatingCell value={c.rating} size="xs" />
+      </div>
     </div>
   );
 }

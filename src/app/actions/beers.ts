@@ -83,12 +83,13 @@ export async function searchBeersAction(query: string) {
   const user = await getCurrentUser();
   if (!user) return [];
   const q = query.trim();
+  const nk = q ? normalizeKey(q) : ""; // búsqueda insensible a acentos (G.2)
   const beers = await prisma.beer.findMany({
     where: q
       ? {
           OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { brewery: { contains: q, mode: "insensitive" } },
+            { nameKey: { contains: nk } },
+            { breweryKey: { contains: nk } },
           ],
         }
       : {},

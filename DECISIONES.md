@@ -110,6 +110,42 @@ Light 3.4, Poker 4.0, Club Colombia Roja/Negra/Trigo 4.7, Corona 4.5, Heineken 5
 Budweiser 5.0; +3 Cordilleras Negra 6.4). **Cobertura en dev: 23 con ABV · 21 en null
 (de 44).** En prod lo corre Edgar.
 
+## Pasada G.2 — Espuma uniforme, búsqueda sin acentos, deuda del plan-B
+
+Misma rama `pasada/plan-b-gap`. Merge a `main` sigue bloqueado hasta autorización.
+
+1. **Espuma uniforme (corrige B.1).** El criterio es uniformidad, no ausencia: si una
+   fila la tiene, todas. **Había DOS implementaciones** del festón: la clase CSS
+   `.foam-scallop`/`.foam` (sin uso) y `radial-gradient` inline (BeerHero + filas). Se
+   consolidó en **un** componente `FoamStrip` (`sm`/`md`) y se **eliminaron** las clases
+   CSS muertas. Se puso la espuma en TODAS las filas de las listas de cerveza (detalle
+   dueño `OwnerCheckInList`, detalle solo-lectura, y filas del feed multi-cerveza
+   `CompactRow`); `BeerHero` (una sola cerveza) la conserva (`md`).
+2. **Búsqueda insensible a acentos.** `normalizeKey` ahora quita diacríticos
+   (`NFD` + eliminar marcas), tanto al **guardar** como al **buscar** (las 3 búsquedas
+   pasan a consultar `nameKey`/`breweryKey` con `normalizeKey(query)`). `aguila`,
+   `Águila`, `AGUILA` y `Póker`/`poker` coinciden. La recomputación de claves
+   (`scripts/recompute-beer-keys.ts`) **chequea colisiones ANTES de aplicar**: en dev
+   fueron 18 claves, **0 colisiones** (nadie viola el `@@unique`). El nombre visible no
+   cambia. Corrido en dev; en prod lo corre Edgar (dry-run primero).
+3. **"Poker" → "Póker".** El nombre oficial lleva tilde. El seed corrige el `name`
+   visible de existentes (el catálogo es autoridad; el name no es editable por el
+   usuario) sin cambiar la clave. Revisado el resto del catálogo: la única con tilde
+   faltante era Poker (Águila, Costeña/Costeñita, Bogotá, Cajicá, Bacatá, Clásica ya la
+   tenían). Con la búsqueda sin acentos, `poker` sigue encontrándola.
+4. **Deuda del plan-B (documentada, sin revertir).** El gap inferior resultó ser
+   **`statusBarStyle: black-translucent`** (G.1, confirmado por Edgar). El refactor del
+   plan-B —barra de `fixed` a **flujo**, scroll en **contenedor interno** (`.pb-scroll`),
+   **`100dvh`**— **NO era necesario**: el cotizador usa `fixed` + scroll de documento +
+   sin `dvh` y no tiene gap. **No se revierte** (está verificado y funcionando), pero
+   queda anotado que **esa arquitectura de scroll es incidental, no requerida** — nadie
+   debe construir sobre ella asumiendo que resuelve el gap (lo resolvió el status bar).
+
+Verificación: **40/40 tests** (los 39 previos + 1 de acentos), tsc/build OK, Playwright
+WebKit 8/8 (búsqueda `aguila`/`AGUILA`/`Águila`/`poker`/`Póker`/`bogota`; espuma
+uniforme en detalle y feed). Recomputación de claves corrida en dev con chequeo de
+colisiones reportado. Solo dev.
+
 ## Pasada B.1 — Correcciones de gate + catálogo semilla (misma rama plan-B)
 
 Hallazgos del gate de Edgar en el preview. Misma rama `pasada/plan-b-gap`; merge a

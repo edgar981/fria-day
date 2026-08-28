@@ -10,6 +10,7 @@ import {
   sessionRegistration,
   registrationStreak,
   dayKeyUTC,
+  normalizeKey,
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
@@ -118,12 +119,16 @@ export type SessionDetail = NonNullable<
 
 /** Catálogo con ranking del grupo (promedio + nº de ratings). */
 export async function getBeersWithRanking(search?: string) {
-  const where = search?.trim()
+  // Búsqueda insensible a acentos (G.2): sobre nameKey/breweryKey (ya sin acentos,
+  // minúsculas) con la query normalizada. El estilo va aparte (no tiene clave).
+  const q = search?.trim();
+  const nk = q ? normalizeKey(q) : "";
+  const where = q
     ? {
         OR: [
-          { name: { contains: search.trim(), mode: "insensitive" as const } },
-          { brewery: { contains: search.trim(), mode: "insensitive" as const } },
-          { style: { contains: search.trim(), mode: "insensitive" as const } },
+          { nameKey: { contains: nk } },
+          { breweryKey: { contains: nk } },
+          { style: { contains: q, mode: "insensitive" as const } },
         ],
       }
     : {};
@@ -287,12 +292,13 @@ export async function searchUsers(query: string, excludeId: string) {
 
 export async function getBeerOptions(search?: string) {
   const q = search?.trim();
+  const nk = q ? normalizeKey(q) : "";
   return prisma.beer.findMany({
     where: q
       ? {
           OR: [
-            { name: { contains: q, mode: "insensitive" } },
-            { brewery: { contains: q, mode: "insensitive" } },
+            { nameKey: { contains: nk } },
+            { breweryKey: { contains: nk } },
           ],
         }
       : {},

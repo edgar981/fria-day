@@ -191,6 +191,14 @@ describe("normalizeKey", () => {
     expect(normalizeKey("  Club   Colombia ")).toBe("club colombia");
     expect(normalizeKey("BBC")).toBe("bbc");
   });
+  it("insensible a acentos (G.2): aguila = Águila = AGUILA", () => {
+    expect(normalizeKey("Águila")).toBe("aguila");
+    expect(normalizeKey("aguila")).toBe("aguila");
+    expect(normalizeKey("AGUILA")).toBe("aguila");
+    expect(normalizeKey("Póker")).toBe("poker");
+    expect(normalizeKey("Bogotá Beer Company")).toBe("bogota beer company");
+    expect(normalizeKey("Costeñita")).toBe("costenita"); // ñ → n
+  });
   it("mismo key para variantes case/espacios (frena duplicados)", () => {
     expect(normalizeKey("Poker")).toBe(normalizeKey("  poker "));
   });

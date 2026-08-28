@@ -23,7 +23,7 @@ const CATALOG: Row[] = [
   { name: "Águila", brewery: "Bavaria", style: "Lager", abv: 4.0 },
   { name: "Águila Light", brewery: "Bavaria", style: "Lager", abv: 3.4 },
   { name: "Águila Cero", brewery: "Bavaria", style: "Lager sin alcohol", abv: 0.4 },
-  { name: "Poker", brewery: "Bavaria", style: "Lager", abv: 4.0 },
+  { name: "Póker", brewery: "Bavaria", style: "Lager", abv: 4.0 },
   { name: "Pilsen", brewery: "Bavaria", style: "Lager", abv: null },
   { name: "Club Colombia Dorada", brewery: "Bavaria", style: "Lager", abv: 4.7 },
   { name: "Club Colombia Roja", brewery: "Bavaria", style: "Lager roja", abv: 4.7 },
@@ -73,7 +73,7 @@ async function main() {
     const breweryKey = normalizeKey(r.brewery);
     const found = await prisma.beer.findUnique({
       where: { nameKey_breweryKey: { nameKey, breweryKey } },
-      select: { id: true, abv: true, style: true },
+      select: { id: true, name: true, abv: true, style: true },
     });
     if (!found) {
       created++;
@@ -81,13 +81,16 @@ async function main() {
       if (APPLY) await prisma.beer.create({ data: { name: r.name, brewery: r.brewery, style: r.style, abv: r.abv, nameKey, breweryKey, createdById: edgar.id } });
       continue;
     }
-    // Existente: COMPLETAR solo campos vacíos (no pisar correcciones hechas a mano).
-    const patch: { abv?: number; style?: string } = {};
+    // Existente: COMPLETAR campos vacíos (no pisar correcciones de abv/style hechas a
+    // mano) y CORREGIR el nombre visible (el catálogo es la autoridad; el name no es
+    // editable por el usuario). Ej.: "Poker" → "Póker" (G.2). La clave no cambia.
+    const patch: { abv?: number; style?: string; name?: string } = {};
     if (found.abv == null && r.abv != null) patch.abv = r.abv;
     if ((found.style == null || found.style.trim() === "") && r.style) patch.style = r.style;
+    if (found.name !== r.name) patch.name = r.name;
     if (Object.keys(patch).length > 0) {
       filled++;
-      log.push(`~ completar ${r.name}${patch.abv != null ? ` abv=${patch.abv}` : ""}${patch.style ? ` style=${patch.style}` : ""}`);
+      log.push(`~ ${r.name}${patch.name ? ` (name← "${found.name}")` : ""}${patch.abv != null ? ` abv=${patch.abv}` : ""}${patch.style ? ` style=${patch.style}` : ""}`);
       if (APPLY) await prisma.beer.update({ where: { id: found.id }, data: patch });
     } else {
       unchanged++;
