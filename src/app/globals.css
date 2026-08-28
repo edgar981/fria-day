@@ -233,6 +233,13 @@ textarea.field {
   }
 }
 
+/* Spinner de subida de foto (Pasada F): indica progreso mientras sube el blob. */
+@keyframes fd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Motivo: franja de espuma → única implementación en el componente FoamStrip (G.2).
    Se eliminaron las clases .foam/.foam-scallop (estaban sin uso; eran una segunda
    implementación del mismo festón). */

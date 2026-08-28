@@ -3,6 +3,63 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada F — Fotos de cerveza (Vercel Blob) · rama `pasada/fotos`
+
+Primera funcionalidad que sube archivos de usuario. Contexto de uso: bar, noche,
+4G, borracho → todo lo que pese o falle mata la funcionalidad.
+
+### Arquitectura de subida: client-upload (no server-upload)
+Se usa `@vercel/blob/client` `upload()` contra una ruta `POST /api/blob/upload`
+que corre `handleUpload`. El navegador sube los bytes **directo al blob**; no
+pasan por la función serverless. Porqué: en 4G, enrutar el archivo por nuestra
+función es un vector de fallo (cold start, tope de 4.5 MB del body); el
+client-upload lo evita como clase. La ruta solo **autoriza** (`onBeforeGenerateToken`
+exige sesión) y acuña un token corto — "la subida se autoriza en servidor" sin
+que los bytes la atraviesen. `onUploadCompleted` NO corre en localhost (necesita
+webhook público); no se depende de él: el `photoUrl` se guarda con una Server
+Action (`setCheckInPhoto`) **después** de que `upload()` resuelve.
+
+### Orden: check-in primero, foto después; foto nunca bloquea
+- Al agregar en la hoja (add a salida existente): `addCheckIn` guarda el check-in
+  y **devuelve su id**; recién entonces, si hay foto, `setCheckInPhoto(id, url)`.
+- En sesión nueva: la foto se sube en la hoja (upload-first), viaja en el borrador
+  local y se persiste en `createSession`. La consolidación del `photoUrl`
+  (misma cerveza+formato = "el primero gana") se hace **en la acción**, NO en
+  `domain.ts` — el dominio queda puro y sus 46 tests intactos.
+- Un fallo de subida solo muestra el error y deja el check-in guardado. Verificado
+  por ejecución inyectando el fallo con la ausencia de token (ruta → 503): la
+  cerveza se agrega y la salida se guarda igual (WebKit).
+
+### Huérfanos en Blob (Blob vive fuera de Postgres)
+- Borrar check-in / salida borra también su(s) blob(s); reemplazar una foto borra
+  el archivo anterior. Todo **best-effort** (`deleteBlobQuietly`): si el borrado
+  del blob falla, se registra y se sigue — nunca se revierte el borrado del
+  check-in (un huérfano ocasional es aceptable; un check-in que no se deja borrar,
+  no). Solo se tocan URLs de nuestro store (`*.blob.vercel-storage.com`).
+- `scripts/clean-orphan-blobs.ts` (dry-run) lista blobs sin `CheckIn` asociado,
+  mismo patrón que `clean-passkey-orphans.ts`.
+
+### Validación
+`image/*` (la ruta restringe a jpeg/png/webp); compresión en cliente a 1200px de
+lado mayor, JPEG 0.82 (`src/lib/image.ts`); tope duro tras comprimir (5 MB) con
+error explícito; la ruta re-verifica el tamaño en servidor. EXIF respetado con
+`createImageBitmap(file, { imageOrientation: "from-image" })` (fotos verticales
+de iPhone).
+
+### Decisión de alcance: FOTOS EN EL DETALLE, NO EN EL FEED
+El feed es una lista densa pensada para escanear muchas salidas; meter imágenes
+significa cargar muchos blobs en la pantalla de inicio en 4G — justo lo que "pesa
+y mata la funcionalidad". Las fotos se ven en el **detalle** de la salida (dueño y
+etiquetado). Reversible: si Edgar las quiere en el feed, una miniatura con
+`loading="lazy"` en el hero de una-cerveza es un follow-up acotado.
+
+### Config que pone Edgar (Code NO toca Vercel)
+`BLOB_READ_WRITE_TOKEN` en Production y Preview. **Dev y prod = stores
+SEPARADOS** (como las ramas de Neon): store "prod" → Production; store "dev" →
+Preview + Development (su token va en el `.env` local). Sin token, la app funciona
+igual pero no sube ni borra fotos (no-op con aviso). La **subida real** contra el
+store de dev queda pendiente de que Edgar cree ese store y ponga el token local.
+
 ## Pasada B — Mecánica social (racha, "quién falta", leaderboard dos ejes)
 
 Primera lógica de dominio nueva desde v1. Toda en `domain.ts` (pura, testeada). Los

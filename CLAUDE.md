@@ -21,7 +21,12 @@ está verificado → el deploy se bloquea.
 ## Stack
 
 Next 16 (App Router) · Prisma 7 (driver adapters) · Neon Postgres (sa-east-1) ·
-Better Auth · Tailwind v4 (tema oscuro) · PWA. Ver DECISIONES.md.
+Better Auth · Tailwind v4 (tema oscuro) · PWA · Vercel Blob (fotos de cerveza,
+Pasada F). Ver DECISIONES.md.
+
+`BLOB_READ_WRITE_TOKEN`: lo pone Edgar en Vercel. Dev y prod usan **stores de Blob
+separados** (como las ramas de Neon). Sin token, la app corre pero no sube/borra
+fotos (no-op). Ver DECISIONES.md · Pasada F.
 
 ## Entornos y bases de datos (⚠️ Code NUNCA toca producción)
 
@@ -98,3 +103,13 @@ muertos, listas vacías, con todo en 200 y sin errores de consola) que en un
 Chromium de verdad funcionan. Escribir un script `.cjs` con `chromium.launch()`
 y ejecutarlo con `node`. Si el navegador no está en caché: `npx playwright
 install chromium`.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

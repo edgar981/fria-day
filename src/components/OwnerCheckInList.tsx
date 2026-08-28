@@ -2,9 +2,10 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteCheckIn, addCheckIn, updateCheckIn } from "@/app/actions/sessions";
+import { deleteCheckIn, addCheckIn, updateCheckIn, setCheckInPhoto, removeCheckInPhoto } from "@/app/actions/sessions";
 import { FORMAT_LABEL } from "@/lib/format";
 import { FoamStrip } from "@/components/FoamStrip";
+import { PhotoField } from "@/components/PhotoField";
 import type { BeerFormat } from "@/lib/domain";
 
 export interface OwnerCheckIn {
@@ -15,6 +16,7 @@ export interface OwnerCheckIn {
   beerId: string;
   beerName: string;
   brewery: string;
+  photoUrl: string | null;
 }
 
 // Item A.1-1: editar el rating tocando el medidor de vasos.
@@ -88,6 +90,14 @@ export function OwnerCheckInList({
     });
   }
 
+  // Foto en el detalle: adjuntar/reemplazar/quitar (solo el dueño). setCheckInPhoto
+  // borra el archivo anterior al reemplazar; removeCheckInPhoto lo borra al quitar.
+  async function onRowPhoto(id: string, url: string | null) {
+    if (url) await setCheckInPhoto(id, url);
+    else await removeCheckInPhoto(id);
+    router.refresh();
+  }
+
   const visible = checkIns.filter((c) => !removed.has(c.id));
 
   return (
@@ -96,11 +106,12 @@ export function OwnerCheckInList({
         {visible.map((c) => (
           <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
             <FoamStrip size="sm" />
-            <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
-              <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
+            <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+              <PhotoField value={c.photoUrl} onChange={(url) => onRowPhoto(c.id, url)} size={46} />
+              <span style={{ minWidth: 34, height: 32, padding: "0 8px", borderRadius: 10, background: "#2E2217", color: "var(--color-ambar)", font: "700 15px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: "600 16px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
-                <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{c.brewery} · {FORMAT_LABEL[c.format]}</div>
+                <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
+                <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{c.brewery} · {FORMAT_LABEL[c.format]}</div>
               </div>
               <RatingEditor checkInId={c.id} initial={c.rating} />
               <button
