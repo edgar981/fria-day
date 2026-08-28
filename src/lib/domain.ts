@@ -136,6 +136,45 @@ export function beerRanking(
   );
 }
 
+// ----------------------------------------------------------------------------
+// Rating propio de una cerveza (G.3, detalle del catálogo).
+// Invariante intacto: solo cuentan los check-ins PROPIOS del usuario.
+// ----------------------------------------------------------------------------
+
+export interface OwnBeerCheckIn {
+  rating: number | null;
+  date: Date | string; // fecha de la salida (día en que la tomó)
+  createdAt: Date | string; // cuándo se registró (desempate)
+}
+
+export type OwnBeerRating =
+  | { status: "never" } // nunca la ha probado
+  | { status: "unrated" } // la tomó pero no la calificó
+  | { status: "rated"; rating: number }; // la calificó → el rating MÁS RECIENTE
+
+function toMs(d: Date | string): number {
+  return (typeof d === "string" ? new Date(d) : d).getTime();
+}
+
+/**
+ * Rating propio de una cerveza a partir de los check-ins PROPIOS del usuario para
+ * esa cerveza. Si hay varios calificados con ratings distintos, devuelve el MÁS
+ * RECIENTE (la opinión actual pesa más que la vieja), no el promedio.
+ * Orden de "reciente": fecha de la salida desc, desempate por createdAt desc.
+ */
+export function ownBeerRating(ownCheckIns: OwnBeerCheckIn[]): OwnBeerRating {
+  if (ownCheckIns.length === 0) return { status: "never" };
+  const rated = ownCheckIns.filter((c) => c.rating != null);
+  if (rated.length === 0) return { status: "unrated" };
+  const mostRecent = rated.reduce((best, c) => {
+    const byDate = toMs(c.date) - toMs(best.date);
+    if (byDate > 0) return c;
+    if (byDate === 0 && toMs(c.createdAt) > toMs(best.createdAt)) return c;
+    return best;
+  });
+  return { status: "rated", rating: mostRecent.rating as number };
+}
+
 /**
  * Clave normalizada para el único compuesto case-insensitive de Beer.
  * Colapsa espacios internos, recorta y baja a minúsculas.

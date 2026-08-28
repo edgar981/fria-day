@@ -16,6 +16,7 @@ import {
   sessionRegistration,
   leaderboardVariety,
   distinctBeersForUser,
+  ownBeerRating,
   REGISTRATION_PLAZO_MS,
   type SessionData,
   type UserRef,
@@ -421,5 +422,41 @@ describe("Pasada B — leaderboard dos ejes (PIEZA 3)", () => {
     // B no tiene check-ins propios de las cervezas de A aunque estuviera etiquetado.
     expect(distinctBeersForUser("B", sessions)).toBe(5);
     expect(distinctBeersForUser("A", sessions)).toBe(2);
+  });
+});
+
+describe("ownBeerRating (G.3) — rating propio, el más reciente", () => {
+  const d = (iso: string) => new Date(`${iso}T00:00:00.000Z`);
+  it("nunca la ha probado → never", () => {
+    expect(ownBeerRating([])).toEqual({ status: "never" });
+  });
+  it("la tomó pero sin calificar → unrated", () => {
+    expect(ownBeerRating([{ rating: null, date: d("2026-08-01"), createdAt: d("2026-08-01") }])).toEqual({ status: "unrated" });
+  });
+  it("un solo rating → ese", () => {
+    expect(ownBeerRating([{ rating: 4, date: d("2026-08-01"), createdAt: d("2026-08-01") }])).toEqual({ status: "rated", rating: 4 });
+  });
+  it("CASO CLAVE: dos check-ins con ratings distintos → el MÁS RECIENTE (no el promedio)", () => {
+    const cis = [
+      { rating: 5, date: d("2026-08-01"), createdAt: d("2026-08-01") }, // viejo
+      { rating: 2, date: d("2026-08-20"), createdAt: d("2026-08-20") }, // reciente
+    ];
+    expect(ownBeerRating(cis)).toEqual({ status: "rated", rating: 2 });
+    // el orden de entrada no importa
+    expect(ownBeerRating([cis[1], cis[0]])).toEqual({ status: "rated", rating: 2 });
+  });
+  it("misma fecha → desempata por createdAt más reciente", () => {
+    const cis = [
+      { rating: 3, date: d("2026-08-10"), createdAt: new Date("2026-08-10T10:00:00Z") },
+      { rating: 5, date: d("2026-08-10"), createdAt: new Date("2026-08-10T18:00:00Z") },
+    ];
+    expect(ownBeerRating(cis)).toEqual({ status: "rated", rating: 5 });
+  });
+  it("mezcla calificados y sin calificar → el más reciente CON rating", () => {
+    const cis = [
+      { rating: 4, date: d("2026-08-05"), createdAt: d("2026-08-05") },
+      { rating: null, date: d("2026-08-25"), createdAt: d("2026-08-25") }, // más nuevo pero sin rating
+    ];
+    expect(ownBeerRating(cis)).toEqual({ status: "rated", rating: 4 });
   });
 });

@@ -11,6 +11,7 @@ import {
   registrationStreak,
   dayKeyUTC,
   normalizeKey,
+  ownBeerRating,
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
@@ -163,18 +164,29 @@ export async function getBeersWithRanking(search?: string) {
     });
 }
 
-export async function getBeerDetail(id: string) {
+export async function getBeerDetail(id: string, userId: string) {
   const beer = await prisma.beer.findUnique({
     where: { id },
     include: { createdBy: { select: { displayName: true } } },
   });
   if (!beer) return null;
 
-  const ratings = await prisma.checkIn.findMany({
+  // Todos los check-ins de la cerveza con dueño de la salida y fechas: sirve para el
+  // ranking del grupo, el rating PROPIO (G.3) y saber si alguien más la calificó.
+  const checkIns = await prisma.checkIn.findMany({
     where: { beerId: id },
-    select: { beerId: true, rating: true },
+    select: { rating: true, createdAt: true, session: { select: { userId: true, date: true } } },
   });
-  const rank = beerRanking(ratings)[0] ?? { avgRating: null, ratingsCount: 0 };
+  const rank = beerRanking(checkIns.map((c) => ({ beerId: id, rating: c.rating })))[0] ?? { avgRating: null, ratingsCount: 0 };
+
+  // Rating propio: solo check-ins de salidas del propio usuario (invariante intacto).
+  const own = ownBeerRating(
+    checkIns
+      .filter((c) => c.session.userId === userId)
+      .map((c) => ({ rating: c.rating, date: c.session.date, createdAt: c.createdAt })),
+  );
+  // ¿alguien MÁS del grupo la calificó? (para colapsar cuando el único eres tú)
+  const otherRated = checkIns.some((c) => c.rating != null && c.session.userId !== userId);
 
   const recent = await prisma.checkIn.findMany({
     where: { beerId: id },
@@ -191,7 +203,7 @@ export async function getBeerDetail(id: string) {
     },
   });
 
-  return { beer, avgRating: rank.avgRating, ratingsCount: rank.ratingsCount, recent };
+  return { beer, avgRating: rank.avgRating, ratingsCount: rank.ratingsCount, own, otherRated, recent };
 }
 
 /** Carga usuarios + sesiones (mínimo) y calcula métricas con la lógica pura. */

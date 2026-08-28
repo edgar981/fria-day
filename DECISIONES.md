@@ -110,6 +110,33 @@ Light 3.4, Poker 4.0, Club Colombia Roja/Negra/Trigo 4.7, Corona 4.5, Heineken 5
 Budweiser 5.0; +3 Cordilleras Negra 6.4). **Cobertura en dev: 23 con ABV · 21 en null
 (de 44).** En prod lo corre Edgar.
 
+## Pasada G.3 — Rating propio en el detalle de cerveza
+
+Misma rama `pasada/plan-b-gap`. Solo el **detalle** del catálogo (la lista y el ranking
+no se tocan). Dos stats:
+
+- **Tu rating** — `ownBeerRating` (dominio, puro): de los check-ins PROPIOS de esa
+  cerveza, el MÁS RECIENTE (fecha de salida desc, desempate por createdAt), no el
+  promedio. La opinión actual pesa más que la vieja.
+- **El parche** — promedio del grupo + conteo obligatorio ("3.7 · 3 ratings").
+
+Estados (todos verificados ejecutando en dev):
+- Nunca la probó → "No la has probado" (nunca cero).
+- La tomó sin calificar → "Sin calificar".
+- Nadie del grupo la calificó → "Sin calificar" en el lado del parche.
+- **Solo la calificaste tú** → colapsa a UNA stat con el label del grupo (dos números
+  iguales son redundantes; es el estado normal las primeras semanas). Condición:
+  `ratingsCount > 0 && ningún otro usuario la calificó`.
+
+Invariante intacto: solo cuentan check-ins propios de cada usuario (el rating propio
+filtra por `session.userId`; el grupo promedia todos, que por construcción pertenecen a
+su dueño; etiquetar no acredita). `getBeerDetail` ahora recibe `userId`.
+
+Verificación: **+6 tests** de `ownBeerRating` (incl. el caso clave: dos ratings
+distintos → el más reciente; y desempate por createdAt) → **46/46** (los 40 previos sin
+tocar). Los 5 estados verificados con Playwright WebKit sobre datos sembrados en dev.
+Solo dev.
+
 ## Pasada G.2 — Espuma uniforme, búsqueda sin acentos, deuda del plan-B
 
 Misma rama `pasada/plan-b-gap`. Merge a `main` sigue bloqueado hasta autorización.
