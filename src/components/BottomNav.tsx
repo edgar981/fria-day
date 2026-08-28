@@ -62,6 +62,14 @@ export function BottomNav() {
         zIndex: 40,
         borderTop: "1px solid #2C2015",
         background: "#181209",
+        // iOS standalone: la barra dinámica no la cubre env(safe-area-inset-bottom)
+        // y `fixed; bottom:0` no la sigue, dejando asomar el fondo `noche` bajo la
+        // barra (gap que aparece/desaparece con la barra). Esta box-shadow extiende
+        // el color de la barra ~200px hacia ABAJO (paint, no layout): rellena
+        // cualquier hueco con el color de la barra en cualquier estado del viewport;
+        // cuando no hay gap, queda fuera de pantalla (invisible en desktop/Chromium/
+        // WebKit). No afecta el botón "+" (sobresale hacia arriba). Ver DECISIONES · P.6.
+        boxShadow: "0 100px 0 100px #181209",
       }}
     >
       <div

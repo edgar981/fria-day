@@ -3,6 +3,43 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P.6 — Gap inferior en PWA standalone (iOS)
+
+### Diagnóstico (antes de tocar)
+
+- El contenedor raíz **ya usa `100dvh`** (`body` y `.app-shell` en globals.css;
+  `sessions/new`), **no `vh`** → el sospechoso principal del spec (vh sin descontar
+  barras dinámicas) **no aplica**: ya está migrado.
+- `viewport-fit=cover` **está** (`viewport.viewportFit` en el root layout) y **no hay
+  `height` fijo** compitiendo (solo `min-height: 100dvh`).
+- La barra inferior es **`position: fixed; left/right/bottom: 0`** (fuera del flujo del
+  `.app-shell`); su padding-bottom es `env(safe-area-inset-bottom)+14px` (solo el home
+  indicator). Único `vh` restante: `88vh` en `BeerSheet` (una hoja, no la barra).
+
+**Causa (razonada, no reproducible en Playwright):** como el contenedor ya es `dvh`,
+el gap no viene de `vh`. Es el `position: fixed; bottom:0` contra la barra dinámica de
+iOS en standalone: el ancla no la sigue y por debajo asoma el fondo `noche` del body;
+`env(safe-area-inset-bottom)` no cubre esa barra (solo el home indicator).
+
+### Fix
+
+- **dvh vs svh:** se **mantiene `dvh`** en el contenedor. `svh` dejaría un margen fijo
+  cuando la barra está oculta (peor para layout a sangre); `dvh` sigue el área visible.
+- **Barra:** `BottomNav` gana `box-shadow: 0 100px 0 100px #181209` — extiende el color
+  de la barra ~200px hacia ABAJO (solo paint, no layout). Rellena cualquier hueco con el
+  color de la barra en todo estado del viewport; cuando no hay gap queda fuera de
+  pantalla. No toca el botón "+" (sobresale hacia arriba) ni genera scroll horizontal.
+- `88vh` → `88dvh` en `BeerSheet` (alinear el último `vh` de pantalla completa).
+
+### Verificación
+
+- **Code NO puede verificar el síntoma**: Playwright no simula las barras dinámicas de
+  iOS (viewport fijo). Esto lo confirma **Edgar en iPhone standalone**, haciendo scroll
+  arriba/abajo para forzar la barra.
+- Lo que Code SÍ verificó (Chromium **y** WebKit, 8/8): el cambio no rompe el layout, el
+  botón "+" sigue completo (bottom 827 < viewport 844), la nav llega al bottom, y la
+  box-shadow **no** genera scroll horizontal. 28/28 tests, tsc/build OK.
+
 ## Pasada P.5 — Gap del feed vacío + pendientes
 
 ### 1 · Arreglo del salto del feed vacío

@@ -177,7 +177,7 @@ export function BeerSheet({
           display: "flex",
           flexDirection: "column",
           gap: 14,
-          maxHeight: "88vh",
+          maxHeight: "88dvh",
           overflowY: "auto",
           transform: `translateY(${dragY}px)`,
           transition: dragging ? "none" : "transform 0.25s ease",
