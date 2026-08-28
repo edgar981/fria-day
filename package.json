@@ -34,6 +34,7 @@
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.5",
     "jsdom": "30.0.1",
+    "playwright": "^1.56.0",
     "prisma": "7.10.0",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.12",

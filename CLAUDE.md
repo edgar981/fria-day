@@ -51,3 +51,10 @@ proyecto ya se descartaron problemas reales con "por construcción no aplica" y
 existían por otra puerta. Al verificar UI con Neon en sa-east-1, dar tiempo a que
 las Server Actions resuelvan (latencia de varios segundos) antes de concluir que
 algo sale vacío.
+
+**Playwright** (`devDependency`) es la vía confiable de verificación de UI: el
+panel de navegador integrado ha dado falsos negativos de hidratación (clics
+muertos, listas vacías, con todo en 200 y sin errores de consola) que en un
+Chromium de verdad funcionan. Escribir un script `.cjs` con `chromium.launch()`
+y ejecutarlo con `node`. Si el navegador no está en caché: `npx playwright
+install chromium`.
