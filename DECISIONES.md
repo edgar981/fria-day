@@ -3,6 +3,29 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P.1 — Selector de avatar (dos bugs, verificados en WebKit)
+
+Reportado por Edgar en iPhone real (PWA standalone). Ambos en `AvatarPicker`
+(un solo archivo → aplica también al perfil).
+
+1. **Doble selección.** No era estado (el E2E confirmó siempre 1 celda `selected`):
+   "Anónimo" tenía un `border: 1px dashed` **permanente** que se leía como una
+   segunda selección junto al avatar elegido. Se quitó ese borde; Anónimo es una
+   celda más (fondo oscuro + símbolo). El anillo es el **único** indicador → exacto
+   una marcada.
+2. **Anillo incompleto.** Se dibujaba con `outline: 3px solid` + `outlineOffset` sobre
+   el `<svg>`. En iOS/WebKit el outline sobre un replaced element con offset+radius
+   se pinta incompleto (solo lados), y además un `outline` lo recorta cualquier
+   ancestro con `overflow` (el picker vive dentro de un `overflowY:auto` en un paso).
+   Se cambió por un **borde en un contenedor** (dentro del border-box): siempre
+   reserva 3px (transparente si no está elegido, para que el layout no salte) +
+   `padding` como separación. Se pinta completo y no lo recorta ningún overflow.
+
+Verificado con **Playwright WebKit** (viewport tipo iPhone): eligiendo Armadillo →
+Capibara → Cóndor → Anónimo en secuencia, siempre **exactamente 1 celda con anillo
+completo (4 lados ámbar), 0 anillos parciales, 0 bordes punteados** (16/16), más
+captura del anillo cerrado. `domain.ts` intacto, 28/28 tests, `tsc`/`build` OK.
+
 ## Pasada P — Passkeys (registro sin contraseña)
 
 Registro sin correo ni contraseña: código → nombre → avatar → passkey (FaceID).

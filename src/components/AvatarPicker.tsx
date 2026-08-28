@@ -18,29 +18,36 @@ export function AvatarPicker({
     <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 11 }}>
       {OPTIONS.map((o) => {
         const selected = (value ?? null) === o.key;
-        const anon = o.key === null;
         return (
           <button
             key={o.key ?? "anon"}
             type="button"
+            aria-pressed={selected}
             onClick={() => onSelect(o.key)}
             style={{ textAlign: "center", background: "transparent", border: "none", cursor: "pointer", padding: 0 }}
           >
-            <svg
-              viewBox="0 0 48 48"
+            {/* El anillo de selección va como BORDER de este contenedor (dentro del
+                border-box), no como `outline`: en iOS/WebKit el outline sobre un
+                <svg> con offset+radius se pinta incompleto, y un outline lo puede
+                recortar un ancestro con overflow. El borde siempre reserva 3px
+                (transparente si no está elegido) para que el layout no salte, y el
+                padding deja el espacio entre el anillo y el avatar. Un único
+                indicador → exactamente una celda marcada. */}
+            <div
               style={{
-                width: "100%",
-                aspectRatio: "1",
-                borderRadius: 24,
-                background: o.bg,
-                display: "block",
-                outline: selected ? "3px solid var(--color-ambar)" : "none",
-                outlineOffset: 3,
-                ...(anon ? { border: "1px dashed #4A3A28" } : null),
+                borderRadius: 27,
+                padding: 3,
+                border: `3px solid ${selected ? "var(--color-ambar)" : "transparent"}`,
+                transition: "border-color .12s ease",
               }}
             >
-              <use href={`#${o.symbol}`} />
-            </svg>
+              <svg
+                viewBox="0 0 48 48"
+                style={{ width: "100%", aspectRatio: "1", borderRadius: 24, background: o.bg, display: "block" }}
+              >
+                <use href={`#${o.symbol}`} />
+              </svg>
+            </div>
             <span style={{ display: "block", marginTop: 5, font: `${selected ? 700 : 500} 12px var(--font-sans)`, color: selected ? "var(--color-ambar)" : "var(--color-tenue)" }}>{o.label}</span>
           </button>
         );
