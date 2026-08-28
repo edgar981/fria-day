@@ -3,6 +3,152 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P — Passkeys (registro sin contraseña)
+
+Registro sin correo ni contraseña: código → nombre → avatar → passkey (FaceID).
+El correo pasa a ser recuperación **opcional**. Solo toca autenticación. `domain.ts`
+INTACTO; los 28 tests pasan sin tocarse.
+
+### Verificado POR EJECUCIÓN antes de construir (condición a/b de Edgar)
+
+- El plugin passkey **no viene** en `better-auth`; es `@better-auth/passkey@1.7.2`
+  (trae `@simplewebauthn/*`).
+- Better Auth 1.7 **fija `email` como `required:true, unique:true`** en su core
+  (`@better-auth/core/.../get-tables.mjs`). `signUpEmail` con email vacío →
+  `400 VALIDATION_ERROR`. Solo el *nombre* del campo es configurable, no su
+  obligatoriedad.
+- El plugin passkey **NO crea usuarios**: con `requireSession:false` sin
+  `resolveUser` lanza `RESOLVE_USER_REQUIRED`. Adjunta la passkey a un usuario que
+  uno provee. Por eso el create directo es necesario (no sobra).
+- Un signup normal crea: `user` + `account`(providerId `credential`, con password)
+  + `authSession`. Un usuario **passkey-only NO lleva `account`** (la credencial es
+  la passkey, en la tabla `passkey`); la sesión la emite el plugin.
+- Un usuario con `email = null` (creado vía `internalAdapter.createUser`, que **sí
+  acepta null**): obtiene sesión, **sobrevive a `getSession`** (probado con cookie
+  firmada real), puede agregar correo después y puede agregar contraseña. Todo
+  ejecutado, no deducido.
+
+### Cómo quedó (Opción 1, aprobada por Edgar)
+
+- **`User.email` nullable** (migración `passkey_and_nullable_email`:
+  `ALTER COLUMN email DROP NOT NULL` + tabla `passkey`). Sin correos sintéticos.
+  Postgres permite varios `NULL` bajo `@unique`.
+- **Alta passkey-first** (`src/lib/auth.ts`): `passkey({ registration: {
+  requireSession:false, resolveUser, afterVerification } })`.
+  - `resolveUser` (corre en generate-options, antes de FaceID): valida la
+    invitación y crea el usuario passkey-only con `internalAdapter.createUser`
+    (`email:null`). Debe existir para que la passkey (FK) y la sesión lo referencien.
+  - `afterVerification` (tras verificar la passkey, antes de persistir/crear sesión):
+    **reclama la invitación** de forma atómica (`updateMany usedById:null`); si
+    alguien la usó en el intermedio, **revierte** el usuario y aborta.
+  - El cliente manda `addPasskey({ context: JSON{code,name,avatar}, authenticator
+    Attachment:"platform", createSession:true })`; `createSession` deja la cookie.
+- **Correo de recuperación** (`actions/account.ts` → `addRecoveryEmail`): Better
+  Auth **bloquea** fijar email vía `updateUser` (`EMAIL_CAN_NOT_BE_UPDATED`,
+  verificado), así que se hace con `prisma.user.update` (hay sesión = ownership, y
+  el grupo ya va sin verificación de correo). Se ofrece **visible tras el registro**
+  (paso "¿Y si cambias de teléfono?") y desde el perfil.
+- **Contraseña alterna** (`setAccountPassword` → `auth.api.setPassword`): crea el
+  `account` credential. Requiere correo primero (el login por contraseña lo usa).
+- **Pieza 3 — método alterno intacto:** login con passkey primero + enlace discreto
+  "Otra forma de entrar" → correo+contraseña (los seed `ana@`/`beto@` entran igual).
+  Un usuario puede tener **passkey Y contraseña** a la vez (verificado). El registro
+  también ofrece "correo y contraseña" como alterno; si el dispositivo no soporta
+  WebAuthn, ese método es el default.
+- **Login:** botón passkey explícito + **autofill condicional** armado en mount
+  (`signIn.passkey({ autoFill:true })`, guardado con `isConditionalMediation
+  Available()` — la API existe en 1.7.2, verificado).
+
+### rpID / origin (crítico)
+
+`rpID`/`origin` se derivan de `BETTER_AUTH_URL` (hostname/origin), con override
+`PASSKEY_RP_ID` / `PASSKEY_ORIGIN`. En producción `BETTER_AUTH_URL` **debe** ser el
+dominio canónico `https://fria-day.vercel.app` (no una URL de deployment
+`fria-xxxx-*.vercel.app`): una passkey registrada bajo un rpID de deployment queda
+inservible. En local deriva a `localhost` / `http://localhost:3000`.
+
+### Trade-off conocido — usuarios huérfanos al cancelar FaceID
+
+El usuario se crea en `resolveUser` (antes del prompt de FaceID) porque la passkey y
+la sesión necesitan un id existente. Si se cancela FaceID, queda un usuario
+`email=null`, sin passkey y sin account, **sin credenciales** (no puede entrar) y la
+invitación **NO** se consume (se reclama en `afterVerification`). Se prefirió esto a
+quemar invitaciones. Para un grupo cerrado el acumulado es despreciable; si molesta,
+se limpia con un job o se agrega un `pendingUserId` a la invitación. Documentado, no
+oculto.
+
+### Verificación (toda por ejecución)
+
+- **Playwright — Chromium con authenticator virtual** (WebAuthn CDP): alta passkey
+  sin correo → feed; login con passkey; login `ana@` correo+contraseña. Estado en DB:
+  usuario `email=null`, 1 passkey (`internal`), **0 accounts**, invitación reclamada.
+- **Playwright — WebKit (motor de Safari)**: `/` sin sesión → `/login` **sin bucle**;
+  login renderiza; **fallback correo+contraseña funciona**; `/register` renderiza;
+  botón passkey presente. (WebKit no soporta el authenticator virtual de CDP, así que
+  la ceremonia real en WebKit no se automatiza — ver abajo.)
+- **Perfil (UI real, Chromium)**: agregar correo de recuperación → agregar contraseña
+  → logout → login con ese correo+contraseña. 4/4.
+- Camino de error de `resolveUser` (código inválido): lanza mensaje claro, **no crea
+  huérfano**.
+- `tsc` limpio, **28/28 tests sin tocar**, `next build` OK.
+- **Playwright queda en devDependencies** (fue la única herramienta con verificación
+  confiable en A.2/A.4). `chromium` + `webkit` instalados.
+
+### Lo que Code NO puede verificar (declarado, no dado por bueno)
+
+**Passkey real con FaceID en la PWA standalone en iPhone.** El authenticator virtual
+de Chromium prueba el mecanismo WebAuthn, pero no el comportamiento de iOS/WebKit en
+una app añadida a la pantalla de inicio (donde `navigator.share()` ya nos falló). Eso
+lo prueba **Edgar** en su iPhone. El fallback correo+contraseña existe justo por si
+la passkey falla ahí.
+
+## Pasada P · TAREA 0 — El bucle de Safari (diagnóstico documentado)
+
+**Síntoma:** en Safari (incluida la PWA instalada) `/` entraba en un bucle
+`/ ↔ /login` sin fin; borrar los datos del sitio NO lo curaba. En Brave nunca
+pasó.
+
+**Causa raíz — desacuerdo proxy vs. página sobre una cookie *presente pero
+inválida*:**
+- El proxy usaba `getSessionCookie(req)`, que solo mira **presencia** de la
+  cookie (no consulta la DB). Con una cookie presente rebotaba `/login → /`
+  creyendo que había sesión.
+- Cada página valida de verdad con `auth.api.getSession()`. Con una cookie
+  inválida devuelve `null` → `requireUser()` rebota `/ → /login`.
+- Presencia ≠ validez → ping-pong infinito. El bug es **agnóstico al navegador**:
+  se dispara en CUALQUIER cliente que presente una cookie presente-pero-inválida.
+
+**Por qué Brave pasaba y Safari no (la asimetría):** no es un bug de motor
+(WebKit vs Chromium); es una diferencia de **estado de la cookie** y de dónde la
+guarda cada uno:
+- En Brave, Edgar no tenía una cookie presente-pero-inválida (o no había cookie,
+  o la sesión era válida) → proxy y página concordaban → sin bucle.
+- En Safari había una `__Secure-better-auth.session_token` vieja cuya sesión ya
+  no validaba en el servidor (expirada / de antes de un redeploy). Y "Borrar
+  datos del sitio" en Safari **no** borró la cookie de la **PWA instalada**: iOS
+  guarda el almacenamiento de una web app añadida a la pantalla de inicio en un
+  scope separado del de las pestañas de Safari, así que la cookie inválida
+  sobrevivió al borrado y cada apertura re-entraba al bucle. Esa asimetría era la
+  pista: sin cookie no hay bucle, con la cookie vieja sí.
+
+**Qué cambió (archivo y línea):**
+- `src/proxy.ts`: se **eliminó** la rama `if (hasSession && isPublic) return
+  redirect("/")` (el rebote por mera presencia). Queda un único guardia:
+  `if (!hasSession && !isPublic) redirect("/login")` y si no, `NextResponse.next()`.
+- `src/app/(auth)/layout.tsx`: el salto de conveniencia "ya logueado → `/`" ahora
+  usa `getCurrentUser()` (**validación real**, no presencia). Con cookie inválida
+  devuelve `null` → se renderiza el login, sin rebote → sin bucle.
+
+**Es arreglo de raíz, no un rodeo:** se atacó la causa (el proxy ya no confía en
+la presencia para rebotar), así que el bucle desaparece para todo navegador y
+todo estado de cookie. Safari con la cookie vieja ahora va `/ → /login`, renderiza,
+Edgar inicia sesión y la cookie nueva reemplaza la inválida. **No** se relajó
+`Secure`, `SameSite` ni `Domain` de la cookie (siguen `HttpOnly; Secure;
+SameSite=Lax`, host-only), y **no** se sacó ninguna ruta de la protección del
+proxy (el matcher no se tocó en ese commit; la rama eliminada era una comodidad,
+no una protección). Verificado por curl (4 estados de cookie) y Playwright.
+Commit `75a3b52`.
+
 ## Pasada A.2 — Bugs visuales y consolidación
 
 `domain.ts` se tocó SOLO para el punto 5. Los 22 tests previos pasan sin cambios;

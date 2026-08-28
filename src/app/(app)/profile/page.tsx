@@ -1,7 +1,9 @@
 import { requireUser } from "@/lib/session";
 import { getProfile } from "@/lib/queries";
+import { prisma } from "@/lib/prisma";
 import { BottomNav } from "@/components/BottomNav";
 import { ProfileAvatarEditor } from "@/components/ProfileAvatarEditor";
+import { AccountAccess } from "@/components/AccountAccess";
 import { LogoutButton } from "@/components/LogoutButton";
 import { Avatar } from "@/components/Avatar";
 import { Tally } from "@/components/Tally";
@@ -22,6 +24,11 @@ function StatCard({ value, label }: { value: number; label: string }) {
 export default async function ProfilePage() {
   const user = await requireUser();
   const { stats, board, avatarById } = await getProfile(user.id);
+  const [passkeyCount, credentialCount] = await Promise.all([
+    prisma.passkey.count({ where: { userId: user.id } }),
+    prisma.account.count({ where: { userId: user.id, providerId: "credential" } }),
+  ]);
+  const userEmail = (user as { email?: string | null }).email ?? null;
   const styles = Object.entries(stats.byStyle).sort((a, b) => b[1] - a[1]);
   const maxStyle = styles.length ? styles[0][1] : 1;
   const maxUnits = board.length ? Math.max(...board.map((b) => b.units), 1) : 1;
@@ -110,6 +117,8 @@ export default async function ProfilePage() {
             </div>
           </section>
         )}
+
+        <AccountAccess email={userEmail} hasPassword={credentialCount > 0} passkeyCount={passkeyCount} />
 
         <div style={{ marginTop: 4 }}>
           <LogoutButton />

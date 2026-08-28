@@ -24,7 +24,12 @@ datasource db {
 model User {
   id            String   @id
   name          String
-  email         String   @unique
+  // Pasada P: nullable. El alta passkey-first crea usuarios SIN correo (el correo
+  // pasa a ser recuperación opcional, agregada luego desde el perfil). Better Auth
+  // 1.7 fija email como required en su core, así que estos usuarios se crean por
+  // fuera de su signup (ver actions/passkey.ts) — verificado por ejecución que
+  // tolera email null en sesión/getSession. Postgres permite varios NULL bajo @unique.
+  email         String?  @unique
   emailVerified Boolean  @default(false)
   image         String?
   // Campos extra de dominio (además de las tablas de Better Auth).
@@ -38,6 +43,7 @@ model User {
   // Better Auth
   authSessions AuthSession[]
   accounts     Account[]
+  passkeys     Passkey[]
 
   // Dominio
   sessions           Session[]    // salidas propias (dueño)
@@ -94,6 +100,28 @@ model Verification {
   updatedAt  DateTime @updatedAt
 
   @@map("verification")
+}
+
+// Pasada P: credencial WebAuthn (passkey / FaceID). Campos exigidos por el plugin
+// @better-auth/passkey (verificado contra su schema declarado). La credencial vive
+// aquí, NO en Account: un usuario passkey-only no tiene fila en Account.
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@index([credentialID])
+  @@map("passkey")
 }
 
 // ----------------------------------------------------------------------------
