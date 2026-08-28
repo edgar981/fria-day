@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { searchBeersAction, createBeer } from "@/app/actions/beers";
 import { FormatPicker } from "@/components/FormatPicker";
 import { RatingInput } from "@/components/RatingInput";
@@ -51,6 +51,39 @@ export function BeerSheet({
   const [rating, setRating] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Arrastrar hacia abajo para cerrar (item A.4-4). Cerrar por gesto conserva el
+  // borrador igual que tocar afuera: usa dismiss() (no reset).
+  const [dragY, setDragY] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const drag = useRef({ startY: 0, prevY: 0, prevT: 0, vy: 0, active: false });
+
+  function onDragStart(e: React.PointerEvent) {
+    drag.current = { startY: e.clientY, prevY: e.clientY, prevT: e.timeStamp, vy: 0, active: true };
+    setDragging(true);
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {}
+  }
+  function onDragMove(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d.active) return;
+    const dt = e.timeStamp - d.prevT;
+    if (dt > 0) d.vy = (e.clientY - d.prevY) / dt; // px/ms, + = hacia abajo
+    d.prevY = e.clientY;
+    d.prevT = e.timeStamp;
+    setDragY(Math.max(0, e.clientY - d.startY));
+  }
+  function onDragEnd(e: React.PointerEvent) {
+    const d = drag.current;
+    if (!d.active) return;
+    d.active = false;
+    setDragging(false);
+    const dy = Math.max(0, e.clientY - d.startY);
+    setDragY(0);
+    // Cierra si superó el umbral de distancia (110px) o de velocidad (flick).
+    if (dy > 110 || d.vy > 0.6) dismiss();
+  }
 
   useEffect(() => {
     if (open) setFormat(readLastFormat());
@@ -146,10 +179,22 @@ export function BeerSheet({
           gap: 14,
           maxHeight: "88vh",
           overflowY: "auto",
+          transform: `translateY(${dragY}px)`,
+          transition: dragging ? "none" : "transform 0.25s ease",
         }}
       >
-        <span style={{ width: 44, height: 4, borderRadius: 99, background: "#4A3A28", alignSelf: "center" }} />
-        <span style={{ font: "800 22px/1 var(--font-display)", letterSpacing: "-.02em" }}>¿Cuál te tomaste?</span>
+        {/* Zona de arrastre: el grabber + el título. El contenido de abajo hace
+            scroll normal; arrastrar aquí cierra la hoja. */}
+        <div
+          onPointerDown={onDragStart}
+          onPointerMove={onDragMove}
+          onPointerUp={onDragEnd}
+          onPointerCancel={onDragEnd}
+          style={{ touchAction: "none", cursor: "grab", display: "flex", flexDirection: "column", gap: 14, margin: "-12px -18px 0", padding: "12px 18px 0" }}
+        >
+          <span style={{ width: 44, height: 4, borderRadius: 99, background: "#4A3A28", alignSelf: "center" }} />
+          <span style={{ font: "800 22px/1 var(--font-display)", letterSpacing: "-.02em" }}>¿Cuál te tomaste?</span>
+        </div>
 
         {selected ? (
           <div style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "10px 13px" }}>

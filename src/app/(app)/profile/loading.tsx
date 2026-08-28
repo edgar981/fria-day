@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/Skeleton";
 export default function ProfileLoading() {
   return (
     <div className="pb-nav">
-      <main style={{ padding: "18px 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
+      <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
           <Skeleton w={60} h={60} r={19} />
           <div style={{ flex: 1 }}>

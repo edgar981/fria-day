@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/Skeleton";
 export default function NewSessionLoading() {
   return (
     <div>
-      <div style={{ padding: "12px 18px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #241A12" }}>
+      <div style={{ padding: "calc(12px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", gap: 12, borderBottom: "1px solid #241A12" }}>
         <Skeleton w={44} h={44} r={14} />
         <Skeleton w={140} h={22} />
       </div>

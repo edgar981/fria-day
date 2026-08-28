@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/Skeleton";
 export default function BeersLoading() {
   return (
     <div className="pb-nav">
-      <header style={{ padding: "16px 18px 12px", borderBottom: "1px solid #241A12", display: "flex", flexDirection: "column", gap: 12 }}>
+      <header style={{ padding: "calc(16px + env(safe-area-inset-top)) 18px 12px", borderBottom: "1px solid #241A12", display: "flex", flexDirection: "column", gap: 12 }}>
         <Skeleton w={200} h={26} />
         <Skeleton w="100%" h={50} r={16} />
         <Skeleton w={150} h={34} r={999} />

@@ -15,7 +15,7 @@ export function Skeleton({
 // Cabecera de pestaña (logo + avatar) mientras carga.
 export function HeaderSkeleton() {
   return (
-    <div style={{ padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #241A12" }}>
+    <div style={{ padding: "calc(12px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #241A12" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <Skeleton w={30} h={30} r={9} />
         <div style={{ font: "800 22px var(--font-display)", letterSpacing: "-.02em", color: "var(--color-borde)" }}>FriaDay</div>

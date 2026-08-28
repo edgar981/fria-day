@@ -136,14 +136,18 @@ body {
   padding: 0 15px;
   outline: none;
 }
-/* iOS: el <input type="date"> nativo ignora el ancho y se desborda. */
+/* iOS: el <input type="date"> nativo ignora el ancho y se desborda → appearance:none
+   + max/min-width lo contienen. Pero appearance:none quita el centrado vertical
+   nativo; display:flex + align-items:center lo restaura sin reintroducir desborde. */
 input[type="date"].field {
   -webkit-appearance: none;
   appearance: none;
-  display: block;
+  display: flex;
+  align-items: center;
 }
-input[type="date"]::-webkit-date-and-time-value {
+input[type="date"].field::-webkit-date-and-time-value {
   text-align: left;
+  margin: 0;
 }
 .field::placeholder {
   color: var(--color-tenue);
@@ -174,9 +178,12 @@ textarea.field {
   font-family: var(--font-sans);
 }
 
-/* Área segura del bottom nav */
+/* Área segura del bottom nav. La barra mide 64px y el botón "+" sobresale 9px
+   → 73px de despeje + 3 de respiro = 76px (medido). El inset-bottom se aplica
+   UNA vez aquí y una vez en el padding propio de la barra (para el
+   home-indicator): son planos distintos que se apilan, no un doble conteo. */
 .pb-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 92px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
 }
 
 .no-scrollbar::-webkit-scrollbar {

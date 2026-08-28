@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/Skeleton";
 export default function SessionDetailLoading() {
   return (
     <div>
-      <div style={{ padding: "12px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #241A12" }}>
+      <div style={{ padding: "calc(12px + env(safe-area-inset-top)) 18px 12px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #241A12" }}>
         <Skeleton w={44} h={44} r={14} />
       </div>
       <main style={{ padding: "18px 18px 40px", display: "flex", flexDirection: "column", gap: 18 }}>
