@@ -54,11 +54,18 @@ etiquetado). Reversible: si Edgar las quiere en el feed, una miniatura con
 `loading="lazy"` en el hero de una-cerveza es un follow-up acotado.
 
 ### Config que pone Edgar (Code NO toca Vercel)
-`BLOB_READ_WRITE_TOKEN` en Production y Preview. **Dev y prod = stores
-SEPARADOS** (como las ramas de Neon): store "prod" → Production; store "dev" →
-Preview + Development (su token va en el `.env` local). Sin token, la app funciona
-igual pero no sube ni borra fotos (no-op con aviso). La **subida real** contra el
-store de dev queda pendiente de que Edgar cree ese store y ponga el token local.
+**Dos stores SEPARADOS** (como las ramas de Neon). Vercel solo tiene Production y
+Preview, así que cada store quedó con su propia variable:
+  - Production → `BLOB_READ_WRITE_TOKEN` (store de prod)
+  - Preview → `BLOB_PREV_READ_WRITE_TOKEN` (store de dev/preview)
+
+El SDK lee `BLOB_READ_WRITE_TOKEN` por defecto, que en Preview NO existe → se
+resuelve el token por entorno (`blobToken()` en `src/lib/blob.ts`, según
+`VERCEL_ENV`) y se pasa explícito a `put`/`del`/`list`/`handleUpload`. **LOCAL usa
+SOLO `BLOB_PREV_READ_WRITE_TOKEN`** (store de dev), nunca el de prod — regla dura:
+Code jamás escribe en producción. Sin token, la app corre pero no sube/borra fotos
+(no-op con aviso). La **subida real** contra el store de dev se verifica en local
+poniendo `BLOB_PREV_READ_WRITE_TOKEN` en el `.env`.
 
 ## Pasada B — Mecánica social (racha, "quién falta", leaderboard dos ejes)
 

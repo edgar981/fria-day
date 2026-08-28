@@ -1,6 +1,6 @@
 import { handleUpload, type HandleUploadBody } from "@vercel/blob/client";
 import { getCurrentUser } from "@/lib/session";
-import { BLOB_CONFIGURED } from "@/lib/blob";
+import { blobToken } from "@/lib/blob";
 
 /**
  * Subida de fotos a Vercel Blob por client-upload (Pasada F). El navegador sube
@@ -20,7 +20,8 @@ import { BLOB_CONFIGURED } from "@/lib/blob";
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export async function POST(request: Request): Promise<Response> {
-  if (!BLOB_CONFIGURED) {
+  const token = blobToken();
+  if (!token) {
     return Response.json(
       { error: "Almacenamiento de fotos no configurado." },
       { status: 503 },
@@ -31,6 +32,7 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const jsonResponse = await handleUpload({
+      token,
       body,
       request,
       onBeforeGenerateToken: async () => {

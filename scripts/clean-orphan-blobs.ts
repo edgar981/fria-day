@@ -9,22 +9,29 @@
  * Para borrar de verdad:
  *   node --env-file=.env --import tsx scripts/clean-orphan-blobs.ts --apply
  *
- * Apunta al store cuyo BLOB_READ_WRITE_TOKEN cargues con el .env. Dev y producción
- * usan stores SEPARADOS: corre esto contra el mismo entorno que la BD del .env.
- * NUNCA contra producción sin querer: revisa primero el dry-run.
+ * Apunta al store cuyo token cargues con el .env. Dev y producción usan stores
+ * SEPARADOS: local usa BLOB_PREV_READ_WRITE_TOKEN (store de preview/dev), nunca el
+ * de prod. NUNCA contra producción sin querer: revisa primero el dry-run.
  */
 import { list, del } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 
 const APPLY = process.argv.includes("--apply");
 
+// Mismo criterio que src/lib/blob.ts: prod usa BLOB_READ_WRITE_TOKEN; el resto
+// (preview y local) usa BLOB_PREV_READ_WRITE_TOKEN. Local nunca cae al de prod.
+const TOKEN =
+  process.env.VERCEL_ENV === "production"
+    ? process.env.BLOB_READ_WRITE_TOKEN
+    : process.env.BLOB_PREV_READ_WRITE_TOKEN;
+
 function kb(bytes: number): string {
   return `${(bytes / 1024).toFixed(0)} KB`;
 }
 
 async function main() {
-  if (!process.env.BLOB_READ_WRITE_TOKEN) {
-    console.error("Falta BLOB_READ_WRITE_TOKEN en el entorno (.env). Aborto.");
+  if (!TOKEN) {
+    console.error("Falta el token de Blob (BLOB_PREV_READ_WRITE_TOKEN en local). Aborto.");
     process.exit(1);
   }
 
@@ -41,7 +48,7 @@ async function main() {
   let totalBlobs = 0;
   let totalBytes = 0;
   do {
-    const res = await list({ cursor, limit: 1000 });
+    const res = await list({ cursor, limit: 1000, token: TOKEN });
     for (const b of res.blobs) {
       totalBlobs++;
       if (!referenced.has(b.url)) {
@@ -71,7 +78,7 @@ async function main() {
   let deleted = 0;
   for (const o of orphans) {
     try {
-      await del(o.url);
+      await del(o.url, { token: TOKEN });
       deleted++;
     } catch (e) {
       console.error(`  ✗ no se pudo borrar ${o.pathname}:`, e);
