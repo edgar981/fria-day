@@ -11,7 +11,7 @@ import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { TagDismissControl } from "@/components/TagDismissControl";
-import { FORMAT_LABEL, formatDay } from "@/lib/format";
+import { FORMAT_LABEL, formatDay, pendingLabel } from "@/lib/format";
 import { sessionTotalUnits } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
@@ -90,8 +90,7 @@ export default async function SessionDetailPage({
             </span>
             {s.social.pending.length > 0 && (
               <span style={{ font: "500 13px/1.4 var(--font-sans)", color: "var(--color-ambar)" }}>
-                Falta{s.social.pending.length > 1 ? "n" : ""}{" "}
-                {s.social.pending.map((p) => (p.id === viewer.id ? "tú" : p.displayName)).join(", ")} · {s.social.plazoLabel}
+                {pendingLabel(s.social.pending, viewer.id)} · {s.social.plazoLabel}
               </span>
             )}
             {s.social.pending.length === 0 && s.social.registered < s.social.total && (
@@ -132,9 +131,8 @@ export default async function SessionDetailPage({
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              {s.checkIns.map((c, i) => (
+              {s.checkIns.map((c) => (
                 <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
-                  {i === 0 && <div style={{ height: 6, background: "radial-gradient(circle at 50% 100%,#FBF0D5 4.5px,transparent 5px) 0 0/10px 6px repeat-x" }} />}
                   <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
                     <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
                     <div style={{ flex: 1, minWidth: 0 }}>

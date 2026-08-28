@@ -3,7 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
 import { Tally } from "@/components/Tally";
-import { FORMAT_LABEL, formatAbv, relativeDay } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, relativeDay, pendingLabel } from "@/lib/format";
 import type { FeedSession } from "@/lib/queries";
 
 type CheckIn = FeedSession["checkIns"][number];
@@ -169,11 +169,7 @@ export function SessionCard({
             </div>
             {session.social.pending.length > 0 && (
               <span style={{ font: "500 12.5px/1.4 var(--font-sans)", color: "var(--color-ambar)" }}>
-                Falta{session.social.pending.length > 1 ? "n" : ""}{" "}
-                {session.social.pending
-                  .map((p) => (p.id === viewerId ? "tú" : p.displayName))
-                  .join(", ")}{" "}
-                · {session.social.plazoLabel}
+                {pendingLabel(session.social.pending, viewerId)} · {session.social.plazoLabel}
               </span>
             )}
           </div>

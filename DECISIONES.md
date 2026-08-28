@@ -59,6 +59,45 @@ perfil un solo `main`; el catálogo su propio header) y headers `sticky` que int
 las tabs, y **Code no puede verificar el beneficio** (barras dinámicas de iOS). Se hará
 como pasada enfocada, verificando cada tab en Chromium/WebKit y con Edgar en el iPhone.
 
+## Pasada B.1 — Correcciones de gate + catálogo semilla (misma rama plan-B)
+
+Hallazgos del gate de Edgar en el preview. Misma rama `pasada/plan-b-gap`; merge a
+`main` sigue bloqueado hasta autorización explícita.
+
+1. **Regresión del "+" (bloqueador).** Diagnóstico por medición: el "+" sobresale 9px
+   sobre la barra, pero NINGÚN ancestro lo recorta (`clippers: []` — no es `overflow`
+   del DOM). Al pasar la barra de `position:fixed; z-index:40` a flujo plano perdió su
+   contexto de apilado, y en iOS el hermano `.pb-scroll` (`overflow:auto` → capa de
+   composición) **ocluye** el saliente. Fix: `nav { position:relative; z-index:2 }` —
+   la barra sigue en flujo (no se mueve) pero pinta por ENCIMA del scroller. Verificado
+   AMBOS bordes del "+" (top 771 ≥ 0, bottom 827 ≤ 844; saliente 9px intacto) —
+   corrige la aserción de la pasada anterior, que medía solo el borde inferior. La
+   oclusión iOS no se reproduce en Playwright → la confirma Edgar en el preview.
+2. **"Falta tú" → "Faltas tú".** Helper `pendingLabel` (format.ts) con conjugación:
+   1 y soy yo → "Faltas tú"; 1 y es otro → "Falta Caro"; varios → lista natural
+   "Faltan tú y Caro" / "Faltan Edgar, Caro y Dani" (yo primero). Usado en feed y
+   detalle. Verificado.
+3. **Franja de espuma.** Inventario: se **queda** en `SessionCard` BeerHero (bloque
+   protagonista del feed) y en el festón del header de onboarding (`RegisterWizard`,
+   decorativo). Se **quitó** de las listas del detalle (`OwnerCheckInList` y la lista de
+   solo-lectura), donde solo la primera fila la tenía → filas compactas uniformes. Nota:
+   `.foam` / `.foam-scallop` en globals.css están definidas pero SIN USO (CSS muerto del
+   diseño original).
+4. **Catálogo semilla.** `scripts/seed-catalog.ts` (dry-run por defecto, `--apply`),
+   idempotente por `nameKey`/`breweryKey` (misma lógica que `createBeer`), `createdById`
+   = Edgar. 36 entradas (Bavaria, BBC, importadas, 3 Cordilleras); SIN artesanales de
+   carta rotativa. **ABV null salvo verificados** (Club Colombia Dorada 4.7, Águila Cero
+   0.4, BBC Macondo 5.7, 3 Cordilleras del sitio oficial); no se inventan porcentajes.
+   Corrido en dev (idempotente: 2ª corrida 0 creadas); en prod lo corre Edgar. Búsquedas
+   verificadas ("clu" → las 4 Club Colombia; "bbc" → las de BBC).
+   - **Editar `abv`/`style` desde el detalle** (`updateBeerFields` + `BeerFieldsEditor`):
+     para completar vacíos o corregir, sin historial. Da salida a la política de ABV null
+     (si no, los null serían permanentes). Verificado: editar Costeñita → `abv=4.2`
+     persiste y se muestra.
+
+Verificación: **39/39 tests** (sin tocar), tsc/build OK, Playwright WebKit 12/13 (el 1
+que falló era timing del refresh; el feature quedó probado con captura + DB). Solo dev.
+
 ## Pasada plan-B — Gap inferior iOS: refactor de layout (rama)
 
 Primera pasada bajo el **nuevo flujo de ramas** (ver CLAUDE.md): va en

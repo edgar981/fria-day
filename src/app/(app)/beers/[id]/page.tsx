@@ -5,6 +5,7 @@ import { getBeerDetail } from "@/lib/queries";
 import { BackHeader } from "@/components/BackHeader";
 import { Avatar } from "@/components/Avatar";
 import { Glasses, RatingCell } from "@/components/Glasses";
+import { BeerFieldsEditor } from "@/components/BeerFieldsEditor";
 import { FORMAT_LABEL, formatAbv, formatDay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -24,13 +25,14 @@ export default async function BeerDetailPage({
     <div>
       <BackHeader title="Cerveza" href="/beers" />
       <main style={{ padding: "18px 18px 40px", display: "flex", flexDirection: "column", gap: 18 }}>
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div style={{ font: "800 30px/1.05 var(--font-display)", letterSpacing: "-.025em" }}>{beer.name}</div>
-          <div style={{ font: "500 14.5px var(--font-sans)", color: "var(--color-tenue)", marginTop: 6 }}>
+          <div style={{ font: "500 14.5px var(--font-sans)", color: "var(--color-tenue)", marginTop: -2 }}>
             {beer.brewery}
             {beer.style ? ` · ${beer.style}` : ""}
             {formatAbv(beer.abv) ? ` · ${formatAbv(beer.abv)}` : ""}
           </div>
+          <BeerFieldsEditor beerId={beer.id} style={beer.style} abv={beer.abv ? beer.abv.toString() : null} />
         </div>
 
         <div className="card" style={{ padding: 18, display: "flex", alignItems: "center", gap: 14 }}>

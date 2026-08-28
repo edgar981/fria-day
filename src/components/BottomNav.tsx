@@ -59,6 +59,13 @@ export function BottomNav() {
         // real del contenedor. Ya no es position:fixed → no deja franja bajo la
         // barra en iOS standalone. Ver DECISIONES · P-plan-B.
         flex: "none",
+        // El "+" sobresale 9px por encima de la barra (marginTop:-22). Al salir de
+        // position:fixed/z-index:40, la barra perdió su contexto de apilado y en iOS
+        // el scroller hermano (.pb-scroll, overflow:auto → capa de composición)
+        // ocluía ese saliente. position:relative + z-index devuelve el apilado por
+        // ENCIMA del scroller sin sacarla del flujo. Ver DECISIONES · B.1.
+        position: "relative",
+        zIndex: 2,
         borderTop: "1px solid #2C2015",
         background: "#181209",
       }}

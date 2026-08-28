@@ -92,9 +92,8 @@ export function OwnerCheckInList({
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-        {visible.map((c, i) => (
+        {visible.map((c) => (
           <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
-            {i === 0 && <div style={{ height: 6, background: "radial-gradient(circle at 50% 100%,#FBF0D5 4.5px,transparent 5px) 0 0/10px 6px repeat-x" }} />}
             <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
               <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
               <div style={{ flex: 1, minWidth: 0 }}>

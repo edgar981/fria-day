@@ -120,3 +120,44 @@ export async function searchUsersAction(query: string) {
     take: 8,
   });
 }
+
+/**
+ * Edita `style` y/o `abv` de una cerveza del catálogo (B.1 · item 4). Pensado para
+ * completar campos vacíos o corregir; sin historial de cambios. Requiere sesión.
+ * abv vacío → null (política: mejor vacío que incorrecto).
+ */
+export async function updateBeerFields(
+  beerId: string,
+  input: { style?: string | null; abv?: string | null },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "No autenticado" };
+
+  const data: { style?: string | null; abv?: number | null } = {};
+
+  if (input.style !== undefined) {
+    const s = (input.style ?? "").trim();
+    data.style = s === "" ? null : s;
+  }
+  if (input.abv !== undefined) {
+    const raw = (input.abv ?? "").toString().trim().replace(",", ".");
+    if (raw === "") data.abv = null;
+    else {
+      const n = Number(raw);
+      if (!Number.isFinite(n) || n < 0 || n > 99.9) {
+        return { ok: false, error: "ABV inválido (0–99.9)" };
+      }
+      data.abv = Math.round(n * 10) / 10; // 1 decimal
+    }
+  }
+
+  if (Object.keys(data).length === 0) return { ok: true };
+
+  const beer = await prisma.beer.findUnique({ where: { id: beerId }, select: { id: true } });
+  if (!beer) return { ok: false, error: "Cerveza no encontrada" };
+
+  await prisma.beer.update({ where: { id: beerId }, data });
+  revalidatePath(`/beers/${beerId}`);
+  revalidatePath("/beers");
+  return { ok: true };
+}

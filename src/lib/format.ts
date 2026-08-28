@@ -79,6 +79,30 @@ export function avisoPlazo(deadlineMs: number, nowMs: number): string {
   return `hasta el ${weekdayFmt.format(new Date(deadlineMs))}`;
 }
 
+/** Lista natural en español: "A", "A y B", "A, B y C". */
+function naturalList(items: string[]): string {
+  if (items.length <= 1) return items.join("");
+  if (items.length === 2) return `${items[0]} y ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")} y ${items[items.length - 1]}`;
+}
+
+/**
+ * Aviso "quién falta" bien conjugado (B.1 · item 2):
+ *   1 y soy yo → "Faltas tú" · 1 y es otro → "Falta Caro"
+ *   varios → "Faltan tú y Caro" / "Faltan Edgar, Caro y Dani" (yo primero).
+ */
+export function pendingLabel(
+  pending: { id: string; displayName: string }[],
+  viewerId: string,
+): string {
+  if (pending.length === 0) return "";
+  const names = pending
+    .map((p) => (p.id === viewerId ? "tú" : p.displayName))
+    .sort((a, b) => (a === "tú" ? -1 : b === "tú" ? 1 : 0));
+  if (pending.length === 1) return names[0] === "tú" ? "Faltas tú" : `Falta ${names[0]}`;
+  return `Faltan ${naturalList(names)}`;
+}
+
 export function formatAbv(abv: unknown): string | null {
   if (abv == null) return null;
   const n = typeof abv === "number" ? abv : Number(abv.toString());
