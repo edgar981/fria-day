@@ -3,6 +3,47 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P.5 — Gap del feed vacío + pendientes
+
+### 1 · Arreglo del salto del feed vacío
+
+`EmptyFeed` dejó de centrarse por viewport (`minHeight:60vh; justify-content:center`)
+y pasó a top-align: un contenedor externo con el MISMO arranque que el `<main>` real
+y el del skeleton (`padding:"16px 18px 0"` → su primer hijo cae en la misma Y que la
+primera tarjeta del skeleton) y un offset visual FIJO adentro (`paddingTop:56`). Al
+no depender del viewport, ya no se re-centra cuando cargan las fuentes.
+
+Medido con Playwright WebKit (misma medición de P.4, carga fría, fuentes +700ms):
+**skeleton 77 / contenido 77 / estable 77 → salto 0px, CLS 0** (antes 77/134/116). El
+estado vacío sigue con offset generoso (no pegado al header), verificado por captura.
+
+### 2 · Pendientes
+
+**(a) Padding inferior:** `.pb-nav` bajó de 76px a **73px** (la barra mide 73:
+64 + 9 del "+"). Verificado en WebKit: el botón "+" no se corta (bottom 827 <
+viewport 844, `cutOff:false`).
+
+**(b) "Último uso" de passkeys (propuesta, NO implementada):** el plugin no guarda
+`lastUsed`; su schema de `passkey` no trae `updatedAt`. PERO en `verify-authentication`
+hace `adapter.update({ update: { counter } })` en **cada** login (verificado en el
+dist). Por eso la vía mínima **sin tocar el plugin** sería agregar
+`updatedAt DateTime @updatedAt` al modelo `Passkey` (una migración): Prisma lo refresca
+en cada UPDATE que dispara el plugin al autenticar → `updatedAt` ≈ último uso, y se
+mostraría como "Usada …". Caveats: también se refresca al renombrar la passkey
+(endpoint `update-passkey`, raro) y es "última escritura", no estrictamente "última
+autenticación". Un campo dedicado `lastUsedAt` escrito SOLO al autenticar requeriría
+un hook/envoltura sobre el endpoint del plugin (Better Auth no expone databaseHooks
+para modelos de plugin) → no vale la pena; tema cerrado salvo que Edgar quiera el
+`updatedAt` aproximado.
+
+### 3 · Remediación del secreto (confirmada)
+
+`.env.prod` fuera de `git status`; `.gitignore` ignora `.env` y `.env.*` con
+`!.env.example`; solo `.env.example` queda tracked. El commit de remediación
+(`14d2e96`) está en `origin/main`. La historia **no** se reescribió (decisión de
+Edgar: repo ahora privado + password de Neon rotada), así que el blob del secreto
+sigue en la historia de `7f24267` pero apunta a una credencial ya muerta.
+
 ## Pasada P.4 — Borrar a Ana, gestión de passkeys, diagnóstico del gap
 
 Todo el trabajo corrió contra **dev** (`ep-nameless-glade`); prod lo corre Edgar.

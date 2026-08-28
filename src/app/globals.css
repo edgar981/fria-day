@@ -179,11 +179,11 @@ textarea.field {
 }
 
 /* Área segura del bottom nav. La barra mide 64px y el botón "+" sobresale 9px
-   → 73px de despeje + 3 de respiro = 76px (medido). El inset-bottom se aplica
-   UNA vez aquí y una vez en el padding propio de la barra (para el
-   home-indicator): son planos distintos que se apilan, no un doble conteo. */
+   → 73px de despeje, que es justo lo que se reserva aquí (P.5: antes 76). El
+   inset-bottom se aplica UNA vez aquí y una vez en el padding propio de la barra
+   (para el home-indicator): son planos distintos que se apilan, no un doble conteo. */
 .pb-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 76px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 73px);
 }
 
 .no-scrollbar::-webkit-scrollbar {
