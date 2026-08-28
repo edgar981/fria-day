@@ -86,15 +86,27 @@ export function NewSessionForm() {
   const [tags, setTags] = useState<LocalTag[]>([]);
   const [checkIns, setCheckIns] = useState<LocalCheckIn[]>([]);
   const [users, setUsers] = useState<UserOpt[]>([]);
+  const [usersLoading, setUsersLoading] = useState(true);
+  const [usersError, setUsersError] = useState(false);
   const [recent, setRecent] = useState<BeerOption[]>([]);
+  const [recentLoading, setRecentLoading] = useState(true);
+  const [recentError, setRecentError] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [textInput, setTextInput] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    searchUsersAction("").then((u) => setUsers(u as UserOpt[]));
-    searchBeersAction("").then((b) => setRecent(b.slice(0, 8)));
+    let alive = true;
+    searchUsersAction("")
+      .then((u) => { if (alive) setUsers(u as UserOpt[]); })
+      .catch(() => { if (alive) setUsersError(true); })
+      .finally(() => { if (alive) setUsersLoading(false); });
+    searchBeersAction("")
+      .then((b) => { if (alive) setRecent(b.slice(0, 8)); })
+      .catch(() => { if (alive) setRecentError(true); })
+      .finally(() => { if (alive) setRecentLoading(false); });
+    return () => { alive = false; };
   }, []);
 
   let seq = 0;
@@ -199,19 +211,34 @@ export function NewSessionForm() {
         <section>
           <div className="eyebrow" style={{ marginBottom: 8 }}>Con quién</div>
           <div style={{ display: "flex", gap: 11, alignItems: "flex-start", overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
-            {users.map((u) => {
-              const on = tags.some((t) => t.userId === u.id);
-              return (
-                <button key={u.id} type="button" onClick={() => toggleUser(u)} style={{ textAlign: "center", width: 58, flex: "none", background: "transparent", border: "none", cursor: "pointer", padding: 0, opacity: on ? 1 : 0.5 }}>
-                  {/* Caja de tamaño constante: el borde (transparente si no está
-                      seleccionado) no cambia el layout y el avatar no se sale. */}
-                  <span style={{ width: 52, height: 52, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "2.5px solid var(--color-ambar)" : "2.5px solid transparent", boxSizing: "border-box" }}>
-                    <Avatar avatar={u.avatar} size={44} radius={13} />
-                  </span>
-                  <span style={{ display: "block", marginTop: 5, font: `${on ? 600 : 500} 11.5px var(--font-sans)`, color: on ? "var(--color-crema)" : "var(--color-tenue)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.displayName}</span>
-                </button>
-              );
-            })}
+            {/* 3 estados sin ambigüedad: cargando (esqueletos) · vacío (mensaje)
+                · error (mensaje). Nunca vacío-que-parece-roto. */}
+            {usersLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <span key={i} style={{ width: 58, flex: "none" }}>
+                  <span className="skeleton" style={{ width: 52, height: 52, borderRadius: 16, margin: "0 auto", display: "block" }} />
+                  <span className="skeleton" style={{ width: 40, height: 11, borderRadius: 6, margin: "6px auto 0", display: "block" }} />
+                </span>
+              ))
+            ) : usersError ? (
+              <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-alerta)", alignSelf: "center" }}>No se pudo cargar el parche.</span>
+            ) : users.length === 0 ? (
+              <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)", alignSelf: "center" }}>Nadie más en el parche todavía.</span>
+            ) : (
+              users.map((u) => {
+                const on = tags.some((t) => t.userId === u.id);
+                return (
+                  <button key={u.id} type="button" onClick={() => toggleUser(u)} style={{ textAlign: "center", width: 58, flex: "none", background: "transparent", border: "none", cursor: "pointer", padding: 0, opacity: on ? 1 : 0.5 }}>
+                    {/* Caja de tamaño constante: el borde (transparente si no está
+                        seleccionado) no cambia el layout y el avatar no se sale. */}
+                    <span style={{ width: 52, height: 52, margin: "0 auto", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: on ? "2.5px solid var(--color-ambar)" : "2.5px solid transparent", boxSizing: "border-box" }}>
+                      <Avatar avatar={u.avatar} size={44} radius={13} />
+                    </span>
+                    <span style={{ display: "block", marginTop: 5, font: `${on ? 600 : 500} 11.5px var(--font-sans)`, color: on ? "var(--color-crema)" : "var(--color-tenue)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.displayName}</span>
+                  </button>
+                );
+              })
+            )}
             <button type="button" onClick={() => setTextInput(textInput === null ? "" : null)} style={{ textAlign: "center", width: 46, flex: "none", background: "transparent", border: "none", cursor: "pointer" }}>
               <span style={{ width: 46, height: 46, borderRadius: 14, border: "1px dashed #4A3A28", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-ambar)" }}>
                 <Icon name="plus" size={22} />
@@ -237,15 +264,20 @@ export function NewSessionForm() {
           )}
         </section>
 
-        {/* OTRA VEZ */}
-        {recent.length > 0 && checkIns.length === 0 && (
+        {/* OTRA VEZ · esqueletos mientras carga; oculta si vacío/error (es una
+            tira opcional de sugerencias, no una lista de resultados). */}
+        {checkIns.length === 0 && (recentLoading || recent.length > 0) && (
           <section>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
               <span className="eyebrow">Otra vez</span>
               <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>1 toque = 1 cerveza</span>
             </div>
             <div style={{ display: "flex", gap: 9, overflowX: "auto", paddingBottom: 4 }} className="no-scrollbar">
-              {recent.slice(0, 6).map((b) => (
+              {recentLoading
+                ? Array.from({ length: 3 }).map((_, i) => (
+                    <span key={i} className="skeleton" style={{ flex: "none", width: 160, height: 54, borderRadius: 16 }} />
+                  ))
+                : recent.slice(0, 6).map((b) => (
                 <span key={b.id} style={{ flex: "none", width: 160, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "9px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ font: "600 14px/1.2 var(--font-sans)", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.name}</span>

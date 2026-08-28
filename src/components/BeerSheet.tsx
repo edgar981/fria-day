@@ -41,6 +41,8 @@ export function BeerSheet({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<BeerOption[]>([]);
+  const [searching, setSearching] = useState(true);
+  const [searchError, setSearchError] = useState(false);
   const [selected, setSelected] = useState<BeerOption | null>(null);
   const [creating, setCreating] = useState(false);
   const [brewery, setBrewery] = useState("");
@@ -57,9 +59,17 @@ export function BeerSheet({
   useEffect(() => {
     if (!open || selected || creating) return;
     let active = true;
+    setSearching(true);
+    setSearchError(false);
     const t = setTimeout(async () => {
-      const r = await searchBeersAction(query);
-      if (active) setResults(r);
+      try {
+        const r = await searchBeersAction(query);
+        if (active) setResults(r);
+      } catch {
+        if (active) setSearchError(true);
+      } finally {
+        if (active) setSearching(false);
+      }
     }, 180);
     return () => {
       active = false;
@@ -171,23 +181,42 @@ export function BeerSheet({
 
             {!creating && (
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {results.map((b) => (
-                  <button
-                    key={b.id}
-                    type="button"
-                    onClick={() => setSelected(b)}
-                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 4px", borderBottom: "1px solid #241A12", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: "var(--color-crema)" }}
-                  >
-                    <FoamIcon />
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ font: "600 16px/1.2 var(--font-sans)", display: "block" }}>{b.name}</span>
-                      <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
-                        {b.brewery}
-                        {b.style ? ` · ${b.style}` : ""}
+                {/* 3 estados: cargando (esqueletos) · sin resultados · error. */}
+                {searching ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 4px", borderBottom: "1px solid #241A12" }}>
+                      <span className="skeleton" style={{ width: 44, height: 44, borderRadius: 13, flex: "none" }} />
+                      <span style={{ flex: 1 }}>
+                        <span className="skeleton" style={{ width: "60%", height: 15, borderRadius: 6, display: "block" }} />
+                        <span className="skeleton" style={{ width: "40%", height: 11, borderRadius: 6, display: "block", marginTop: 6 }} />
                       </span>
                     </span>
-                  </button>
-                ))}
+                  ))
+                ) : searchError ? (
+                  <span style={{ padding: "13px 4px", font: "400 13px var(--font-sans)", color: "var(--color-alerta)" }}>No se pudo buscar. Intenta de nuevo.</span>
+                ) : results.length === 0 ? (
+                  <span style={{ padding: "13px 4px", font: "400 13px var(--font-sans)", color: "var(--color-tenue)" }}>
+                    {query.trim() ? "No hay cervezas que coincidan." : "Aún no hay cervezas. Créala abajo."}
+                  </span>
+                ) : (
+                  results.map((b) => (
+                    <button
+                      key={b.id}
+                      type="button"
+                      onClick={() => setSelected(b)}
+                      style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 4px", borderBottom: "1px solid #241A12", background: "transparent", border: "none", cursor: "pointer", textAlign: "left", color: "var(--color-crema)" }}
+                    >
+                      <FoamIcon />
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ font: "600 16px/1.2 var(--font-sans)", display: "block" }}>{b.name}</span>
+                        <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
+                          {b.brewery}
+                          {b.style ? ` · ${b.style}` : ""}
+                        </span>
+                      </span>
+                    </button>
+                  ))
+                )}
                 <button
                   type="button"
                   onClick={() => setCreating(true)}
