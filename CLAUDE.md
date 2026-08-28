@@ -23,6 +23,27 @@ está verificado → el deploy se bloquea.
 Next 16 (App Router) · Prisma 7 (driver adapters) · Neon Postgres (sa-east-1) ·
 Better Auth · Tailwind v4 (tema oscuro) · PWA. Ver DECISIONES.md.
 
+## Entornos y bases de datos (⚠️ Code NUNCA toca producción)
+
+Desde la Pasada P.2 hay **dos ramas de Neon** (branching):
+
+| Entorno | Rama de Neon | Endpoint | Vercel |
+|---|---|---|---|
+| **Producción** | principal | `ep-holy-rain-…` | Production → rama principal |
+| **Desarrollo** | dev (branch de la principal) | `ep-nameless-glade-…` | Preview → rama dev |
+
+- El `.env` local apunta a la **rama dev** (`ep-nameless-glade`). **Toda verificación
+  de Code (scripts, Playwright, migraciones de prueba) corre contra dev, NUNCA
+  contra producción.** Los amigos de Edgar ya usan la app: producción tiene datos
+  reales.
+- Antes de correr cualquier script que escriba, confirmar que `.env` apunta a
+  `ep-nameless-glade` (dev) y no a `ep-holy-rain` (prod).
+- Cambios en la **config de Neon** o en las **env de Vercel** los hace **Edgar**, no
+  Code. Cualquier mutación en prod (borrar cuentas, limpiar huérfanos) se entrega
+  como script/dry-run para que Edgar la corra; Code no la ejecuta contra prod.
+- Las cuentas de prueba (`ana@`, `beto@`) existen en **dev** con contraseña propia
+  (NO `***REDACTED***`, que está en el repo público). En prod, ver DECISIONES.md · P.2.
+
 ## Comandos
 
 ```bash
@@ -31,6 +52,8 @@ npm run build    # prisma generate && prisma migrate deploy && next build
 npm start        # server de producción (NODE_ENV=production)
 npm test         # vitest (lógica de dominio pura)
 npm run db:seed  # datos mínimos
+# Mantención (dry-run por defecto; apunta al .env que cargues):
+node --env-file=.env --import tsx scripts/clean-passkey-orphans.ts [--apply]
 ```
 
 ## Reglas de dominio (no negociables)

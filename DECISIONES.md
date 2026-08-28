@@ -3,6 +3,57 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P.2 — Usuario duplicado (huérfano) + separación de entornos
+
+### 1 · El duplicado era un HUÉRFANO de registro no-atómico (no presentación)
+
+Diagnóstico por consulta a la DB (dev, snapshot de prod): 2 filas "Edgar".
+- `OL0Rg10p…`: email null, **0 passkeys, 0 accounts**, sin invitación reclamada,
+  0 check-ins → huérfano.
+- `4Q0mC1PM…`: passkey=1, invitación `NZFX55A` reclamada, email de recuperación
+  puesto → cuenta real (creada 25 min después). Ambas avatar `oso-andino`, 0
+  check-ins → el leaderboard las mostraba como "Edgar" + "Tú".
+
+**Causa raíz:** el registro passkey-first creaba el usuario en `resolveUser` (antes
+del prompt de FaceID). En producción el `rpID` no coincidía con el origen (era
+`localhost` porque `BETTER_AUTH_URL` no era el dominio canónico — el riesgo marcado
+en la Pasada P), así que `navigator.credentials.create()` fallaba en el navegador,
+`verify-registration` nunca corría y quedaba la fila sin passkey ni invitación.
+
+**Arreglo (a) — registro atómico:** `resolveUser` ya **no crea** el usuario; solo
+genera el id (= userHandle de WebAuthn). El usuario se crea en `afterVerification`
+(que corre SOLO si la passkey se verificó) junto con la reclamación atómica de la
+invitación. Si la ceremonia falla, no queda NADA. Verificado por ejecución
+(Playwright Chromium): happy path crea usuario+passkey+invitación; fallo simulado
+(`credentials.create` rechaza, como el rpID mismatch) → **0 usuarios, invitación
+libre**.
+
+**Arreglo (b) — limpieza:** `scripts/clean-passkey-orphans.ts` (dry-run por defecto)
+borra usuarios sin passkey, sin account, sin invitación, sin salidas ni etiquetas.
+Corrido en **dev** (borró el huérfano). En **prod lo corre Edgar** (Code no toca prod).
+
+### 2 · Separación de entornos (Neon branching)
+
+Dos ramas de Neon: principal = producción (`ep-holy-rain`), dev = branch
+(`ep-nameless-glade`). Vercel: Production→principal, Preview→dev. El `.env` local
+apunta a **dev**. Regla nueva en CLAUDE.md: **toda verificación de Code corre contra
+dev, nunca contra producción**; config de Neon/Vercel la maneja Edgar. La rama la
+creó Edgar y pegó las URLs.
+
+### 3 · Cuentas de prueba
+
+- **En dev**: `ana@`/`beto@` con contraseña cambiada (ya no `***REDACTED***`, que está en
+  el repo público). Verificado por ejecución: la nueva entra, la vieja no. Las
+  contraseñas se le pasaron a Edgar por chat.
+- **En prod (decisión de Edgar, sin ejecutar):**
+  - **Beto**: sin check-ins, sin salidas, sin invitaciones creadas; solo aparece
+    etiquetado en 1 salida (esa etiqueta se borra con él). Seguro de borrar.
+  - **Ana**: 5 check-ins = **6 unidades**; dueña de 3 salidas ("Andrés Carne de Res",
+    "Bolirana Villa del prado", "Mono Bandido"); creó 5 invitaciones (una, `NZFX55A`,
+    es la que usó el Edgar real). Borrarla arrastra esas 3 salidas, 5 check-ins, 3
+    etiquetas y sus 5 invitaciones. **No se tocó**: Edgar decide entre (a) borrar,
+    (b) renombrar a una cuenta real conservando el historial, o (c) dejarla.
+
 ## Pasada P.1 — Selector de avatar (dos bugs, verificados en WebKit)
 
 Reportado por Edgar en iPhone real (PWA standalone). Ambos en `AvatarPicker`

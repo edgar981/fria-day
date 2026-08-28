@@ -1,3 +1,4 @@
+import { randomBytes } from "crypto";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
@@ -69,11 +70,16 @@ export const auth = betterAuth({
         // creamos aquí. Sin correo ni contraseña; la credencial es la passkey.
         requireSession: false,
 
-        // Se ejecuta en generate-register-options (antes del prompt de FaceID).
-        // Valida la invitación y crea el usuario passkey-only (email null). El
-        // usuario debe existir para que la passkey (FK) y la sesión lo referencien.
+        // Se ejecuta en generate-register-options (ANTES del prompt de FaceID).
+        // Valida la invitación y genera el id del usuario (= userHandle de WebAuthn),
+        // pero NO crea la fila todavía: si la ceremonia de passkey falla (rpID que no
+        // coincide con el origen, cancelar FaceID, dispositivo sin soporte), el
+        // navegador rechaza credentials.create() y verify-registration NUNCA corre,
+        // así que un create aquí dejaría un usuario HUÉRFANO (pasó en producción,
+        // ver DECISIONES.md · P.2). El usuario se crea en afterVerification, que solo
+        // corre si la passkey se verificó → registro atómico.
         async resolveUser({ ctx, context }) {
-          const { code, name, avatar } = parseContext(context);
+          const { code, name } = parseContext(context);
           const displayName = (name ?? "").trim();
           if (!displayName) throw ctx.error("BAD_REQUEST", { message: "Falta tu nombre" });
 
@@ -83,37 +89,45 @@ export const auth = betterAuth({
           if (invite.expiresAt && invite.expiresAt.getTime() < Date.now())
             throw ctx.error("BAD_REQUEST", { message: "Ese código ya expiró" });
 
-          const user = await ctx.context.internalAdapter.createUser(
-            {
+          // generateId puede devolver false (si la config delega el id a la DB);
+          // aquí fijamos el id nosotros, así que caemos a un id aleatorio.
+          const id = ctx.context.generateId({ model: "user" }) || randomBytes(24).toString("base64url");
+          return { id, name: displayName, displayName };
+        },
+
+        // Se ejecuta tras verificar la passkey, ANTES de persistirla/crear sesión.
+        // AQUÍ se crea el usuario (con el id ya generado = userHandle) y se reclama la
+        // invitación, de forma atómica. Si la invitación se perdió en el intermedio,
+        // se revierte el usuario y se aborta (nada de sesión a medias). Si esto lanza,
+        // el plugin no persiste la passkey ni crea sesión.
+        async afterVerification({ ctx, user, context }) {
+          const { code, avatar } = parseContext(context);
+          const displayName = (user.displayName ?? user.name ?? "Anónimo").trim() || "Anónimo";
+
+          const invite = code ? await prisma.invitation.findUnique({ where: { code: code.trim() } }) : null;
+          if (!invite || invite.usedById || (invite.expiresAt && invite.expiresAt.getTime() < Date.now())) {
+            throw ctx.error("BAD_REQUEST", { message: "Ese código acaba de ser usado por alguien más" });
+          }
+
+          await prisma.user.create({
+            data: {
+              id: user.id, // == userHandle generado en resolveUser
               name: displayName,
-              // Better Auth tipa email como string (required), pero su adapter
-              // acepta null en runtime (verificado por ejecución). Alta sin correo.
-              email: null as unknown as string,
+              email: null, // alta sin correo (recuperación opcional después)
               emailVerified: false,
               displayName,
               avatar: isAvatarKey(avatar) ? avatar : null,
             },
-            ctx,
-          );
-          return { id: user.id, name: user.name, displayName };
-        },
+          });
 
-        // Se ejecuta tras verificar la passkey, ANTES de persistirla/crear sesión.
-        // Reclama la invitación de forma atómica. Si alguien la usó en el intermedio,
-        // se revierte el usuario recién creado y se aborta (nada de sesión a medias).
-        async afterVerification({ ctx, user, context }) {
-          const { code } = parseContext(context);
-          if (!code) return;
-          const invite = await prisma.invitation.findUnique({ where: { code: code.trim() } });
-          if (invite && !invite.usedById && !(invite.expiresAt && invite.expiresAt.getTime() < Date.now())) {
-            const claimed = await prisma.invitation.updateMany({
-              where: { id: invite.id, usedById: null },
-              data: { usedById: user.id },
-            });
-            if (claimed.count > 0) return;
+          const claimed = await prisma.invitation.updateMany({
+            where: { id: invite.id, usedById: null },
+            data: { usedById: user.id },
+          });
+          if (claimed.count === 0) {
+            await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
+            throw ctx.error("BAD_REQUEST", { message: "Ese código acaba de ser usado por alguien más" });
           }
-          await prisma.user.delete({ where: { id: user.id } }).catch(() => {});
-          throw ctx.error("BAD_REQUEST", { message: "Ese código acaba de ser usado por alguien más" });
         },
       },
     }),
