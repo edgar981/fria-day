@@ -54,6 +54,9 @@ npm test         # vitest (lógica de dominio pura)
 npm run db:seed  # datos mínimos
 # Mantención (dry-run por defecto; apunta al .env que cargues):
 node --env-file=.env --import tsx scripts/clean-passkey-orphans.ts [--apply]
+node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
+  --delete <id> --invites-to <id> [--apply]   # borra un usuario reasignando sus
+  #   invitaciones Y cervezas (catálogo compartido) a otro, en una transacción
 ```
 
 ## Reglas de dominio (no negociables)

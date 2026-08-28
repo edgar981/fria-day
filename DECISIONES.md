@@ -3,6 +3,74 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada P.4 — Borrar a Ana, gestión de passkeys, diagnóstico del gap
+
+Todo el trabajo corrió contra **dev** (`ep-nameless-glade`); prod lo corre Edgar.
+
+### 1 · Borrar a Ana preservando integridad (+ hallazgo del catálogo)
+
+`scripts/delete-user-reassign-invites.ts` (dry-run por defecto, ids por argumento).
+Orden en UNA transacción: reasignar a Edgar lo que NO debe morir con Ana, luego
+borrarla en cascada.
+
+**Hallazgo por ejecución (no asumido):** el primer `--apply` falló con
+`check_in_beerId_fkey RestrictViolation`. Causa: `Beer.createdById` tiene
+`onDelete: Cascade`, así que borrar a Ana intentaba borrar las **4 cervezas que
+creó** — pero el catálogo es **compartido** (Club Colombia tiene 3 check-ins del
+grupo) y `CheckIn.beer` es `Restrict`. Se corrigió **reasignando también las
+cervezas a Edgar** (como las invitaciones), en la misma transacción → el catálogo
+se preserva. Es exactamente el tipo de "por construcción no aplica pero existía por
+otra puerta" que el proyecto vigila.
+
+Verificado en dev: Ana borrada; **5 invitaciones ahora de Edgar** (NZFX55A conserva
+`usedById`=Edgar); **4 cervezas preservadas** (ahora de Edgar); 0 salidas/check-ins/
+etiquetas de Ana; Edgar intacto (passkey+email); feed de Edgar vacío. UI (login Beto,
+WebKit): feed muestra estado vacío, leaderboard sin Ana. En **prod lo corre Edgar**
+con el mismo script + `--apply`.
+
+### 2 · Ver y revocar passkeys
+
+Perfil (`AccountAccess` + `deletePasskey` en `actions/account.ts`):
+- **Lista**: nombre del autenticador vía `getAuthenticatorName(aaguid)` (p.ej. la
+  passkey de Edgar → "Apple Passwords"), badge SINCRONIZADA (`backedUp`), fecha de
+  creación (`createdAt`). **"Último uso" NO existe**: el plugin no guarda `lastUsed`
+  ni `updatedAt` en `Passkey` (verificado); solo `counter` + `createdAt`. Se reporta.
+- **Eliminar**: Server Action con `auth.api.deletePasskey`.
+- **Guardarraíl (server-authoritative)**: no se puede borrar la ÚNICA passkey si NO
+  hay contraseña NI correo de recuperación (dejaría sin acceso). Se muestra el motivo
+  (candado + texto), no solo un botón deshabilitado. Verificado por ejecución
+  (Chromium + authenticator virtual, 9/9): última bloqueada → agregar 2ª desbloquea →
+  eliminar → vuelve a bloquearse → agregar correo desbloquea. Render en WebKit ✓.
+- "Agregar passkey a este dispositivo" se queda.
+
+### 3 · El gap al entrar (DIAGNÓSTICO — medido, sin tocar código aún)
+
+Medido con Playwright WebKit (viewport iPhone), posición Y del primer elemento del
+contenido en carga fría:
+
+| momento | feed poblado | feed VACÍO |
+|---|---|---|
+| skeleton mostrado | 77 | 77 |
+| contenido cargado | 77 | 134 |
+| estable (fuentes) | 77 | 116 |
+
+- **Feed poblado: 0px de salto.** Header 61px estable en ambos, CLS 0.
+- **Hipótesis descartadas por medición:** sprite (está `position:absolute; 0×0` →
+  no ocupa layout); fuentes en el caso poblado (next/font aplica `size-adjust`, CLS 0,
+  Y constante); montaje del header (server-rendered, 61px en skeleton y real).
+- **Causa medida (feed vacío, que es el estado de Edgar hoy):** el skeleton
+  (`FeedLoading`) siempre pinta **2 tarjetas pegadas arriba** (primer elemento en 77),
+  pero `EmptyFeed` va **centrado** (`minHeight:60vh; justify-content:center`) → su
+  primer elemento cae en 134 = **salto de 57px hacia abajo**. Además, al cargar Syne
+  el bloque centrado **se re-centra** (134→116, otros 18px). Es la hipótesis
+  "skeleton y contenido con alturas distintas", amplificada por el centrado vertical.
+- **Fix propuesto (pendiente de OK de Edgar):** que el estado vacío no dependa de un
+  centrado por viewport que se re-centra (top-align con offset fijo, o que el skeleton
+  del feed no asuma 2 tarjetas), para que skeleton→contenido no salte. No se tocó
+  código: el spec pide reportar la causa medida antes de arreglar. Si Edgar ve el gap
+  en un feed POBLADO, sería el safe-area del device (inset=0 en Playwright, no
+  reproducible en navegador) → haría falta un video del iPhone.
+
 ## Pasada P.2 — Usuario duplicado (huérfano) + separación de entornos
 
 ### 1 · El duplicado era un HUÉRFANO de registro no-atómico (no presentación)

@@ -1,3 +1,4 @@
+import { getAuthenticatorName } from "@better-auth/passkey";
 import { requireUser } from "@/lib/session";
 import { getProfile } from "@/lib/queries";
 import { prisma } from "@/lib/prisma";
@@ -24,11 +25,22 @@ function StatCard({ value, label }: { value: number; label: string }) {
 export default async function ProfilePage() {
   const user = await requireUser();
   const { stats, board, avatarById } = await getProfile(user.id);
-  const [passkeyCount, credentialCount] = await Promise.all([
-    prisma.passkey.count({ where: { userId: user.id } }),
+  const [passkeyRows, credentialCount] = await Promise.all([
+    prisma.passkey.findMany({
+      where: { userId: user.id },
+      select: { id: true, name: true, aaguid: true, backedUp: true, createdAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
     prisma.account.count({ where: { userId: user.id, providerId: "credential" } }),
   ]);
   const userEmail = (user as { email?: string | null }).email ?? null;
+  const pkDateFmt = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", year: "numeric" });
+  const passkeys = passkeyRows.map((p) => ({
+    id: p.id,
+    name: getAuthenticatorName(p.aaguid) ?? p.name ?? "Passkey",
+    synced: p.backedUp,
+    created: p.createdAt ? pkDateFmt.format(p.createdAt) : null,
+  }));
   const styles = Object.entries(stats.byStyle).sort((a, b) => b[1] - a[1]);
   const maxStyle = styles.length ? styles[0][1] : 1;
   const maxUnits = board.length ? Math.max(...board.map((b) => b.units), 1) : 1;
@@ -118,7 +130,7 @@ export default async function ProfilePage() {
           </section>
         )}
 
-        <AccountAccess email={userEmail} hasPassword={credentialCount > 0} passkeyCount={passkeyCount} />
+        <AccountAccess email={userEmail} hasPassword={credentialCount > 0} passkeys={passkeys} />
 
         <div style={{ marginTop: 4 }}>
           <LogoutButton />
