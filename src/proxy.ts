@@ -11,16 +11,21 @@ export function proxy(req: NextRequest) {
     (p) => pathname === p || pathname.startsWith(`${p}/`),
   );
 
-  // getSessionCookie solo verifica presencia (sin DB). La validez real la
-  // comprueba cada página con getSession().
+  // getSessionCookie solo verifica PRESENCIA de la cookie (sin DB). La validez
+  // real la comprueba cada página con getSession().
   const hasSession = !!getSessionCookie(req);
 
+  // Solo un guardia: sin cookie en ruta protegida → /login. Un usuario sin
+  // cookie que aún así llega aquí sin sesión válida lo maneja requireUser().
   if (!hasSession && !isPublic) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
-  if (hasSession && isPublic) {
-    return NextResponse.redirect(new URL("/", req.url));
-  }
+
+  // NO rebotar /login → / por mera PRESENCIA de cookie: una cookie inválida
+  // (p.ej. sesión expirada que Safari no borró) engañaba al proxy y creaba un
+  // bucle de redirección con requireUser() (que la rechaza en /). El caso
+  // "usuario YA logueado que visita /login" se maneja en (auth)/layout con
+  // getSession() real (validación, no presencia).
   return NextResponse.next();
 }
 
