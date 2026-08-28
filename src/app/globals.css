@@ -29,12 +29,14 @@
   color-scheme: dark;
 }
 
-/* html DEBE pintar hasta el fondo real (contribución (b) del gap iOS, P-plan-B):
-   antes solo body/app-shell eran 100dvh y html quedaba en 0 → una franja de raíz
-   sin pintar bajo la barra. */
+/* html pinta hasta el fondo real (min-height) y con el COLOR DE LA BARRA (#181209),
+   no el fondo de la app: red cosmética del gap iOS (G.1). El body (fondo noche,
+   100dvh) cubre el html en toda la app, así que este color solo asoma en la franja
+   residual bajo la barra — y al ser el mismo color de la barra, desaparece
+   visualmente. Ver DECISIONES · G.1. */
 html {
   min-height: 100dvh;
-  background: var(--color-noche);
+  background: #181209;
 }
 
 body {

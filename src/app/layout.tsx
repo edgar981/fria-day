@@ -25,7 +25,15 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "FriaDay",
-    statusBarStyle: "black-translucent",
+    // G.1: "default" (no "black-translucent"). La otra PWA de Edgar (cotizador),
+    // mismo stack e iPhone, usa "default" y NO tiene el gap inferior; con
+    // black-translucent el contenido va a sangre bajo las barras del sistema y es
+    // uno de los dos sospechosos del gap (junto con 100dvh). Ver DECISIONES · G.1.
+    statusBarStyle: "default",
+  },
+  other: {
+    // El cotizador lo declara explícito además de appleWebApp.capable.
+    "apple-mobile-web-app-capable": "yes",
   },
   icons: {
     icon: [{ url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" }],

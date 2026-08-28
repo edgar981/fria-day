@@ -20,15 +20,15 @@ type Row = { name: string; brewery: string; style: string; abv: number | null };
 
 const CATALOG: Row[] = [
   // Bavaria
-  { name: "Águila", brewery: "Bavaria", style: "Lager", abv: null },
-  { name: "Águila Light", brewery: "Bavaria", style: "Lager", abv: null },
+  { name: "Águila", brewery: "Bavaria", style: "Lager", abv: 4.0 },
+  { name: "Águila Light", brewery: "Bavaria", style: "Lager", abv: 3.4 },
   { name: "Águila Cero", brewery: "Bavaria", style: "Lager sin alcohol", abv: 0.4 },
-  { name: "Poker", brewery: "Bavaria", style: "Lager", abv: null },
+  { name: "Poker", brewery: "Bavaria", style: "Lager", abv: 4.0 },
   { name: "Pilsen", brewery: "Bavaria", style: "Lager", abv: null },
   { name: "Club Colombia Dorada", brewery: "Bavaria", style: "Lager", abv: 4.7 },
-  { name: "Club Colombia Roja", brewery: "Bavaria", style: "Lager roja", abv: null },
-  { name: "Club Colombia Negra", brewery: "Bavaria", style: "Lager negra", abv: null },
-  { name: "Club Colombia Trigo", brewery: "Bavaria", style: "Trigo", abv: null },
+  { name: "Club Colombia Roja", brewery: "Bavaria", style: "Lager roja", abv: 4.7 },
+  { name: "Club Colombia Negra", brewery: "Bavaria", style: "Lager negra", abv: 4.7 },
+  { name: "Club Colombia Trigo", brewery: "Bavaria", style: "Trigo", abv: 4.7 },
   { name: "Costeña", brewery: "Bavaria", style: "Lager", abv: null },
   { name: "Costeñita", brewery: "Bavaria", style: "Lager", abv: null },
   { name: "Redd's", brewery: "Bavaria", style: "Cerveza saborizada", abv: null },
@@ -45,10 +45,10 @@ const CATALOG: Row[] = [
   { name: "BBC Mixiripa", brewery: "Bogotá Beer Company", style: "IPA", abv: null },
   { name: "BBC Oktobier", brewery: "Bogotá Beer Company", style: "Weissbier", abv: null },
   // Importadas de consumo común
-  { name: "Corona Extra", brewery: "Grupo Modelo", style: "Lager", abv: null },
+  { name: "Corona Extra", brewery: "Grupo Modelo", style: "Lager", abv: 4.5 },
   { name: "Stella Artois", brewery: "AB InBev", style: "Pilsner", abv: null },
-  { name: "Budweiser", brewery: "AB InBev", style: "Lager", abv: null },
-  { name: "Heineken", brewery: "Heineken", style: "Lager", abv: null },
+  { name: "Budweiser", brewery: "AB InBev", style: "Lager", abv: 5.0 },
+  { name: "Heineken", brewery: "Heineken", style: "Lager", abv: 5.0 },
   { name: "Miller Lite", brewery: "Molson Coors", style: "Lager", abv: null },
   { name: "Peroni Nastro Azzurro", brewery: "Peroni", style: "Lager", abv: null },
   // 3 Cordilleras (ABV verificado del sitio oficial)
@@ -66,23 +66,44 @@ async function main() {
   const edgar = await prisma.user.findFirst({ where: { email: "davidnb81230@gmail.com" }, select: { id: true } });
   if (!edgar) { console.error("No se encontró la cuenta de Edgar (davidnb81230@gmail.com)."); process.exit(2); }
 
-  let toCreate = 0, existed = 0;
-  const creating: string[] = [];
+  let created = 0, filled = 0, unchanged = 0;
+  const log: string[] = [];
   for (const r of CATALOG) {
     const nameKey = normalizeKey(r.name);
     const breweryKey = normalizeKey(r.brewery);
-    const found = await prisma.beer.findUnique({ where: { nameKey_breweryKey: { nameKey, breweryKey } } });
-    if (found) { existed++; continue; }
-    toCreate++;
-    creating.push(`${r.name} · ${r.brewery} · ${r.style}${r.abv != null ? ` · ${r.abv}%` : ""}`);
-    if (APPLY) {
-      await prisma.beer.create({ data: { name: r.name, brewery: r.brewery, style: r.style, abv: r.abv, nameKey, breweryKey, createdById: edgar.id } });
+    const found = await prisma.beer.findUnique({
+      where: { nameKey_breweryKey: { nameKey, breweryKey } },
+      select: { id: true, abv: true, style: true },
+    });
+    if (!found) {
+      created++;
+      log.push(`+ crear     ${r.name} · ${r.brewery}${r.abv != null ? ` · ${r.abv}%` : ""}`);
+      if (APPLY) await prisma.beer.create({ data: { name: r.name, brewery: r.brewery, style: r.style, abv: r.abv, nameKey, breweryKey, createdById: edgar.id } });
+      continue;
+    }
+    // Existente: COMPLETAR solo campos vacíos (no pisar correcciones hechas a mano).
+    const patch: { abv?: number; style?: string } = {};
+    if (found.abv == null && r.abv != null) patch.abv = r.abv;
+    if ((found.style == null || found.style.trim() === "") && r.style) patch.style = r.style;
+    if (Object.keys(patch).length > 0) {
+      filled++;
+      log.push(`~ completar ${r.name}${patch.abv != null ? ` abv=${patch.abv}` : ""}${patch.style ? ` style=${patch.style}` : ""}`);
+      if (APPLY) await prisma.beer.update({ where: { id: found.id }, data: patch });
+    } else {
+      unchanged++;
     }
   }
 
-  console.log(`Catálogo: ${CATALOG.length} entradas · ya existían: ${existed} · ${APPLY ? "CREADAS" : "a crear"}: ${toCreate}`);
-  for (const c of creating) console.log(`   + ${c}`);
-  if (!APPLY) console.log("\n(dry-run) No se escribió nada. Repite con --apply para crear.");
+  console.log(`Catálogo (${CATALOG.length}): ${APPLY ? "creadas" : "a crear"} ${created} · ${APPLY ? "completadas" : "a completar"} ${filled} · sin cambios ${unchanged}`);
+  for (const l of log) console.log("   " + l);
+
+  // Reporte de cobertura de ABV en TODO el catálogo
+  const [conAbv, total] = await Promise.all([
+    prisma.beer.count({ where: { abv: { not: null } } }),
+    prisma.beer.count(),
+  ]);
+  console.log(`\nABV en el catálogo: ${conAbv} con ABV · ${total - conAbv} en null (de ${total} cervezas).`);
+  if (!APPLY) console.log("(dry-run) No se escribió nada. Repite con --apply.");
   await prisma.$disconnect();
 }
 main().catch((e) => { console.error(e); process.exit(1); });

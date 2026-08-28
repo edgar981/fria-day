@@ -59,6 +59,57 @@ perfil un solo `main`; el catálogo su propio header) y headers `sticky` que int
 las tabs, y **Code no puede verificar el beneficio** (barras dinámicas de iOS). Se hará
 como pasada enfocada, verificando cada tab en Chromium/WebKit y con Edgar en el iPhone.
 
+## Pasada G.1 — Gap iOS: comparación con una PWA sin gap + ABV (misma rama)
+
+### 1 · Comparación con el cotizador (repo `edgar981/cotizador-personal-shopper`)
+
+Otra PWA de Edgar, mismo stack e iPhone, con barra inferior y SIN gap. Traído del
+repo (público) y comparado:
+
+| | Cotizador (sin gap) | FriaDay (con gap) |
+|---|---|---|
+| `display` | standalone | standalone |
+| bg/theme | `#0b0b0f` (**oscuro**) | `#120E0A` (oscuro) |
+| **statusBarStyle** | **default** | **black-translucent** |
+| altura html/body | ninguna (natural) | `min-height: 100dvh` |
+| barra | `position: fixed; bottom:0; pb-[safe-area]` | flujo (plan-B) |
+| scroll | documento | contenedor interno |
+
+**Conclusiones:** (a) el cotizador es **oscuro** y no tiene gap → la hipótesis "es
+claro y no se nota" queda **descartada** (gap real ausente, no oculto); (b) el
+cotizador usa **`position: fixed`** y no tiene gap → **`fixed` NO era la causa** (el
+plan-B atacó un no-problema); (c) lo que FriaDay hace y el cotizador no:
+**`statusBarStyle: black-translucent`** y **`100dvh`**. Esos son los sospechosos.
+
+### 2 · Fix (comparación + red cosmética que el spec avala)
+
+- **`statusBarStyle: black-translucent → default`** (+ `apple-mobile-web-app-capable:
+  yes`), igual que el cotizador. Es el sospechoso de mayor señal y el de menor riesgo.
+- **Red cosmética:** `html { background: #181209 }` (color de la barra, no el fondo de
+  la app). El `body` (noche, 100dvh) cubre el html en toda la app; el color solo asoma
+  en la franja residual bajo la barra (el "canvas background" de iOS sale del html), y
+  al ser el color de la barra **desaparece visualmente**. El spec avala esto tras 3
+  pasadas.
+- **NO se revirtió** el `100dvh`/flujo del plan-B en esta pasada (revert grande, no
+  verificable en Playwright). Si el preview aún muestra gap, ese es el siguiente paso:
+  volver al patrón exacto del cotizador (fixed nav + scroll de documento + sin dvh).
+
+Verificado Chromium/WebKit: sin regresión de layout, **botón "+" AMBOS bordes**
+dentro del viewport (top 771 ≥ 0, bottom 827 ≤ 844), nav al fondo, sin scroll
+horizontal, `html` bg = barra. **Code NO puede verificar el síntoma iOS** → lo confirma
+Edgar en el preview (barra visible y oculta; y revisar también el TOP, porque
+`default` cambia el manejo del status bar).
+
+### 3 · ABV faltantes (datos de Edgar)
+
+El seed ahora **completa campos vacíos en registros existentes** (antes solo creaba
+nuevos y hacía skip): para cada cerveza del catálogo, si existe y su `abv`/`style`
+está en null y el catálogo lo trae, lo rellena (sin pisar correcciones). Idempotente
+(2ª corrida: 0 completadas). Se completaron los 9 ABV aportados (Águila 4.0, Águila
+Light 3.4, Poker 4.0, Club Colombia Roja/Negra/Trigo 4.7, Corona 4.5, Heineken 5.0,
+Budweiser 5.0; +3 Cordilleras Negra 6.4). **Cobertura en dev: 23 con ABV · 21 en null
+(de 44).** En prod lo corre Edgar.
+
 ## Pasada B.1 — Correcciones de gate + catálogo semilla (misma rama plan-B)
 
 Hallazgos del gate de Edgar en el preview. Misma rama `pasada/plan-b-gap`; merge a
