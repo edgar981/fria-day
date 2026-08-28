@@ -13,6 +13,7 @@ export default async function InvitePage() {
 
   return (
     <div className="pb-nav">
+      <div className="pb-scroll">
       <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <div>
           <h1 style={{ font: "800 28px/1 var(--font-display)", letterSpacing: "-.02em" }}>Invitar al parche</h1>
@@ -47,6 +48,7 @@ export default async function InvitePage() {
           )}
         </section>
       </main>
+      </div>
       <BottomNav />
     </div>
   );

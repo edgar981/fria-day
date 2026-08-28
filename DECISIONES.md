@@ -59,6 +59,40 @@ perfil un solo `main`; el catálogo su propio header) y headers `sticky` que int
 las tabs, y **Code no puede verificar el beneficio** (barras dinámicas de iOS). Se hará
 como pasada enfocada, verificando cada tab en Chromium/WebKit y con Edgar en el iPhone.
 
+## Pasada plan-B — Gap inferior iOS: refactor de layout (rama)
+
+Primera pasada bajo el **nuevo flujo de ramas** (ver CLAUDE.md): va en
+`pasada/plan-b-gap`, se verifica en el preview de Vercel, y NO se mergea a `main`
+sin autorización explícita de Edgar tras el gate.
+
+**Dato nuevo de Edgar:** la `box-shadow` de P.6 SÍ redujo el gap (no lo dejó igual).
+→ hay DOS contribuciones. Identificadas por medición (Playwright, geometría del
+layout) antes de tocar:
+- **(a) `BottomNav` con `position: fixed; bottom:0`** no sigue la barra dinámica de
+  iOS → franja bajo la barra. La box-shadow la pintaba del color de la barra (por eso
+  quitarla agrandó el hueco).
+- **(b) `html` sin `min-height`** (medido `0px`): solo `body`/`app-shell` eran
+  `100dvh`, el root no pintaba hasta el fondo → franja de raíz que la box-shadow
+  (bloque fijo anclado a la nav) nunca alcanzó. Si el plan B solo arreglaba (a), (b)
+  persistía.
+
+**Refactor (cubre ambas):**
+- (b) `html { min-height: 100dvh; background: noche }` → el root pinta a fondo completo.
+- (a) `.pb-nav` pasa a columna flex de `100dvh` con `.pb-scroll` (`flex:1; overflow-y:
+  auto`) para el contenido y `BottomNav` en FLUJO al final (`flex:none`, ya no
+  `position:fixed`). La barra se ancla al fondo real del contenedor `100dvh`, que sí
+  sigue el viewport dinámico. Se envolvió el contenido en `.pb-scroll` en las **8**
+  pantallas de pestaña (feed, catálogo, perfil, invitar + sus 4 skeletons), una por una
+  (estructura no uniforme: headers sticky, `AppHeader` hermano vs `main` único). Se
+  eliminó la `box-shadow` muerta de P.6.
+
+**Verificado (Chromium y WebKit, 18/18):** nav anclada al fondo (bottom=vh); contenido
+scrollea SOLO dentro de `.pb-scroll` (el documento no scrollea); al scrollear la nav
+sigue abajo y los headers `sticky` siguen arriba; botón "+" completo (bottom 827 <
+844); sin scroll horizontal. **Code NO puede verificar el síntoma iOS** (barras
+dinámicas) → lo confirma Edgar en el preview, con la barra visible y oculta, probando
+los cinco botones en su zona baja. Sin migración.
+
 ## Pasada P.6 — Gap inferior en PWA standalone (iOS)
 
 ### Diagnóstico (antes de tocar)

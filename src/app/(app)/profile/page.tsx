@@ -48,6 +48,7 @@ export default async function ProfilePage() {
 
   return (
     <div className="pb-nav">
+      <div className="pb-scroll">
       <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} since={since} />
 
@@ -110,6 +111,7 @@ export default async function ProfilePage() {
           <LogoutButton />
         </div>
       </main>
+      </div>
       <BottomNav />
     </div>
   );

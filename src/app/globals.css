@@ -29,7 +29,11 @@
   color-scheme: dark;
 }
 
+/* html DEBE pintar hasta el fondo real (contribución (b) del gap iOS, P-plan-B):
+   antes solo body/app-shell eran 100dvh y html quedaba en 0 → una franja de raíz
+   sin pintar bajo la barra. */
 html {
+  min-height: 100dvh;
   background: var(--color-noche);
 }
 
@@ -178,12 +182,20 @@ textarea.field {
   font-family: var(--font-sans);
 }
 
-/* Área segura del bottom nav. La barra mide 64px y el botón "+" sobresale 9px
-   → 73px de despeje, que es justo lo que se reserva aquí (P.5: antes 76). El
-   inset-bottom se aplica UNA vez aquí y una vez en el padding propio de la barra
-   (para el home-indicator): son planos distintos que se apilan, no un doble conteo. */
+/* Pantallas de pestaña (feed, catálogo, perfil, invitar): columna flex de 100dvh
+   con el contenido en scroll (.pb-scroll) y la BottomNav en FLUJO al final
+   (contribución (a) del gap iOS, P-plan-B). La barra ya no es position:fixed, así
+   que se ancla al fondo REAL del contenedor 100dvh, que sí sigue el viewport
+   dinámico — sin la franja que dejaba el `fixed; bottom:0`. */
 .pb-nav {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 73px);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+.pb-scroll {
+  flex: 1;
+  min-height: 0; /* permite que el hijo scrollee dentro del flex */
+  overflow-y: auto;
 }
 
 .no-scrollbar::-webkit-scrollbar {

@@ -41,6 +41,7 @@ export default async function BeersPage({
 
   return (
     <div className="pb-nav">
+      <div className="pb-scroll">
       <header style={{ position: "sticky", top: 0, zIndex: 30, background: "var(--color-noche)", borderBottom: "1px solid #241A12", padding: "calc(16px + env(safe-area-inset-top)) 18px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ font: "800 26px/1 var(--font-display)", letterSpacing: "-.02em" }}>
           Catálogo <span style={{ font: "600 15px var(--font-sans)", color: "var(--color-tenue)" }}>· {beers.length} cerveza{beers.length !== 1 ? "s" : ""}</span>
@@ -85,6 +86,7 @@ export default async function BeersPage({
           </>
         )}
       </main>
+      </div>
       <BottomNav />
     </div>
   );

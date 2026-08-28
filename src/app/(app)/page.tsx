@@ -13,16 +13,18 @@ export default async function FeedPage() {
 
   return (
     <div className="pb-nav">
-      <AppHeader avatar={user.avatar ?? null} />
-      {feed.length === 0 ? (
-        <EmptyFeed />
-      ) : (
-        <main style={{ padding: "16px 18px 0", display: "flex", flexDirection: "column", gap: 12 }}>
-          {feed.map((s) => (
-            <SessionCard key={s.id} session={s} viewerId={user.id} />
-          ))}
-        </main>
-      )}
+      <div className="pb-scroll">
+        <AppHeader avatar={user.avatar ?? null} />
+        {feed.length === 0 ? (
+          <EmptyFeed />
+        ) : (
+          <main style={{ padding: "16px 18px 0", display: "flex", flexDirection: "column", gap: 12 }}>
+            {feed.map((s) => (
+              <SessionCard key={s.id} session={s} viewerId={user.id} />
+            ))}
+          </main>
+        )}
+      </div>
       <BottomNav />
     </div>
   );

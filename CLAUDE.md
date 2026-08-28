@@ -44,6 +44,20 @@ Desde la Pasada P.2 hay **dos ramas de Neon** (branching):
 - Las cuentas de prueba (`ana@`, `beto@`) existen en **dev** con contraseña propia
   (NO `***REDACTED***`, que está en el repo público). En prod, ver DECISIONES.md · P.2.
 
+## ⚠️ Flujo de ramas (permanente, sin excepciones)
+
+`main` es **producción con auto-deploy en Vercel**. Empujar a `main` despliega a los
+amigos de Edgar sin gate. Por eso, desde ahora:
+
+- **Code trabaja en una rama por pasada (`pasada/<nombre>`), NUNCA directo en `main`.**
+- El push a la rama genera un **preview en Vercel**; ahí verifica Edgar.
+- El **merge a `main` lo hace Code, pero SOLO con autorización explícita de Edgar**
+  tras el gate. Sin ese "sí", la rama se queda donde está. **Un resumen de la pasada
+  NO es una solicitud de merge**: hay que pedir el merge y esperar respuesta.
+- Las **migraciones** se aplican a la **rama de dev de Neon** durante la pasada (con
+  `migrate dev`). A **producción llegan con el merge autorizado** (el build de `main`
+  en Vercel corre `prisma migrate deploy`).
+
 ## Comandos
 
 ```bash

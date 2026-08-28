@@ -55,11 +55,10 @@ export function BottomNav() {
   return (
     <nav
       style={{
-        position: "fixed",
-        left: 0,
-        right: 0,
-        bottom: 0,
-        zIndex: 40,
+        // En FLUJO (último hijo flex de .pb-nav, que es 100dvh): se ancla al fondo
+        // real del contenedor. Ya no es position:fixed → no deja franja bajo la
+        // barra en iOS standalone. Ver DECISIONES · P-plan-B.
+        flex: "none",
         borderTop: "1px solid #2C2015",
         background: "#181209",
       }}
