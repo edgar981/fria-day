@@ -28,9 +28,10 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (NEVER commit secrets — repo is public)
+# Ignora CUALQUIER .env.* (dev, prod, .local, etc.) menos el ejemplo con placeholders.
 .env
-.env*.local
-.env.production
+.env.*
+!.env.example
 
 # vercel
 .vercel
