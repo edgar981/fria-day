@@ -5,8 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { BottomNav } from "@/components/BottomNav";
 import { ProfileAvatarEditor } from "@/components/ProfileAvatarEditor";
 import { AccountAccess } from "@/components/AccountAccess";
+import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { LogoutButton } from "@/components/LogoutButton";
-import { Avatar } from "@/components/Avatar";
 import { Tally } from "@/components/Tally";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +24,7 @@ function StatCard({ value, label }: { value: number; label: string }) {
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const { stats, board, avatarById } = await getProfile(user.id);
+  const { stats, board, boardVariety, streak, avatarById } = await getProfile(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -43,7 +43,6 @@ export default async function ProfilePage() {
   }));
   const styles = Object.entries(stats.byStyle).sort((a, b) => b[1] - a[1]);
   const maxStyle = styles.length ? styles[0][1] : 1;
-  const maxUnits = board.length ? Math.max(...board.map((b) => b.units), 1) : 1;
   const createdAt = (user as { createdAt?: string | Date }).createdAt;
   const since = createdAt ? `en el parche desde ${monthFmt.format(new Date(createdAt))}` : "en el parche";
 
@@ -66,49 +65,24 @@ export default async function ProfilePage() {
           )}
         </div>
 
+        {/* Racha de registro (Pasada B): días que registraste, NO frecuencia. */}
+        {streak > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, padding: "13px 16px" }}>
+            <span style={{ fontSize: 24, lineHeight: 1 }}>🔥</span>
+            <span style={{ font: "600 15px var(--font-sans)", color: "var(--color-crema)" }}>
+              <b style={{ color: "var(--color-ambar)", fontWeight: 800 }}>{streak}</b> salida{streak !== 1 ? "s" : ""} seguida{streak !== 1 ? "s" : ""} registrada{streak !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
+
         {/* Stat cards */}
         <div style={{ display: "flex", gap: 11 }}>
           <StatCard value={stats.distinctBeers} label="cervezas distintas probadas" />
           <StatCard value={stats.sessionsCount} label="salidas registradas" />
         </div>
 
-        {/* El parche (leaderboard) */}
-        <section>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 11 }}>
-            <span className="eyebrow">El parche</span>
-            <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>solo salidas propias</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-            {board.map((row, i) => {
-              const me = row.userId === user.id;
-              const barColor = me || i === 0 ? "var(--color-ambar)" : "#8A5E1E";
-              return (
-                <div
-                  key={row.userId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 11,
-                    ...(me ? { background: "#1F1811", border: "1px solid #4A3A28", borderRadius: 16, padding: "8px 11px", margin: "0 -11px" } : null),
-                  }}
-                >
-                  <span style={{ font: "800 17px var(--font-display)", color: i <= 1 ? "var(--color-ambar)" : "var(--color-tenue)", width: 20, flex: "none" }}>{i + 1}</span>
-                  <Avatar avatar={avatarById[row.userId] ?? null} size={36} radius={11} />
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <span style={{ font: `${me ? 700 : 600} 15px var(--font-sans)`, display: "block" }}>{me ? "Tú" : row.displayName}</span>
-                    <span style={{ display: "block", height: 6, borderRadius: 99, background: "var(--color-borde)", marginTop: 5, overflow: "hidden" }}>
-                      <span style={{ display: "block", height: 6, width: `${Math.round((row.units / maxUnits) * 100)}%`, background: barColor }} />
-                    </span>
-                  </span>
-                  <span style={{ font: "700 16px var(--font-display)", color: me ? "var(--color-ambar)" : "var(--color-tenue)", flex: "none" }}>{row.units}</span>
-                </div>
-              );
-            })}
-          </div>
-          <p style={{ font: "400 12px/1.45 var(--font-sans)", color: "var(--color-tenue-2)", margin: "14px 0 0" }}>
-            Que te etiqueten no te acredita cervezas. Solo cuentan las salidas que registras tú.
-          </p>
-        </section>
+        {/* El parche (leaderboard de dos ejes: unidades / variedad) */}
+        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} userId={user.id} avatarById={avatarById} />
 
         {/* Por estilo */}
         {styles.length > 0 && (

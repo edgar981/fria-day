@@ -261,3 +261,31 @@ export async function removeTag(tagId: string): Promise<Result> {
   revalidatePath(`/sessions/${tag.sessionId}/edit`);
   return { ok: true };
 }
+
+/**
+ * Pasada B: el propio etiquetado marca/desmarca "no tomé". SOLO el etiquetado
+ * puede tocar SU etiqueta (no el dueño). Descartada = neutra para la racha y fuera
+ * del denominador de "quién falta".
+ */
+export async function setTagDismissed(
+  tagId: string,
+  dismissed: boolean,
+): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "No autenticado" };
+
+  const tag = await prisma.sessionTag.findUnique({
+    where: { id: tagId },
+    select: { sessionId: true, taggedUserId: true },
+  });
+  if (!tag || tag.taggedUserId !== userId)
+    return { ok: false, error: "Solo puedes descartar tu propia etiqueta" };
+
+  await prisma.sessionTag.update({
+    where: { id: tagId },
+    data: { dismissedAt: dismissed ? new Date() : null },
+  });
+  revalidatePath("/");
+  revalidatePath(`/sessions/${tag.sessionId}`);
+  return { ok: true };
+}

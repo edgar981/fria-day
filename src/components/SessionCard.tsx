@@ -155,6 +155,30 @@ export function SessionCard({
 
         <CompanionChips tags={tags} viewerId={viewerId} />
 
+        {/* Pasada B: "quién falta" + aviso de racha en riesgo (social, acotado al
+            grupo de la salida, que ya es visible solo para dueño y etiquetados). */}
+        {session.social && session.social.total > 1 && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 12, padding: "9px 11px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+              <span style={{ font: "600 13px var(--font-sans)", color: "var(--color-crema)" }}>
+                {session.social.registered} de {session.social.total} registraron
+              </span>
+              {session.social.registered < session.social.total && session.social.pending.length === 0 && (
+                <span style={{ font: "500 12px var(--font-sans)", color: "var(--color-tenue-2)" }}>plazo vencido</span>
+              )}
+            </div>
+            {session.social.pending.length > 0 && (
+              <span style={{ font: "500 12.5px/1.4 var(--font-sans)", color: "var(--color-ambar)" }}>
+                Falta{session.social.pending.length > 1 ? "n" : ""}{" "}
+                {session.social.pending
+                  .map((p) => (p.id === viewerId ? "tú" : p.displayName))
+                  .join(", ")}{" "}
+                · {session.social.plazoLabel}
+              </span>
+            )}
+          </div>
+        )}
+
         {/* Cervezas */}
         {checkIns.length === 0 ? (
           <p style={{ font: "400 13px var(--font-sans)", color: "var(--color-tenue)", margin: 0 }}>Sin cervezas aún.</p>

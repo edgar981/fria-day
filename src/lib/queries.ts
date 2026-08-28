@@ -1,62 +1,115 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { avisoPlazo } from "@/lib/format";
 import {
   leaderboard,
+  leaderboardVariety,
   userStats,
   beerRanking,
   sessionTotalUnits,
+  sessionRegistration,
+  registrationStreak,
+  dayKeyUTC,
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
 
+/** Set `${userId}|${dayKey}` de TODAS las salidas propias (emparejamiento fecha↔usuario). */
+async function loadRegisteredDays(): Promise<Set<string>> {
+  const rows = await prisma.session.findMany({ select: { userId: true, date: true } });
+  const set = new Set<string>();
+  for (const r of rows) set.add(`${r.userId}|${dayKeyUTC(r.date)}`);
+  return set;
+}
+
 /** Feed: sesiones propias + sesiones donde estoy etiquetado, por fecha desc. */
 export async function getFeed(userId: string) {
-  const sessions = await prisma.session.findMany({
-    where: {
-      OR: [{ userId }, { tags: { some: { taggedUserId: userId } } }],
-    },
-    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-    include: {
-      user: { select: { id: true, displayName: true, avatar: true } },
-      tags: {
-        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
-        orderBy: { createdAt: "asc" },
+  const [sessions, registeredDays] = await Promise.all([
+    prisma.session.findMany({
+      where: {
+        OR: [{ userId }, { tags: { some: { taggedUserId: userId } } }],
       },
-      checkIns: {
-        include: {
-          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+      include: {
+        user: { select: { id: true, displayName: true, avatar: true } },
+        tags: {
+          include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
+          orderBy: { createdAt: "asc" },
         },
-        orderBy: { createdAt: "asc" },
+        checkIns: {
+          include: {
+            beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
-    },
-  });
+    }),
+    loadRegisteredDays(),
+  ]);
 
+  const now = Date.now();
   return sessions.map((s) => ({
     ...s,
     totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
     isOwner: s.userId === userId,
+    social: computeSocial(s, registeredDays, now),
   }));
+}
+
+/** Contador "quién falta" + aviso de una salida (null si no hay etiquetas de la app). */
+function computeSocial(
+  s: {
+    userId: string;
+    date: Date;
+    tags: { taggedUserId: string | null; dismissedAt: Date | null; taggedUser: { id: string; displayName: string } | null }[];
+  },
+  registeredDays: Set<string>,
+  now: number,
+) {
+  const active = s.tags.filter((t) => t.taggedUserId && !t.dismissedAt);
+  if (active.length === 0) return null; // sin etiquetas de usuarios de la app
+  const nameById = new Map<string, string>();
+  for (const t of active) if (t.taggedUser) nameById.set(t.taggedUser.id, t.taggedUser.displayName);
+  const r = sessionRegistration({
+    registeredDays,
+    ownerId: s.userId,
+    taggedUserIds: active.map((t) => t.taggedUserId as string),
+    sessionDayKey: dayKeyUTC(s.date),
+    nowMs: now,
+  });
+  return {
+    registered: r.registered,
+    total: r.total,
+    deadlineMs: r.deadlineMs,
+    pending: r.pending.map((id) => ({ id, displayName: nameById.get(id) ?? "alguien" })),
+    plazoLabel: r.pending.length > 0 ? avisoPlazo(r.deadlineMs, now) : "",
+  };
 }
 
 export type FeedSession = Awaited<ReturnType<typeof getFeed>>[number];
 
 export async function getSessionDetail(id: string) {
-  return prisma.session.findUnique({
-    where: { id },
-    include: {
-      user: { select: { id: true, displayName: true, avatar: true } },
-      tags: {
-        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
-        orderBy: { createdAt: "asc" },
-      },
-      checkIns: {
-        include: {
-          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+  const [session, registeredDays] = await Promise.all([
+    prisma.session.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, displayName: true, avatar: true } },
+        tags: {
+          include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
+          orderBy: { createdAt: "asc" },
         },
-        orderBy: { createdAt: "asc" },
+        checkIns: {
+          include: {
+            beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+          },
+          orderBy: { createdAt: "asc" },
+        },
       },
-    },
-  });
+    }),
+    loadRegisteredDays(),
+  ]);
+  if (!session) return null;
+  return { ...session, social: computeSocial(session, registeredDays, Date.now()) };
 }
 
 export type SessionDetail = NonNullable<
@@ -188,9 +241,26 @@ export async function getLeaderboard() {
 
 export async function getProfile(userId: string) {
   const { users, sessions, avatarById } = await loadMetricsInputs();
+
+  // Racha (PIEZA 1): se calcula en cada lectura (NO cachear). Eventos del usuario =
+  // días con salida propia ∪ días donde lo etiquetaron y NO descartó.
+  const registeredDays = new Set<string>();
+  for (const s of sessions) registeredDays.add(`${s.ownerId}|${dayKeyUTC(s.date)}`);
+  const taggedRows = await prisma.sessionTag.findMany({
+    where: { taggedUserId: userId, dismissedAt: null },
+    select: { session: { select: { date: true } } },
+  });
+  const eventDayKeys = [
+    ...sessions.filter((s) => s.ownerId === userId).map((s) => dayKeyUTC(s.date)),
+    ...taggedRows.map((t) => dayKeyUTC(t.session.date)),
+  ];
+  const streak = registrationStreak({ registeredDays, userId, eventDayKeys, nowMs: Date.now() });
+
   return {
     stats: userStats(userId, sessions),
     board: leaderboard(users, sessions),
+    boardVariety: leaderboardVariety(users, sessions),
+    streak,
     avatarById,
   };
 }

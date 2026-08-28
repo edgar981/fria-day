@@ -240,3 +240,133 @@ export function isValidTag(tag: {
   const hasText = !!(tag.freeText && tag.freeText.trim());
   return hasUser !== hasText; // XOR: exactamente uno
 }
+
+// ----------------------------------------------------------------------------
+// Pasada B — mecánica social (racha, "quién falta", leaderboard por variedad).
+//
+// Regla de producto: hacer la app entretenida SIN incentivar tomar más. La racha
+// mide DÍAS QUE REGISTRASTE, no frecuencia de salidas; no tomar NUNCA la rompe.
+// Se calcula en cada lectura (NO cachear): cambia con el paso del tiempo.
+// ----------------------------------------------------------------------------
+
+/** Plazo para registrar tras que te etiqueten: 48 horas desde la medianoche UTC del día. */
+export const REGISTRATION_PLAZO_MS = 48 * 60 * 60 * 1000;
+
+/** Clave de día = medianoche UTC (ms). `Session.date` ya se guarda a medianoche UTC. */
+export function dayKeyUTC(date: Date | string): number {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
+/**
+ * ÚNICA función de emparejamiento fecha↔usuario, compartida por la racha y el
+ * contador "quién falta": ¿el usuario tiene salida PROPIA registrada ese día?
+ * `registeredDays` = set de claves `${userId}|${dayKey}` de TODAS las salidas propias.
+ */
+export function hasOwnRegistration(
+  registeredDays: Set<string>,
+  userId: string,
+  dayKey: number,
+): boolean {
+  return registeredDays.has(`${userId}|${dayKey}`);
+}
+
+/**
+ * PIEZA 1 — Racha de registro. Recorre los días-evento del usuario (unión de días
+ * con salida propia O etiqueta no descartada), del más reciente al más antiguo:
+ *  - día con salida propia → +1 (una vez por día)
+ *  - día solo etiquetado, dentro del plazo → pendiente: ni suma ni rompe
+ *  - día solo etiquetado, vencido el plazo → rompe
+ * Sin eventos que rompan (p.ej. sin salir y sin etiquetas) la racha se CONGELA.
+ */
+export function registrationStreak(args: {
+  registeredDays: Set<string>;
+  userId: string;
+  eventDayKeys: number[];
+  nowMs: number;
+}): number {
+  const keys = [...new Set(args.eventDayKeys)].sort((a, b) => b - a); // desc
+  let streak = 0;
+  for (const k of keys) {
+    if (hasOwnRegistration(args.registeredDays, args.userId, k)) {
+      streak += 1;
+      continue;
+    }
+    // día SOLO etiquetado (sin salida propia ese día)
+    if (args.nowMs < k + REGISTRATION_PLAZO_MS) continue; // pendiente
+    break; // vencido → rompe
+  }
+  return streak;
+}
+
+export interface SessionRegistration {
+  registered: number;
+  total: number;
+  /** Usuarios de la app que faltan por registrar y AÚN están dentro del plazo. */
+  pending: string[];
+  /** now >= deadlineMs ⇒ el plazo venció. */
+  deadlineMs: number;
+}
+
+/**
+ * PIEZA 2 — Contador "quién falta" (+ insumo del aviso). Reutiliza
+ * hasOwnRegistration (misma implementación que la racha).
+ * Denominador = dueño + usuarios de la app etiquetados y NO descartados (el texto
+ * libre no cuenta). El dueño SIEMPRE cuenta como registrado.
+ */
+export function sessionRegistration(args: {
+  registeredDays: Set<string>;
+  ownerId: string;
+  taggedUserIds: string[];
+  sessionDayKey: number;
+  nowMs: number;
+}): SessionRegistration {
+  const participants: string[] = [];
+  const seen = new Set<string>();
+  for (const id of [args.ownerId, ...args.taggedUserIds]) {
+    if (!seen.has(id)) {
+      seen.add(id);
+      participants.push(id);
+    }
+  }
+  const deadlineMs = args.sessionDayKey + REGISTRATION_PLAZO_MS;
+  let registered = 0;
+  const pending: string[] = [];
+  for (const u of participants) {
+    const reg = u === args.ownerId || hasOwnRegistration(args.registeredDays, u, args.sessionDayKey);
+    if (reg) registered += 1;
+    else if (args.nowMs < deadlineMs) pending.push(u); // falta, dentro del plazo
+  }
+  return { registered, total: participants.length, pending, deadlineMs };
+}
+
+/** Cervezas distintas (por beerId) de las salidas PROPIAS de un usuario. */
+export function distinctBeersForUser(userId: string, sessions: SessionData[]): number {
+  const set = new Set<string>();
+  for (const s of sessions) {
+    if (s.ownerId !== userId) continue;
+    for (const c of s.checkIns) set.add(c.beerId);
+  }
+  return set.size;
+}
+
+export interface VarietyRow {
+  userId: string;
+  displayName: string;
+  variety: number;
+}
+
+/**
+ * PIEZA 3 — Leaderboard por VARIEDAD (cervezas distintas). Mismo invariante que
+ * el de unidades: solo cuentan check-ins propios. Ordena por variedad desc y, a
+ * igualdad, por displayName asc.
+ */
+export function leaderboardVariety(users: UserRef[], sessions: SessionData[]): VarietyRow[] {
+  return users
+    .map((u) => ({
+      userId: u.id,
+      displayName: u.displayName,
+      variety: distinctBeersForUser(u.id, sessions),
+    }))
+    .sort((a, b) => b.variety - a.variety || a.displayName.localeCompare(b.displayName));
+}

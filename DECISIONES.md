@@ -3,6 +3,62 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada B — Mecánica social (racha, "quién falta", leaderboard dos ejes)
+
+Primera lógica de dominio nueva desde v1. Toda en `domain.ts` (pura, testeada). Los
+28 tests previos quedan intactos; +11 nuevos (los 10 casos de aceptación + 1
+invariante) → 39/39.
+
+- **PIEZA 1 · Racha** (`registrationStreak`): mide DÍAS QUE REGISTRASTE, no frecuencia.
+  Recorre la unión de días con salida propia o etiqueta no descartada, del más
+  reciente al más antiguo: día propio → +1; día solo etiquetado dentro del plazo (48h
+  desde medianoche UTC) → pendiente (ni suma ni rompe); vencido → rompe. **No tomar
+  NUNCA la rompe** (se congela) — caso 7 demostrado corriendo a 10 años. **No se
+  cachea**: se calcula en cada lectura (`getProfile`). Copy: "N salidas seguidas
+  registradas" (nunca "viernes").
+- **Descartar etiqueta**: columna nullable `SessionTag.dismissedAt` (migración
+  `session_tag_dismissed`). Solo el propio etiquetado (`setTagDismissed`, chequea
+  `taggedUserId === userId`). Descartada = neutra para la racha (sale de los eventos) y
+  fuera del denominador de la pieza 2. Control "No tomé ese día / Deshacer" en el
+  detalle, solo para el etiquetado.
+- **PIEZA 2 · "quién falta"** (`sessionRegistration`): "N de M registraron" en la
+  tarjeta. Denominador = dueño + usuarios de la app etiquetados no descartados (el
+  texto libre NO cuenta); el dueño siempre registrado; un etiquetado cuenta si tiene
+  salida propia esa fecha. **Reutiliza `hasOwnRegistration`, la MISMA función de
+  emparejamiento fecha↔usuario que la racha** (una sola implementación). Aviso social
+  (acotado al grupo de la salida, que ya es privado): nombre del día si faltan >24h
+  ("hasta el domingo"), horas si faltan menos ("quedan 9 h").
+- **PIEZA 3 · Leaderboard dos ejes**: `leaderboard` (unidades, sin tocar → los tests
+  con `toEqual` siguen pasando) + `leaderboardVariety` nuevo (cervezas distintas,
+  `count distinct beerId` sobre check-ins propios). Dos chips de igual peso
+  (`LeaderboardTabs`), Unidades por defecto. Invariante en ambos: solo check-ins
+  propios; etiquetar no acredita.
+- **Fuera de alcance respetado**: no se construyó la comparación dentro de una misma
+  salida (agrupación "misma salida" sigue diferida).
+
+**Verificación:** 39/39 tests (los 10 casos de aceptación como tests; el caso 7
+crítico corrido). UI en **Playwright WebKit** (login Beto, datos sembrados en dev):
+feed muestra "2 de 3 registraron / Falta tú · hasta el domingo", "1 de 2 · plazo
+vencido", "Faltan Edgar, Caro · quedan 9 h", el texto libre fuera del denominador;
+perfil racha "2 salidas seguidas registradas" (sin "viernes"); leaderboard Unidades
+(Edgar 10) ↔ Variedad (Caro 5) con un toque; descartar etiqueta verificado
+(determinista). Datos de prueba dejados en **dev** (dos usuarios que se etiquetan,
+fechas distintas, una etiqueta dentro del plazo y otra vencida). Nada tocó producción.
+
+### Punto aparte — P.6 plan B (gap inferior iOS): SEPARADO
+
+Se eliminó la `box-shadow` de P.6 (código muerto: Edgar confirmó que no arregló el
+gap). El plan B real (sacar `BottomNav` de `position: fixed` y ponerla en flujo en un
+contenedor `100dvh` con el contenido en scroll) **se separa a su propia pasada**, como
+el spec permite ("si se complica, se reporta y se separa; NO mezclar con la mecánica
+social"). Motivo: es un refactor por-pantalla de **8 archivos** (`.pb-nav` en 4 tabs +
+sus 4 skeletons) con estructura NO uniforme (el feed tiene `AppHeader` hermano; el
+perfil un solo `main`; el catálogo su propio header) y headers `sticky` que interactúan
+— cada pantalla necesita envolver su contenido en un scroller `flex:1` con la barra
+`flex:none` al final. Bundlearlo con la lógica de dominio arriesga desestabilizar todas
+las tabs, y **Code no puede verificar el beneficio** (barras dinámicas de iOS). Se hará
+como pasada enfocada, verificando cada tab en Chromium/WebKit y con Edgar en el iPhone.
+
 ## Pasada P.6 — Gap inferior en PWA standalone (iOS)
 
 ### Diagnóstico (antes de tocar)

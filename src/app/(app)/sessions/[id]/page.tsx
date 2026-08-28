@@ -10,6 +10,7 @@ import { Tally } from "@/components/Tally";
 import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
+import { TagDismissControl } from "@/components/TagDismissControl";
 import { FORMAT_LABEL, formatDay } from "@/lib/format";
 import { sessionTotalUnits } from "@/lib/domain";
 
@@ -33,7 +34,8 @@ export default async function SessionDetailPage({
   if (!s) notFound();
 
   const isOwner = s.userId === viewer.id;
-  const isTagged = s.tags.some((t) => t.taggedUserId === viewer.id);
+  const myTag = s.tags.find((t) => t.taggedUserId === viewer.id);
+  const isTagged = !!myTag;
   if (!isOwner && !isTagged) notFound();
 
   const total = sessionTotalUnits({ checkIns: s.checkIns });
@@ -79,6 +81,27 @@ export default async function SessionDetailPage({
           </div>
           {total > 0 && <Tally count={total} color="var(--color-espuma)" barW={3} barH={30} gap={4} maxGroups={5} labelColor="rgba(251,240,213,.7)" />}
         </div>
+
+        {/* Pasada B: contador "quién falta" (social, acotado al grupo de la salida). */}
+        {s.social && s.social.total > 1 && (
+          <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "12px 15px", display: "flex", flexDirection: "column", gap: 6 }}>
+            <span style={{ font: "700 15px var(--font-sans)" }}>
+              {s.social.registered} de {s.social.total} registraron
+            </span>
+            {s.social.pending.length > 0 && (
+              <span style={{ font: "500 13px/1.4 var(--font-sans)", color: "var(--color-ambar)" }}>
+                Falta{s.social.pending.length > 1 ? "n" : ""}{" "}
+                {s.social.pending.map((p) => (p.id === viewer.id ? "tú" : p.displayName)).join(", ")} · {s.social.plazoLabel}
+              </span>
+            )}
+            {s.social.pending.length === 0 && s.social.registered < s.social.total && (
+              <span style={{ font: "500 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>El plazo de 48 h ya venció para quienes faltaron.</span>
+            )}
+          </div>
+        )}
+
+        {/* Control "no tomé" — solo el propio etiquetado. */}
+        {myTag && <TagDismissControl tagId={myTag.id} dismissed={!!myTag.dismissedAt} />}
 
         {isOwner && (
           <>

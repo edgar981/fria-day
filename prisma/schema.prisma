@@ -199,6 +199,10 @@ model SessionTag {
   taggedUser   User?   @relation("SessionTagTaggedUser", fields: [taggedUserId], references: [id], onDelete: Cascade)
   freeText     String?
 
+  // Pasada B: el propio etiquetado puede marcar "no tomé". Neutro para la racha
+  // (sale de los eventos) y sale del denominador de "quién falta". null = sin descartar.
+  dismissedAt DateTime?
+
   createdAt DateTime @default(now())
 
   // Un mismo usuario no puede etiquetarse dos veces en la misma sesión.

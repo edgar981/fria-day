@@ -59,6 +59,26 @@ export function relativeDay(date: Date): string {
   return formatDay(date);
 }
 
+/**
+ * Copy del plazo de la racha (Pasada B): nombre del día mientras falten más de
+ * 24h ("hasta mañana"), horas restantes cuando falten menos ("quedan 9 h").
+ */
+const weekdayFmt = new Intl.DateTimeFormat("es-CO", { weekday: "long", timeZone: "UTC" });
+export function avisoPlazo(deadlineMs: number, nowMs: number): string {
+  const hoursLeft = (deadlineMs - nowMs) / 3_600_000;
+  if (hoursLeft <= 0) return "";
+  if (hoursLeft < 24) return `quedan ${Math.ceil(hoursLeft)} h`;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const startUTC = (ms: number) => {
+    const d = new Date(ms);
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  };
+  const diff = Math.round((startUTC(deadlineMs) - startUTC(nowMs)) / dayMs);
+  if (diff <= 0) return "hasta hoy";
+  if (diff === 1) return "hasta mañana";
+  return `hasta el ${weekdayFmt.format(new Date(deadlineMs))}`;
+}
+
 export function formatAbv(abv: unknown): string | null {
   if (abv == null) return null;
   const n = typeof abv === "number" ? abv : Number(abv.toString());

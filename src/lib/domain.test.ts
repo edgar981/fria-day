@@ -11,6 +11,12 @@ import {
   isValidTag,
   planCheckInAdd,
   consolidateNewCheckIns,
+  dayKeyUTC,
+  registrationStreak,
+  sessionRegistration,
+  leaderboardVariety,
+  distinctBeersForUser,
+  REGISTRATION_PLAZO_MS,
   type SessionData,
   type UserRef,
   type ExistingCheckIn,
@@ -284,5 +290,128 @@ describe("consolidación de check-ins (misma cerveza + formato) — punto A.2-5"
       { beerId: "b1", format: "BOTELLA", quantity: 2, rating: 4 },
       { beerId: "b1", format: "JARRA", quantity: 1, rating: null },
     ]);
+  });
+});
+
+// ============================================================================
+// Pasada B — mecánica social. Casos de aceptación del spec (criterio).
+// ============================================================================
+describe("Pasada B — racha de registro (PIEZA 1)", () => {
+  const U = "u";
+  const NOW = Date.UTC(2026, 7, 28, 12); // 28-ago-2026 12:00 UTC
+  const day = (y: number, m: number, d: number) => dayKeyUTC(new Date(Date.UTC(y, m - 1, d)));
+  const reg = (...pairs: [string, number][]) => new Set(pairs.map(([u, k]) => `${u}|${k}`));
+
+  it("caso 1: sin salidas ni etiquetas → 0", () => {
+    expect(registrationStreak({ registeredDays: new Set(), userId: U, eventDayKeys: [], nowMs: NOW })).toBe(0);
+  });
+
+  it("caso 2: tres salidas propias en fechas distintas → 3", () => {
+    const ks = [day(2026, 8, 1), day(2026, 8, 10), day(2026, 8, 20)];
+    expect(registrationStreak({ registeredDays: reg([U, ks[0]], [U, ks[1]], [U, ks[2]]), userId: U, eventDayKeys: ks, nowMs: NOW })).toBe(3);
+  });
+
+  it("caso 3: salida propia + etiqueta la misma fecha → 1, no 2", () => {
+    const k = day(2026, 8, 20);
+    // el día está en ambos conjuntos → una sola clave en la unión
+    expect(registrationStreak({ registeredDays: reg([U, k]), userId: U, eventDayKeys: [k, k], nowMs: NOW })).toBe(1);
+  });
+
+  it("caso 4: etiquetado dentro del plazo, sin registrar → racha intacta (pendiente no rompe)", () => {
+    const own1 = day(2026, 8, 10), own2 = day(2026, 8, 15);
+    const tagHoy = day(2026, 8, 28); // deadline 30-ago 00:00 > NOW → pendiente
+    const streak = registrationStreak({ registeredDays: reg([U, own1], [U, own2]), userId: U, eventDayKeys: [tagHoy, own2, own1], nowMs: NOW });
+    expect(streak).toBe(2); // los 2 previos siguen; el tag pendiente ni suma ni rompe
+    expect(NOW < tagHoy + REGISTRATION_PLAZO_MS).toBe(true); // aviso activo
+  });
+
+  it("caso 5: etiquetado vencido (>48h) sin registrar → rompe la racha (0)", () => {
+    const ownViejo = day(2026, 8, 10);
+    const tagVencido = day(2026, 8, 25); // deadline 27-ago 00:00 < NOW → vencido
+    const streak = registrationStreak({ registeredDays: reg([U, ownViejo]), userId: U, eventDayKeys: [tagVencido, ownViejo], nowMs: NOW });
+    expect(streak).toBe(0); // el tag vencido (más reciente) rompe antes de contar el viejo
+  });
+
+  it("caso 6: etiquetado vencido pero DESCARTADO → racha intacta (no entra en eventos)", () => {
+    const own = day(2026, 8, 10);
+    // el tag descartado NO se pasa en eventDayKeys → no rompe
+    expect(registrationStreak({ registeredDays: reg([U, own]), userId: U, eventDayKeys: [own], nowMs: NOW })).toBe(1);
+  });
+
+  it("caso 7 (CRÍTICO): sin actividad dos meses, sin etiquetas → racha CONGELADA en su último valor", () => {
+    const ks = [day(2026, 6, 1), day(2026, 6, 2), day(2026, 6, 3)]; // junio, ~2 meses antes
+    const registeredDays = reg([U, ks[0]], [U, ks[1]], [U, ks[2]]);
+    const base = { registeredDays, userId: U, eventDayKeys: ks };
+    expect(registrationStreak({ ...base, nowMs: NOW })).toBe(3);
+    // Demostrado corriendo: el paso del tiempo NUNCA la rompe (no tomar no castiga).
+    expect(registrationStreak({ ...base, nowMs: NOW + 60 * 24 * 3600 * 1000 })).toBe(3);
+    expect(registrationStreak({ ...base, nowMs: NOW + 3650 * 24 * 3600 * 1000 })).toBe(3); // 10 años
+  });
+});
+
+describe("Pasada B — contador 'quién falta' (PIEZA 2)", () => {
+  const NOW = Date.UTC(2026, 7, 28, 12);
+  const day = (y: number, m: number, d: number) => dayKeyUTC(new Date(Date.UTC(y, m - 1, d)));
+  const reg = (...pairs: [string, number][]) => new Set(pairs.map(([u, k]) => `${u}|${k}`));
+  const sDay = day(2026, 8, 28); // dentro del plazo respecto a NOW
+
+  it("caso 8: dueño + 3 etiquetados de la app + 1 texto libre, dos etiquetados registraron → 3 de 4", () => {
+    // el texto libre NO está en taggedUserIds. t1 y t2 registraron ese día; t3 no.
+    const r = sessionRegistration({
+      registeredDays: reg(["owner", sDay], ["t1", sDay], ["t2", sDay]),
+      ownerId: "owner",
+      taggedUserIds: ["t1", "t2", "t3"],
+      sessionDayKey: sDay,
+      nowMs: NOW,
+    });
+    expect(r.registered).toBe(3); // dueño (siempre) + t1 + t2
+    expect(r.total).toBe(4); // dueño + 3 de la app
+    expect(r.pending).toEqual(["t3"]); // falta t3, dentro del plazo
+  });
+
+  it("caso 9: un etiquetado descarta → sale del denominador", () => {
+    // t3 descartó → no se pasa en taggedUserIds
+    const r = sessionRegistration({
+      registeredDays: reg(["owner", sDay], ["t1", sDay], ["t2", sDay]),
+      ownerId: "owner",
+      taggedUserIds: ["t1", "t2"],
+      sessionDayKey: sDay,
+      nowMs: NOW,
+    });
+    expect(r.total).toBe(3); // dueño + t1 + t2 (t3 fuera)
+    expect(r.registered).toBe(3);
+    expect(r.pending).toEqual([]);
+  });
+});
+
+describe("Pasada B — leaderboard dos ejes (PIEZA 3)", () => {
+  const A: UserRef = { id: "A", displayName: "A" };
+  const B: UserRef = { id: "B", displayName: "B" };
+  // A: 10 unidades de 2 cervezas. B: 5 unidades de 5 cervezas.
+  const sessions: SessionData[] = [
+    { id: "sa", ownerId: "A", date: new Date(), checkIns: [
+      { beerId: "a1", quantity: 6, format: "BOTELLA", rating: null },
+      { beerId: "a2", quantity: 4, format: "BOTELLA", rating: null },
+    ] },
+    { id: "sb", ownerId: "B", date: new Date(), checkIns: [
+      { beerId: "b1", quantity: 1, format: "BOTELLA", rating: null },
+      { beerId: "b2", quantity: 1, format: "BOTELLA", rating: null },
+      { beerId: "b3", quantity: 1, format: "BOTELLA", rating: null },
+      { beerId: "b4", quantity: 1, format: "BOTELLA", rating: null },
+      { beerId: "b5", quantity: 1, format: "BOTELLA", rating: null },
+    ] },
+  ];
+
+  it("caso 10: A arriba en Unidades (10>5), B arriba en Variedad (5>2)", () => {
+    expect(leaderboard([A, B], sessions)[0].userId).toBe("A"); // unidades
+    expect(leaderboardVariety([A, B], sessions)[0].userId).toBe("B"); // variedad
+    expect(distinctBeersForUser("A", sessions)).toBe(2);
+    expect(distinctBeersForUser("B", sessions)).toBe(5);
+  });
+
+  it("invariante: etiquetar no acredita variedad (solo check-ins propios)", () => {
+    // B no tiene check-ins propios de las cervezas de A aunque estuviera etiquetado.
+    expect(distinctBeersForUser("B", sessions)).toBe(5);
+    expect(distinctBeersForUser("A", sessions)).toBe(2);
   });
 });
