@@ -79,7 +79,7 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
   function nextPwIdentity() {
     setError(null);
     if (!name.trim()) return setError("Pon tu nombre");
-    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Email inválido");
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Revisa tu correo");
     if (password.length < 8) return setError("La contraseña necesita mínimo 8 caracteres");
     setStep(3);
   }

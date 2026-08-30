@@ -18,7 +18,7 @@ export default async function InvitePage() {
         <div>
           <h1 style={{ font: "800 28px/1 var(--font-display)", letterSpacing: "-.02em" }}>Invitar al parche</h1>
           <p style={{ font: "400 14px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: "8px 0 0" }}>
-            FriaDay es solo por invitación. Genera un código y pásaselo a tu parcero. Cada código sirve una sola vez.
+            Genera un código y pásaselo a tu parche. Sirve una sola vez.
           </p>
         </div>
 
@@ -28,7 +28,7 @@ export default async function InvitePage() {
           <div className="eyebrow" style={{ marginBottom: 11 }}>Códigos disponibles</div>
           {invites.length === 0 ? (
             <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>
-              No tienes códigos disponibles. Genera uno arriba.
+              Ninguno todavía. Genera uno arriba.
             </p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>

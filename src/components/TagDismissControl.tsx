@@ -29,7 +29,7 @@ export function TagDismissControl({ tagId, dismissed }: { tagId: string; dismiss
         <>
           <div style={{ font: "600 14.5px var(--font-sans)" }}>Marcaste que no tomaste ese día.</div>
           <p style={{ font: "400 12.5px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: 0 }}>
-            No cuenta para tu racha ni para “quién falta”.
+            No afecta tu racha.
           </p>
           <button type="button" className="btn btn-ghost" style={{ height: 44 }} onClick={() => toggle(false)} disabled={pending}>
             {pending ? "…" : "Deshacer"}
@@ -39,7 +39,7 @@ export function TagDismissControl({ tagId, dismissed }: { tagId: string; dismiss
         <>
           <div style={{ font: "600 14.5px var(--font-sans)" }}>¿No tomaste ese día?</div>
           <p style={{ font: "400 12.5px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: 0 }}>
-            Márcalo y esta etiqueta queda neutra: no rompe tu racha ni te cuenta como que falta registrar.
+            Márcalo y no afecta tu racha.
           </p>
           <button type="button" className="btn btn-ghost" style={{ height: 44 }} onClick={() => toggle(true)} disabled={pending}>
             {pending ? "…" : "No tomé ese día"}

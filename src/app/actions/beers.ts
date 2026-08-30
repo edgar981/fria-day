@@ -27,11 +27,11 @@ export type CreateBeerResult =
  */
 export async function createBeer(input: unknown): Promise<CreateBeerResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const parsed = beerSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
   const { name, brewery, style, abv } = parsed.data;
   const nameKey = normalizeKey(name);
@@ -132,7 +132,7 @@ export async function updateBeerFields(
   input: { style?: string | null; abv?: string | null },
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const data: { style?: string | null; abv?: number | null } = {};
 

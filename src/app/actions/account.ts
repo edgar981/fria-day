@@ -7,7 +7,7 @@ import { auth } from "@/lib/auth";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 
-const emailSchema = z.string().trim().toLowerCase().email("Email inválido");
+const emailSchema = z.string().trim().toLowerCase().email("Revisa tu correo");
 
 /**
  * Elimina (revoca) una passkey del usuario. Guardarraíl: no dejar la cuenta sin
@@ -18,7 +18,7 @@ export async function deletePasskey(
   id: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const [passkeys, credentialCount] = await Promise.all([
     prisma.passkey.findMany({ where: { userId: user.id }, select: { id: true } }),
@@ -56,9 +56,9 @@ export async function addRecoveryEmail(
   raw: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
   const parsed = emailSchema.safeParse(raw);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Email inválido" };
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa tu correo" };
   const email = parsed.data;
   try {
     await prisma.user.update({ where: { id: user.id }, data: { email } });
@@ -82,7 +82,7 @@ export async function setAccountPassword(
   password: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!(user as { email?: string | null }).email) {
     return { ok: false, error: "Agrega primero un correo de recuperación" };
   }

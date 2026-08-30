@@ -18,7 +18,7 @@ export function EmptyFeed() {
       <div>
         <div style={{ font: "800 30px/1.1 var(--font-display)", letterSpacing: "-.025em" }}>Está seco por aquí</div>
         <p style={{ font: "400 15.5px/1.55 var(--font-sans)", color: "var(--color-tenue)", margin: "11px 0 0", maxWidth: 320 }}>
-          Nadie ha registrado nada todavía. La primera salida es la que arranca la costumbre.
+          Nadie ha registrado nada todavía. Empieza tú.
         </p>
       </div>
       <Link href="/sessions/new" className="btn btn-primary" style={{ width: "100%", maxWidth: 340 }}>

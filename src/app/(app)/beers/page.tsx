@@ -55,7 +55,7 @@ export default async function BeersPage({
       <main style={{ padding: "8px 18px 0" }}>
         {beers.length === 0 ? (
           <div className="card" style={{ padding: 20, textAlign: "center", color: "var(--color-tenue)", marginTop: 12 }}>
-            {q ? "Ninguna cerveza coincide." : "El catálogo está vacío. Se irá llenando al registrar cervezas en tus salidas."}
+            {q ? "Nada coincide." : "Todavía sin cervezas."}
           </div>
         ) : (
           <>

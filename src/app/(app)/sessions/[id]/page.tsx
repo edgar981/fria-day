@@ -75,6 +75,9 @@ export default async function SessionDetailPage({
             {s.placeName || (isOwner ? "Tu salida" : `Salida de ${s.user.displayName}`)}
           </div>
           <div style={{ font: "500 15px var(--font-sans)", color: "var(--color-tenue)", marginTop: 6 }}>
+            {/* Si la salida es de otro y tiene lugar (el título muestra el lugar),
+                el dueño se atribuye aquí. Sin lugar, ya lo dice el título. */}
+            {!isOwner && s.placeName ? `Salida de ${s.user.displayName} · ` : ""}
             {formatDay(s.date)}
             {compSummary ? ` · con ${compSummary}` : ""}
           </div>
@@ -101,7 +104,7 @@ export default async function SessionDetailPage({
               </span>
             )}
             {s.social.pending.length === 0 && s.social.registered < s.social.total && (
-              <span style={{ font: "500 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>El plazo de 48 h ya venció para quienes faltaron.</span>
+              <span style={{ font: "500 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>Ya se venció el plazo.</span>
             )}
           </div>
         )}
@@ -122,7 +125,7 @@ export default async function SessionDetailPage({
         <section>
           <div className="eyebrow" style={{ marginBottom: 11 }}>Las cervezas</div>
           {s.checkIns.length === 0 ? (
-            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Sin cervezas registradas.</p>
+            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Todavía nada por aquí.</p>
           ) : isOwner ? (
             <OwnerCheckInList
               sessionId={s.id}
@@ -167,11 +170,6 @@ export default async function SessionDetailPage({
           </section>
         )}
 
-        {!isOwner && (
-          <p style={{ font: "400 13px var(--font-sans)", color: "var(--color-tenue-2)", textAlign: "center" }}>
-            Estás viendo la salida de {s.user.displayName} en solo lectura.
-          </p>
-        )}
       </main>
     </div>
   );

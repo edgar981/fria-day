@@ -40,7 +40,7 @@ function fit(w: number, h: number, max: number): { w: number; h: number } {
  */
 export async function compressImage(file: File): Promise<CompressedImage> {
   if (!file.type.startsWith("image/")) {
-    throw new ImageError("Solo se permiten imágenes.");
+    throw new ImageError("Eso no es una imagen.");
   }
 
   // createImageBitmap respeta la orientación EXIF (fotos verticales de iPhone) y

@@ -45,11 +45,11 @@ function buildTags(
 
 export async function createSession(input: unknown): Promise<Result<{ id: string }>> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const parsed = sessionSchema.safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
   const data = parsed.data;
 
@@ -104,7 +104,7 @@ export async function updateSessionHeader(input: {
   notes?: string;
 }): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!(await assertOwner(input.id, userId)))
     return { ok: false, error: "No es tu salida" };
 
@@ -112,7 +112,7 @@ export async function updateSessionHeader(input: {
     .pick({ date: true, placeName: true, notes: true })
     .safeParse(input);
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
 
   await prisma.session.update({
@@ -130,7 +130,7 @@ export async function updateSessionHeader(input: {
 
 export async function deleteSession(id: string): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!(await assertOwner(id, userId)))
     return { ok: false, error: "No es tu salida" };
 
@@ -152,7 +152,7 @@ export async function addCheckIn(
   input: unknown,
 ): Promise<Result<{ checkInId: string }>> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const sessionId =
     input && typeof input === "object"
@@ -161,7 +161,7 @@ export async function addCheckIn(
   const parsed = checkInSchema.safeParse(input);
   if (!sessionId) return { ok: false, error: "Falta la salida" };
   if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
   if (!(await assertOwner(sessionId, userId)))
     return { ok: false, error: "No es tu salida" };
@@ -211,7 +211,7 @@ export async function addCheckIn(
 
 export async function deleteCheckIn(checkInId: string): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const ci = await prisma.checkIn.findUnique({
     where: { id: checkInId },
@@ -235,7 +235,7 @@ export async function updateCheckIn(input: {
   rating: number | null;
 }): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const rating = input.rating;
   if (rating !== null && !(Number.isInteger(rating) && rating >= 1 && rating <= 5)) {
@@ -266,7 +266,7 @@ export async function setCheckInPhoto(
   photoUrl: string,
 ): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!isOurBlobUrl(photoUrl)) return { ok: false, error: "URL de foto inválida" };
 
   const ci = await prisma.checkIn.findUnique({
@@ -288,7 +288,7 @@ export async function setCheckInPhoto(
 /** Quita la foto de un check-in y borra el archivo (best-effort). Solo el dueño. */
 export async function removeCheckInPhoto(checkInId: string): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const ci = await prisma.checkIn.findUnique({
     where: { id: checkInId },
@@ -313,7 +313,7 @@ export async function addTag(input: {
   freeText?: string | null;
 }): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!(await assertOwner(input.sessionId, userId)))
     return { ok: false, error: "No es tu salida" };
 
@@ -333,7 +333,7 @@ export async function addTag(input: {
 
 export async function removeTag(tagId: string): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const tag = await prisma.sessionTag.findUnique({
     where: { id: tagId },
@@ -359,7 +359,7 @@ export async function setTagDismissed(
   dismissed: boolean,
 ): Promise<Result> {
   const userId = await requireUserId();
-  if (!userId) return { ok: false, error: "No autenticado" };
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const tag = await prisma.sessionTag.findUnique({
     where: { id: tagId },

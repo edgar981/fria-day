@@ -102,9 +102,9 @@ export default async function BeerDetailPage({
         <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: -8 }}>Agregada por {beer.createdBy.displayName}</div>
 
         <section>
-          <div className="eyebrow" style={{ marginBottom: 11 }}>Registros recientes</div>
+          <div className="eyebrow" style={{ marginBottom: 11 }}>Quién la ha tomado</div>
           {recent.length === 0 ? (
-            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Todavía nadie la ha registrado.</p>
+            <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie la ha probado todavía.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {recent.map((c) => (

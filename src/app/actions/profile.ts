@@ -10,7 +10,7 @@ export async function updateAvatar(
   key: string | null,
 ): Promise<{ ok: boolean; error?: string }> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
   const avatar = isAvatarKey(key) ? key : null; // null = anónimo
   await prisma.user.update({ where: { id: user.id }, data: { avatar } });
   revalidatePath("/profile");

@@ -284,7 +284,7 @@ export function BeerSheet({
                 <input className="field" style={{ height: 48 }} placeholder="Cervecería *" value={brewery} onChange={(e) => setBrewery(e.target.value)} />
                 <input className="field" style={{ height: 48 }} placeholder="Estilo (opcional)" value={style} onChange={(e) => setStyle(e.target.value)} />
                 <span style={{ font: "400 12px/1.4 var(--font-sans)", color: "var(--color-tenue-2)" }}>
-                  Solo la cervecería es obligatoria. Lo demás se puede completar después, desde el catálogo.
+                  Solo la cervecería es obligatoria. El resto lo completas después.
                 </span>
                 <button type="button" className="btn btn-ghost" style={{ alignSelf: "flex-start", height: 40 }} onClick={() => setCreating(false)}>
                   Atrás

@@ -22,10 +22,10 @@ export type CreateInviteResult =
 
 export async function createInvite(input: unknown): Promise<CreateInviteResult> {
   const user = await getCurrentUser();
-  if (!user) return { ok: false, error: "No autenticado" };
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const parsed = inviteSchema.safeParse(input ?? {});
-  if (!parsed.success) return { ok: false, error: "Datos inválidos" };
+  if (!parsed.success) return { ok: false, error: "Revisa los datos" };
 
   const days = parsed.data.expiresInDays;
   const expiresAt =

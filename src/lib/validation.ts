@@ -3,19 +3,19 @@ import { BEER_FORMATS } from "@/lib/domain";
 
 export const registerSchema = z.object({
   displayName: z.string().trim().min(1, "Pon tu nombre").max(40),
-  email: z.string().trim().toLowerCase().email("Email inválido"),
+  email: z.string().trim().toLowerCase().email("Revisa tu correo"),
   password: z.string().min(8, "Mínimo 8 caracteres"),
   code: z.string().trim().min(1, "Necesitas un código de invitación"),
 });
 
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Email inválido"),
+  email: z.string().trim().toLowerCase().email("Revisa tu correo"),
   password: z.string().min(1, "Escribe tu contraseña"),
 });
 
 export const beerSchema = z.object({
-  name: z.string().trim().min(1, "Nombre requerido").max(80),
-  brewery: z.string().trim().min(1, "Cervecería requerida").max(80),
+  name: z.string().trim().min(1, "Falta el nombre").max(80),
+  brewery: z.string().trim().min(1, "Falta la cervecería").max(80),
   style: z.string().trim().max(60).optional().or(z.literal("")),
   abv: z
     .union([z.coerce.number().min(0).max(60), z.literal("")])
@@ -48,7 +48,7 @@ const tagSchema = z
   );
 
 export const sessionSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Fecha inválida"),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Revisa la fecha"),
   placeName: z.string().trim().max(80).optional().or(z.literal("")),
   notes: z.string().trim().max(500).optional().or(z.literal("")),
   tags: z.array(tagSchema).max(30).default([]),

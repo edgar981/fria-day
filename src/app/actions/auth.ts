@@ -20,7 +20,7 @@ export async function registerWithInvite(
     code: formData.get("code"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
   const { displayName, email, password, code } = parsed.data;
   const rawAvatar = formData.get("avatar");
@@ -91,7 +91,7 @@ export async function loginAction(
     password: formData.get("password"),
   });
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Datos inválidos" };
+    return { error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
   try {
     await auth.api.signInEmail({
