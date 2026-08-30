@@ -12,8 +12,8 @@ import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { TagDismissControl } from "@/components/TagDismissControl";
 import { FoamStrip } from "@/components/FoamStrip";
-import { FORMAT_LABEL, formatDay, pendingLabel } from "@/lib/format";
-import { sessionTotalUnits } from "@/lib/domain";
+import { FORMAT_LABEL, formatDay, pendingLabel, formatBreakdownText, joinMeta } from "@/lib/format";
+import { sessionTotalUnits, formatBreakdown } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +43,7 @@ export default async function SessionDetailPage({
   if (!circle.has(s.userId)) notFound();
 
   const total = sessionTotalUnits({ checkIns: s.checkIns });
+  const bd = formatBreakdown(s.checkIns.map((c) => ({ format: c.format, quantity: c.quantity })));
   const compSummary = companions(
     s.tags.map((t) =>
       t.taggedUser ? (t.taggedUser.id === viewer.id ? "tú" : t.taggedUser.displayName) : t.freeText ?? "",
@@ -87,7 +88,14 @@ export default async function SessionDetailPage({
         <div style={{ background: "linear-gradient(180deg,#C4620A,#8A4208)", borderRadius: 22, padding: "17px 19px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".16em", color: "rgba(251,240,213,.75)" }}>TOTAL DE LA SALIDA</div>
-            <div style={{ font: "800 40px/1 var(--font-display)", color: "var(--color-espuma)", marginTop: 7 }}>{total}</div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginTop: 7 }}>
+              <span style={{ font: "800 40px/1 var(--font-display)", color: "var(--color-espuma)" }}>{total}</span>
+              <span style={{ font: "600 14px var(--font-sans)", color: "rgba(251,240,213,.8)", paddingBottom: 4 }}>bebidas</span>
+            </div>
+            {/* Desglose por formato (Pasada D): solo con más de un formato. */}
+            {bd.length > 1 && (
+              <div style={{ font: "500 12.5px var(--font-sans)", color: "rgba(251,240,213,.72)", marginTop: 6 }}>{formatBreakdownText(bd)}</div>
+            )}
           </div>
           {total > 0 && <Tally count={total} color="var(--color-espuma)" barW={3} barH={30} gap={4} maxGroups={5} labelColor="rgba(251,240,213,.7)" />}
         </div>
@@ -123,7 +131,7 @@ export default async function SessionDetailPage({
 
         {/* Las cervezas */}
         <section>
-          <div className="eyebrow" style={{ marginBottom: 11 }}>Las cervezas</div>
+          <div className="eyebrow" style={{ marginBottom: 11 }}>Las bebidas</div>
           {s.checkIns.length === 0 ? (
             <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)" }}>Todavía nada por aquí.</p>
           ) : isOwner ? (
@@ -153,7 +161,7 @@ export default async function SessionDetailPage({
                     <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ font: "600 16px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beer.name}</div>
-                      <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{c.beer.brewery} · {FORMAT_LABEL[c.format]}</div>
+                      <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.beer.brewery, FORMAT_LABEL[c.format])}</div>
                     </div>
                     <RatingCell value={c.rating} size="sm" />
                   </div>

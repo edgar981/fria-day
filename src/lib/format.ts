@@ -1,10 +1,13 @@
-import type { BeerFormat } from "@/lib/domain";
+import type { BeerFormat, FormatCount } from "@/lib/domain";
 
 export const FORMAT_LABEL: Record<BeerFormat, string> = {
   BOTELLA: "Botella",
   LATA: "Lata",
   JARRA: "Jarra",
   PINTA: "Pinta",
+  COPA: "Copa",
+  VASO: "Vaso",
+  JARRA_COMPARTIDA: "Jarra compartida",
 };
 
 export const FORMAT_EMOJI: Record<BeerFormat, string> = {
@@ -12,7 +15,41 @@ export const FORMAT_EMOJI: Record<BeerFormat, string> = {
   LATA: "🥫",
   JARRA: "🍺",
   PINTA: "🍺",
+  COPA: "🍸",
+  VASO: "🥃",
+  JARRA_COMPARTIDA: "🍹",
 };
+
+// Sustantivo en minúscula [singular, plural] para el desglose por formato (Pasada D).
+const FORMAT_NOUN: Record<BeerFormat, [string, string]> = {
+  BOTELLA: ["botella", "botellas"],
+  LATA: ["lata", "latas"],
+  JARRA: ["jarra", "jarras"],
+  PINTA: ["pinta", "pintas"],
+  COPA: ["copa", "copas"],
+  VASO: ["vaso", "vasos"],
+  JARRA_COMPARTIDA: ["jarra compartida", "jarras compartidas"],
+};
+
+/** "7 botellas · 4 jarras" — textura del total sin inventar conversiones (Pasada D). */
+export function formatBreakdownText(breakdown: FormatCount[]): string {
+  return breakdown
+    .map((b) => `${b.count} ${FORMAT_NOUN[b.format][b.count === 1 ? 0 : 1]}`)
+    .join(" · ");
+}
+
+/** "N bebida(s)" — el conteo cuenta registros de consumo, no volumen (Pasada D). */
+export function bebidasLabel(n: number): string {
+  return `${n} bebida${n !== 1 ? "s" : ""}`;
+}
+
+/**
+ * Une metadatos con " · " saltando los vacíos. Clave para cócteles (Pasada D): sin
+ * cervecería no debe quedar un " · " colgando ni un punto al inicio.
+ */
+export function joinMeta(...parts: (string | null | undefined)[]): string {
+  return parts.filter((p) => p != null && p !== "").join(" · ");
+}
 
 /**
  * La fecha de la sesión representa un día de calendario. Se guarda como

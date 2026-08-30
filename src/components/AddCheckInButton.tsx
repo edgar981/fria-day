@@ -28,7 +28,7 @@ export function AddCheckInButton({ sessionId }: { sessionId: string }) {
   return (
     <>
       <button type="button" className="btn btn-dashed" style={{ width: "100%" }} onClick={() => setOpen(true)}>
-        <Icon name="plus" size={20} /> Agregar otra cerveza
+        <Icon name="plus" size={20} /> Agregar otra bebida
       </button>
       <BeerSheet open={open} onClose={() => setOpen(false)} onAdd={onAdd} />
     </>

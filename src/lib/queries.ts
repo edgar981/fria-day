@@ -13,8 +13,10 @@ import {
   normalizeKey,
   ownBeerRating,
   circleOf,
+  formatBreakdown,
   type SessionData,
   type UserRef,
+  type FormatCount,
 } from "@/lib/domain";
 
 /** Set `${userId}|${dayKey}` de TODAS las salidas propias (emparejamiento fecha↔usuario). */
@@ -296,10 +298,20 @@ export async function getProfile(userId: string) {
   ];
   const streak = registrationStreak({ registeredDays, userId, eventDayKeys, nowMs: Date.now() });
 
+  // Desglose por formato (Pasada D): del propio total, y por usuario para el eje
+  // "Unidades" del leaderboard. Solo check-ins propios de cada quien (invariante).
+  const ownCheckIns = (uid: string) =>
+    sessions.filter((s) => s.ownerId === uid).flatMap((s) => s.checkIns);
+  const breakdown = formatBreakdown(ownCheckIns(userId));
+  const breakdownByUser: Record<string, FormatCount[]> = {};
+  for (const u of circleUsers) breakdownByUser[u.id] = formatBreakdown(ownCheckIns(u.id));
+
   return {
     stats: userStats(userId, sessions),
     board: leaderboard(circleUsers, sessions),
     boardVariety: leaderboardVariety(circleUsers, sessions),
+    breakdown,
+    breakdownByUser,
     streak,
     avatarById,
     // Sin círculo (solo él): el leaderboard muestra copy explicativo, no un vacío raro.
@@ -339,7 +351,7 @@ export async function getBeerOptions(search?: string) {
           ],
         }
       : {},
-    select: { id: true, name: true, brewery: true, style: true, abv: true },
+    select: { id: true, name: true, brewery: true, style: true, abv: true, kind: true },
     orderBy: { name: "asc" },
     take: 20,
   });

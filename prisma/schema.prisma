@@ -145,7 +145,12 @@ model Invitation {
 model Beer {
   id      String   @id @default(cuid())
   name    String
-  brewery String
+  // Tipo de bebida (Pasada D). Default CERVEZA para lo que ya existe. El modelo se
+  // sigue llamando Beer por decisión: renombrar a Drink es refactor interno con
+  // riesgo y cero beneficio de usuario (deuda anotada en BACKLOG.md).
+  kind    DrinkKind @default(CERVEZA)
+  // Cervecería. Opcional (Pasada D): en cócteles no aplica y no se le pide al usuario.
+  brewery String?
   style   String?
   abv     Decimal? @db.Decimal(4, 2)
 
@@ -235,4 +240,13 @@ enum BeerFormat {
   LATA
   JARRA
   PINTA
+  // Formatos de cóctel (Pasada D). Enum aditivo: no toca los valores existentes.
+  COPA
+  VASO
+  JARRA_COMPARTIDA
+}
+
+enum DrinkKind {
+  CERVEZA
+  COCTEL
 }

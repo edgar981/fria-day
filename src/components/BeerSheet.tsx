@@ -6,7 +6,8 @@ import { FormatPicker } from "@/components/FormatPicker";
 import { RatingInput } from "@/components/RatingInput";
 import { PhotoField } from "@/components/PhotoField";
 import { Icon } from "@/components/Icon";
-import { BEER_FORMATS, type BeerFormat } from "@/lib/domain";
+import { BEER_FORMATS, FORMATS_BY_KIND, type BeerFormat, type DrinkKind } from "@/lib/domain";
+import { joinMeta } from "@/lib/format";
 import type { BeerOption } from "@/lib/beer";
 
 const LAST_FORMAT_KEY = "fd:lastFormat";
@@ -47,6 +48,7 @@ export function BeerSheet({
   const [searchError, setSearchError] = useState(false);
   const [selected, setSelected] = useState<BeerOption | null>(null);
   const [creating, setCreating] = useState(false);
+  const [createKind, setCreateKind] = useState<DrinkKind>("CERVEZA");
   const [brewery, setBrewery] = useState("");
   const [style, setStyle] = useState("");
   const [format, setFormat] = useState<BeerFormat>("BOTELLA");
@@ -113,6 +115,15 @@ export function BeerSheet({
     };
   }, [query, open, selected, creating]);
 
+  // Tipo de la bebida actual (Pasada D): el de la seleccionada, o el que se está
+  // creando, o cerveza. El selector de formato se restringe a este tipo.
+  const currentKind: DrinkKind = selected ? selected.kind : creating ? createKind : "CERVEZA";
+  useEffect(() => {
+    // Si el formato actual no aplica al tipo (p.ej. quedó BOTELLA y ahora es cóctel),
+    // salta al primero válido.
+    if (!FORMATS_BY_KIND[currentKind].includes(format)) setFormat(FORMATS_BY_KIND[currentKind][0]);
+  }, [currentKind, format]);
+
   if (!open) return null;
 
   function reset() {
@@ -120,6 +131,7 @@ export function BeerSheet({
     setResults([]);
     setSelected(null);
     setCreating(false);
+    setCreateKind("CERVEZA");
     setBrewery("");
     setStyle("");
     setRating(0);
@@ -136,12 +148,20 @@ export function BeerSheet({
     setError(null);
     let beer = selected;
     if (!beer && creating) {
-      if (!query.trim() || !brewery.trim()) {
-        setError("Nombre y cervecería son obligatorios");
+      const isCoctel = createKind === "COCTEL";
+      // Cóctel: no se pide cervecería (Pasada D). Cerveza: sigue obligatoria.
+      if (!query.trim() || (!isCoctel && !brewery.trim())) {
+        setError(isCoctel ? "Ponle nombre al cóctel" : "Nombre y cervecería son obligatorios");
         return;
       }
       setBusy(true);
-      const res = await createBeer({ name: query.trim(), brewery: brewery.trim(), style: style.trim(), abv: "" });
+      const res = await createBeer({
+        name: query.trim(),
+        kind: createKind,
+        brewery: isCoctel ? "" : brewery.trim(),
+        style: style.trim(),
+        abv: "",
+      });
       setBusy(false);
       if (!res.ok) {
         setError(res.error);
@@ -150,11 +170,12 @@ export function BeerSheet({
       beer = res.beer;
     }
     if (!beer) {
-      setError("Elige o crea una cerveza");
+      setError("Elige o crea una bebida");
       return;
     }
     try {
-      window.localStorage.setItem(LAST_FORMAT_KEY, format);
+      // El "último formato" es un atajo para cervezas; no guardamos formatos de cóctel.
+      if (currentKind === "CERVEZA") window.localStorage.setItem(LAST_FORMAT_KEY, format);
     } catch {}
     setBusy(true);
     await onAdd({ beer, format, rating, photoUrl });
@@ -206,8 +227,7 @@ export function BeerSheet({
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ font: "600 16px/1.2 var(--font-sans)" }}>{selected.name}</div>
               <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
-                {selected.brewery}
-                {selected.style ? ` · ${selected.style}` : ""}
+                {joinMeta(selected.brewery, selected.style)}
               </div>
             </div>
             <button type="button" className="btn btn-ghost" style={{ height: 38, fontSize: 13 }} onClick={() => setSelected(null)}>
@@ -259,8 +279,7 @@ export function BeerSheet({
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ font: "600 16px/1.2 var(--font-sans)", display: "block" }}>{b.name}</span>
                         <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
-                          {b.brewery}
-                          {b.style ? ` · ${b.style}` : ""}
+                          {joinMeta(b.brewery, b.style)}
                         </span>
                       </span>
                     </button>
@@ -271,7 +290,7 @@ export function BeerSheet({
                   onClick={() => setCreating(true)}
                   style={{ border: "1px dashed #6B5334", borderRadius: 18, padding: 14, marginTop: 6, background: "transparent", color: "var(--color-ambar)", font: "600 14.5px var(--font-sans)", cursor: "pointer", textAlign: "left" }}
                 >
-                  ＋ Crear {query.trim() ? `«${query.trim()}»` : "una cerveza"}
+                  ＋ Crear {query.trim() ? `«${query.trim()}»` : "una bebida"}
                 </button>
               </div>
             )}
@@ -279,12 +298,33 @@ export function BeerSheet({
             {creating && (
               <div style={{ border: "1px dashed #6B5334", borderRadius: 18, padding: 14, display: "flex", flexDirection: "column", gap: 11 }}>
                 <span style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-ambar)" }}>
-                  ＋ Crear {query.trim() ? `«${query.trim()}»` : "cerveza"}
+                  ＋ Crear {query.trim() ? `«${query.trim()}»` : "bebida"}
                 </span>
-                <input className="field" style={{ height: 48 }} placeholder="Cervecería *" value={brewery} onChange={(e) => setBrewery(e.target.value)} />
+                {/* Tipo de bebida (Pasada D): cerveza por defecto. */}
+                <div style={{ display: "flex", gap: 7 }}>
+                  {(["CERVEZA", "COCTEL"] as const).map((k) => {
+                    const on = createKind === k;
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => setCreateKind(k)}
+                        aria-pressed={on}
+                        style={{ flex: 1, height: 42, borderRadius: 12, cursor: "pointer", font: `${on ? 700 : 500} 14px var(--font-sans)`, background: on ? "var(--color-ambar)" : "var(--color-barra-alta)", color: on ? "var(--color-tinta)" : "var(--color-tenue)", border: on ? "1px solid var(--color-ambar)" : "1px solid var(--color-borde)" }}
+                      >
+                        {k === "CERVEZA" ? "Cerveza" : "Cóctel"}
+                      </button>
+                    );
+                  })}
+                </div>
+                {createKind === "CERVEZA" && (
+                  <input className="field" style={{ height: 48 }} placeholder="Cervecería *" value={brewery} onChange={(e) => setBrewery(e.target.value)} />
+                )}
                 <input className="field" style={{ height: 48 }} placeholder="Estilo (opcional)" value={style} onChange={(e) => setStyle(e.target.value)} />
                 <span style={{ font: "400 12px/1.4 var(--font-sans)", color: "var(--color-tenue-2)" }}>
-                  Solo la cervecería es obligatoria. El resto lo completas después.
+                  {createKind === "CERVEZA"
+                    ? "Solo la cervecería es obligatoria. El resto lo completas después."
+                    : "Solo el nombre es obligatorio. El resto lo completas después."}
                 </span>
                 <button type="button" className="btn btn-ghost" style={{ alignSelf: "flex-start", height: 40 }} onClick={() => setCreating(false)}>
                   Atrás
@@ -296,7 +336,7 @@ export function BeerSheet({
 
         <div>
           <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>Formato</span>
-          <FormatPicker value={format} onChange={setFormat} />
+          <FormatPicker value={format} onChange={setFormat} kind={currentKind} />
         </div>
         <div>
           <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>Rating</span>

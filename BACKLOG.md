@@ -58,3 +58,15 @@ recién vale la pena hacerlo.
   usuario **más repite**, no por recencia/alfabético.
 - **Disparador:** cuando el orden actual no priorice lo más repetido y estorbe al
   registrar rápido.
+
+## Renombrar el modelo `Beer` → `Drink` (deuda técnica)
+
+- **Qué:** desde la Pasada D el catálogo tiene bebidas de varios tipos (`kind`:
+  CERVEZA | COCTEL), pero el modelo, la tabla (`beer`), las relaciones (`beerId`,
+  `getBeersWithRanking`, etc.) y muchos nombres de variables siguen diciendo "beer".
+- **Disparador:** cuando la confusión interna "beer = cualquier bebida" cause un bug
+  real o frene una feature (p.ej. reglas por tipo que se enreden por el nombre).
+- **Por qué esperar:** es refactor de esquema + código por **claridad interna**, con
+  riesgo real (migración de tabla/columnas, tocar todo el código) y **cero beneficio
+  para el usuario**. El `kind` ya resuelve el problema de producto. No hacerlo hasta
+  que el nombre estorbe de verdad.

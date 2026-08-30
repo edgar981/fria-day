@@ -5,8 +5,20 @@
 //   check-ins de sesiones cuyo dueño (ownerId) es ese usuario. Ser etiquetado
 //   (SessionTag) en la sesión de otro NUNCA suma al leaderboard ni a las métricas.
 
-export const BEER_FORMATS = ["BOTELLA", "LATA", "JARRA", "PINTA"] as const;
+// Formatos: cerveza primero, cóctel después (Pasada D). El orden manda en el
+// selector y en el desglose por formato. Enum aditivo: no se tocan los existentes.
+export const BEER_FORMATS = ["BOTELLA", "LATA", "JARRA", "PINTA", "COPA", "VASO", "JARRA_COMPARTIDA"] as const;
 export type BeerFormat = (typeof BEER_FORMATS)[number];
+
+/** Tipo de bebida (Pasada D). El catálogo y el selector de formato se parten por esto. */
+export const DRINK_KINDS = ["CERVEZA", "COCTEL"] as const;
+export type DrinkKind = (typeof DRINK_KINDS)[number];
+
+/** Formatos válidos por tipo. El selector solo ofrece los del tipo elegido. */
+export const FORMATS_BY_KIND: Record<DrinkKind, BeerFormat[]> = {
+  CERVEZA: ["BOTELLA", "LATA", "JARRA", "PINTA"],
+  COCTEL: ["COPA", "VASO", "JARRA_COMPARTIDA"],
+};
 
 export interface CheckInData {
   beerId: string;
@@ -58,6 +70,30 @@ const STYLE_UNKNOWN = "Sin estilo";
 /** Suma de unidades (quantity) de todos los check-ins de UNA sesión. */
 export function sessionTotalUnits(session: Pick<SessionData, "checkIns">): number {
   return session.checkIns.reduce((sum, c) => sum + c.quantity, 0);
+}
+
+export interface FormatCount {
+  format: BeerFormat;
+  count: number;
+}
+
+/**
+ * Desglose por formato (Pasada D): suma de unidades por formato. Da textura al total
+ * ("11 bebidas · 7 botellas · 4 jarras") sin inventar conversiones de volumen — el
+ * número sigue siendo registros de consumo, no litros. Ordena por conteo desc y, a
+ * igualdad, por el orden del enum. Un formato con 0 no aparece. Si hay un solo
+ * formato, el desglose es redundante y quien lo muestra decide no pintarlo.
+ */
+export function formatBreakdown(
+  checkIns: { format: BeerFormat; quantity: number }[],
+): FormatCount[] {
+  const counts = new Map<BeerFormat, number>();
+  for (const c of checkIns) counts.set(c.format, (counts.get(c.format) ?? 0) + c.quantity);
+  return BEER_FORMATS.filter((f) => counts.has(f))
+    .map((f) => ({ format: f, count: counts.get(f) as number }))
+    .sort(
+      (a, b) => b.count - a.count || BEER_FORMATS.indexOf(a.format) - BEER_FORMATS.indexOf(b.format),
+    );
 }
 
 /**

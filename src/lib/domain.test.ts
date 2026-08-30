@@ -18,6 +18,8 @@ import {
   distinctBeersForUser,
   ownBeerRating,
   circleOf,
+  formatBreakdown,
+  FORMATS_BY_KIND,
   REGISTRATION_PLAZO_MS,
   type SessionData,
   type UserRef,
@@ -524,5 +526,52 @@ describe("Pasada C — el círculo (derivado de etiquetas)", () => {
     expect(board.find((r) => r.userId === C)?.units).toBe(0); // etiquetar no acredita
     expect(board.find((r) => r.userId === A)?.units).toBe(3);
     expect(board.some((r) => r.userId === B)).toBe(false); // B fuera del círculo, no aparece
+  });
+});
+
+describe("Pasada D — desglose por formato y formatos por tipo", () => {
+  it("caso 1: 7 botellas + 4 jarras → desglose [botella 7, jarra 4] y total 11", () => {
+    const cis = [
+      { format: "BOTELLA" as const, quantity: 5 },
+      { format: "JARRA" as const, quantity: 4 },
+      { format: "BOTELLA" as const, quantity: 2 },
+    ];
+    const bd = formatBreakdown(cis);
+    expect(bd).toEqual([
+      { format: "BOTELLA", count: 7 },
+      { format: "JARRA", count: 4 },
+    ]);
+    expect(bd.reduce((s, b) => s + b.count, 0)).toBe(11);
+  });
+
+  it("caso 2: un solo formato → desglose de largo 1 (quien lo muestra decide ocultarlo)", () => {
+    expect(formatBreakdown([{ format: "LATA", quantity: 3 }])).toEqual([{ format: "LATA", count: 3 }]);
+  });
+
+  it("caso 3: cerveza + cóctel en la misma salida → suma ambos formatos", () => {
+    const bd = formatBreakdown([
+      { format: "BOTELLA", quantity: 2 },
+      { format: "COPA", quantity: 1 },
+      { format: "VASO", quantity: 1 },
+    ]);
+    expect(bd.reduce((s, b) => s + b.count, 0)).toBe(4); // total mezcla tipos
+    expect(bd[0]).toEqual({ format: "BOTELLA", count: 2 }); // mayor primero
+  });
+
+  it("ordena por conteo desc, luego por orden del enum", () => {
+    const bd = formatBreakdown([
+      { format: "JARRA", quantity: 2 },
+      { format: "LATA", quantity: 2 },
+      { format: "BOTELLA", quantity: 5 },
+    ]);
+    // 5 primero; empate 2-2 desempata por orden de enum (LATA antes que JARRA)
+    expect(bd.map((b) => b.format)).toEqual(["BOTELLA", "LATA", "JARRA"]);
+  });
+
+  it("caso 5: FORMATS_BY_KIND[COCTEL] no ofrece botella ni lata", () => {
+    expect(FORMATS_BY_KIND.COCTEL).toEqual(["COPA", "VASO", "JARRA_COMPARTIDA"]);
+    expect(FORMATS_BY_KIND.COCTEL).not.toContain("BOTELLA");
+    expect(FORMATS_BY_KIND.COCTEL).not.toContain("LATA");
+    expect(FORMATS_BY_KIND.CERVEZA).toEqual(["BOTELLA", "LATA", "JARRA", "PINTA"]);
   });
 });

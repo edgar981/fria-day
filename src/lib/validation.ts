@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BEER_FORMATS } from "@/lib/domain";
+import { BEER_FORMATS, DRINK_KINDS } from "@/lib/domain";
 
 export const registerSchema = z.object({
   displayName: z.string().trim().min(1, "Pon tu nombre").max(40),
@@ -13,14 +13,22 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Escribe tu contraseña"),
 });
 
-export const beerSchema = z.object({
-  name: z.string().trim().min(1, "Falta el nombre").max(80),
-  brewery: z.string().trim().min(1, "Falta la cervecería").max(80),
-  style: z.string().trim().max(60).optional().or(z.literal("")),
-  abv: z
-    .union([z.coerce.number().min(0).max(60), z.literal("")])
-    .optional(),
-});
+export const beerSchema = z
+  .object({
+    name: z.string().trim().min(1, "Falta el nombre").max(80),
+    // Tipo de bebida (Pasada D). Por defecto cerveza.
+    kind: z.enum(DRINK_KINDS).default("CERVEZA"),
+    // Cervecería OBLIGATORIA solo para cerveza (ver refine). En cócteles no aplica.
+    brewery: z.string().trim().max(80).optional().or(z.literal("")),
+    style: z.string().trim().max(60).optional().or(z.literal("")),
+    abv: z
+      .union([z.coerce.number().min(0).max(60), z.literal("")])
+      .optional(),
+  })
+  .refine(
+    (d) => d.kind === "COCTEL" || !!(d.brewery && d.brewery.trim()),
+    { message: "Falta la cervecería", path: ["brewery"] },
+  );
 
 export const checkInSchema = z.object({
   beerId: z.string().min(1, "Elige una cerveza"),

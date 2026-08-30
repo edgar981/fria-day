@@ -4,7 +4,7 @@ import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
 import { Tally } from "@/components/Tally";
 import { FoamStrip } from "@/components/FoamStrip";
-import { FORMAT_LABEL, formatAbv, relativeDay, pendingLabel } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, relativeDay, pendingLabel, joinMeta } from "@/lib/format";
 import type { FeedSession } from "@/lib/queries";
 
 type CheckIn = FeedSession["checkIns"][number];
@@ -42,9 +42,7 @@ function BeerHero({ c }: { c: CheckIn }) {
           {c.beer.name}
         </div>
         <div style={{ font: "400 13px var(--font-sans)", color: "#C9A874", marginTop: 4 }}>
-          {c.beer.brewery}
-          {c.beer.style ? ` · ${c.beer.style}` : ""}
-          {formatAbv(c.beer.abv) ? ` · ${formatAbv(c.beer.abv)}` : ""}
+          {joinMeta(c.beer.brewery, c.beer.style, formatAbv(c.beer.abv))}
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -79,7 +77,7 @@ function CompactRow({ c }: { c: CheckIn }) {
           {c.beer.name}
         </div>
         <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>
-          {c.beer.brewery} · {FORMAT_LABEL[c.format]}
+          {joinMeta(c.beer.brewery, FORMAT_LABEL[c.format])}
         </div>
       </div>
       <RatingCell value={c.rating} size="xs" />
@@ -206,7 +204,7 @@ export function SessionCard({
         <div style={{ display: "flex", alignItems: "center", gap: 9, borderTop: "1px solid #241A12", paddingTop: 11 }}>
           {totalUnits > 0 && <Tally count={totalUnits} barW={2.5} barH={14} gap={3} maxGroups={6} />}
           <span style={{ font: "700 15px var(--font-sans)", color: "var(--color-ambar)" }}>
-            {totalUnits} unidad{totalUnits !== 1 ? "es" : ""}
+            {totalUnits} bebida{totalUnits !== 1 ? "s" : ""}
           </span>
         </div>
       </div>

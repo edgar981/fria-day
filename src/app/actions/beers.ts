@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { normalizeKey } from "@/lib/domain";
+import { normalizeKey, type DrinkKind } from "@/lib/domain";
 import { beerSchema } from "@/lib/validation";
 
 export type CreateBeerResult =
@@ -12,9 +12,10 @@ export type CreateBeerResult =
       beer: {
         id: string;
         name: string;
-        brewery: string;
+        brewery: string | null;
         style: string | null;
         abv: string | null;
+        kind: DrinkKind;
       };
       existed: boolean;
     }
@@ -33,9 +34,12 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Revisa los datos" };
   }
-  const { name, brewery, style, abv } = parsed.data;
+  const { name, style, abv, kind } = parsed.data;
+  // brewery opcional (Pasada D): en cócteles no aplica. breweryKey queda "" y los
+  // cócteles del mismo nombre se deduplican por nombre (clave nameKey + "").
+  const brewery = parsed.data.brewery && parsed.data.brewery.trim() ? parsed.data.brewery.trim() : null;
   const nameKey = normalizeKey(name);
-  const breweryKey = normalizeKey(brewery);
+  const breweryKey = normalizeKey(brewery ?? "");
 
   const existing = await prisma.beer.findUnique({
     where: { nameKey_breweryKey: { nameKey, breweryKey } },
@@ -50,6 +54,7 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
         brewery: existing.brewery,
         style: existing.style,
         abv: existing.abv ? existing.abv.toString() : null,
+        kind: existing.kind,
       },
     };
   }
@@ -57,6 +62,7 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
   const created = await prisma.beer.create({
     data: {
       name,
+      kind,
       brewery,
       style: style ? style : null,
       abv: abv === "" || abv == null ? null : abv,
@@ -75,6 +81,7 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
       brewery: created.brewery,
       style: created.style,
       abv: created.abv ? created.abv.toString() : null,
+      kind: created.kind,
     },
   };
 }
@@ -93,7 +100,7 @@ export async function searchBeersAction(query: string) {
           ],
         }
       : {},
-    select: { id: true, name: true, brewery: true, style: true, abv: true },
+    select: { id: true, name: true, brewery: true, style: true, abv: true, kind: true },
     orderBy: { name: "asc" },
     take: 20,
   });

@@ -3,7 +3,7 @@
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteCheckIn, addCheckIn, updateCheckIn, setCheckInPhoto, removeCheckInPhoto } from "@/app/actions/sessions";
-import { FORMAT_LABEL } from "@/lib/format";
+import { FORMAT_LABEL, joinMeta } from "@/lib/format";
 import { FoamStrip } from "@/components/FoamStrip";
 import { PhotoField } from "@/components/PhotoField";
 import type { BeerFormat } from "@/lib/domain";
@@ -15,7 +15,7 @@ export interface OwnerCheckIn {
   rating: number | null;
   beerId: string;
   beerName: string;
-  brewery: string;
+  brewery: string | null;
   photoUrl: string | null;
 }
 
@@ -111,7 +111,7 @@ export function OwnerCheckInList({
               <span style={{ minWidth: 34, height: 32, padding: "0 8px", borderRadius: 10, background: "#2E2217", color: "var(--color-ambar)", font: "700 15px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
-                <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{c.brewery} · {FORMAT_LABEL[c.format]}</div>
+                <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.brewery, FORMAT_LABEL[c.format])}</div>
               </div>
               <RatingEditor checkInId={c.id} initial={c.rating} />
               <button

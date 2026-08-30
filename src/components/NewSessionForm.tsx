@@ -287,7 +287,7 @@ export function NewSessionForm() {
                 <span key={b.id} style={{ flex: "none", width: 160, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "9px 12px", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ flex: 1, minWidth: 0 }}>
                     <span style={{ font: "600 14px/1.2 var(--font-sans)", display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{b.name}</span>
-                    <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue)" }}>{b.brewery}</span>
+                    <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue)" }}>{b.brewery ?? b.style ?? ""}</span>
                   </span>
                   <button type="button" onClick={() => quickAdd(b)} aria-label={`Agregar ${b.name}`} style={{ width: 34, height: 34, borderRadius: 11, background: "var(--color-ambar)", color: "var(--color-tinta)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none", border: "none", cursor: "pointer" }}>
                     <Icon name="plus" size={19} />
@@ -302,7 +302,7 @@ export function NewSessionForm() {
         <section>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 9 }}>
             <span className="eyebrow">En esta salida</span>
-            <span style={{ font: "600 12.5px var(--font-sans)", color: "var(--color-ambar)" }}>{total} unidad{total !== 1 ? "es" : ""}</span>
+            <span style={{ font: "600 12.5px var(--font-sans)", color: "var(--color-ambar)" }}>{total} bebida{total !== 1 ? "s" : ""}</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {checkIns.map((c) => (
@@ -320,7 +320,7 @@ export function NewSessionForm() {
               </div>
             ))}
             <button type="button" className="btn btn-dashed" style={{ width: "100%" }} onClick={() => setSheetOpen(true)}>
-              <Icon name="search" size={20} /> Buscar o crear cerveza
+              <Icon name="search" size={20} /> Buscar o crear bebida
             </button>
           </div>
         </section>

@@ -8,6 +8,7 @@ import { AccountAccess } from "@/components/AccountAccess";
 import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { LogoutButton } from "@/components/LogoutButton";
 import { Tally } from "@/components/Tally";
+import { formatBreakdownText } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ function StatCard({ value, label }: { value: number; label: string }) {
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const { stats, board, boardVariety, streak, avatarById, aloneInCircle } = await getProfile(user.id);
+  const { stats, board, boardVariety, breakdown, breakdownByUser, streak, avatarById, aloneInCircle } = await getProfile(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -57,8 +58,15 @@ export default async function ProfilePage() {
           <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".16em", color: "rgba(251,240,213,.75)" }}>TOTAL HISTÓRICO</div>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 12, marginTop: 6 }}>
             <span style={{ font: "800 60px/.85 var(--font-display)", letterSpacing: "-.04em", color: "var(--color-espuma)" }}>{stats.totalUnits}</span>
-            <span style={{ font: "600 16px var(--font-sans)", color: "rgba(251,240,213,.8)", paddingBottom: 8 }}>cervezas</span>
+            <span style={{ font: "600 16px var(--font-sans)", color: "rgba(251,240,213,.8)", paddingBottom: 8 }}>bebidas</span>
           </div>
+          {/* Desglose por formato (Pasada D): textura sin inventar volumen. Solo si
+              hay más de un formato (con uno, es redundante). */}
+          {breakdown.length > 1 && (
+            <div style={{ font: "500 13.5px var(--font-sans)", color: "rgba(251,240,213,.72)", marginTop: 8 }}>
+              {formatBreakdownText(breakdown)}
+            </div>
+          )}
           {stats.totalUnits > 0 && (
             <div style={{ marginTop: 16 }}>
               <Tally count={stats.totalUnits} color="var(--color-espuma)" barW={2.5} barH={15} gap={3} maxGroups={4} labelColor="rgba(251,240,213,.6)" />
@@ -78,12 +86,12 @@ export default async function ProfilePage() {
 
         {/* Stat cards */}
         <div style={{ display: "flex", gap: 11 }}>
-          <StatCard value={stats.distinctBeers} label="cervezas distintas probadas" />
+          <StatCard value={stats.distinctBeers} label="bebidas distintas probadas" />
           <StatCard value={stats.sessionsCount} label="salidas registradas" />
         </div>
 
         {/* El parche (leaderboard de dos ejes: unidades / variedad) */}
-        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} userId={user.id} avatarById={avatarById} aloneInCircle={aloneInCircle} />
+        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} userId={user.id} avatarById={avatarById} aloneInCircle={aloneInCircle} breakdownByUser={breakdownByUser} />
 
         {/* Por estilo */}
         {styles.length > 0 && (

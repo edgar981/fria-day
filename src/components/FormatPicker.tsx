@@ -1,18 +1,22 @@
 "use client";
 
-import { BEER_FORMATS, type BeerFormat } from "@/lib/domain";
+import { FORMATS_BY_KIND, type BeerFormat, type DrinkKind } from "@/lib/domain";
 import { FORMAT_LABEL } from "@/lib/format";
 
 export function FormatPicker({
   value,
   onChange,
+  kind = "CERVEZA",
 }: {
   value: BeerFormat;
   onChange: (f: BeerFormat) => void;
+  kind?: DrinkKind;
 }) {
+  // Solo los formatos del tipo elegido (Pasada D): cerveza no ofrece copa/vaso, y
+  // cóctel no ofrece botella/lata.
   return (
     <div style={{ display: "flex", gap: 7 }}>
-      {BEER_FORMATS.map((f) => {
+      {FORMATS_BY_KIND[kind].map((f) => {
         const active = f === value;
         return (
           <button
