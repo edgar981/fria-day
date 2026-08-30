@@ -64,12 +64,12 @@ export function LeaderboardTabs({
         {chip("variety", "Variedad")}
       </div>
 
-      {/* Sin círculo, el ranking eres solo tú. Una línea (T): no es error, no explica
-          mecánicas — dice qué pasa cuando salgas con alguien. */}
+      {/* Sin círculo, el ranking eres solo tú. Una línea que INVITA a actuar (T.1):
+          no describe un estado, empuja a invitar/traer gente. Sin celebrar cantidad. */}
       {aloneInCircle && (
         <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "12px 14px", marginBottom: 13 }}>
           <div style={{ font: "500 13.5px/1.4 var(--font-sans)", color: "var(--color-tenue)" }}>
-            Tu parche aparece cuando salgas con alguien.
+            Invita a tu parche y armamos el ranking.
           </div>
         </div>
       )}
@@ -101,12 +101,6 @@ export function LeaderboardTabs({
           );
         })}
       </div>
-
-      <p style={{ font: "400 12px/1.45 var(--font-sans)", color: "var(--color-tenue-2)", margin: "14px 0 0" }}>
-        {axis === "units"
-          ? "Solo cuentan tus check-ins."
-          : "Solo cuentan tus salidas."}
-      </p>
     </section>
   );
 }

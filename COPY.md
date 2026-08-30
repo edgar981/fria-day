@@ -24,9 +24,9 @@ decide.** Si una línea no te suena, se revierte al "antes" sin costo.
 
 | Dónde | Antes | Después |
 |---|---|---|
-| Leaderboard sin círculo (LeaderboardTabs) | «Todavía no has salido con nadie del parche» + párrafo: «Etiqueta a quién saliste (o que te etiquetén) y aparecerán aquí. El código de invitación es la única puerta; salir juntos, la única forma de armar tu parche.» | **«Tu parche aparece cuando salgas con alguien.»** (una línea, sin explicar la mecánica de etiquetar) |
+| Leaderboard sin círculo (LeaderboardTabs) | «Todavía no has salido con nadie del parche» + párrafo explicativo (2 líneas) | **«Invita a tu parche y armamos el ranking.»** (T.1: una línea que **invita a actuar**, no describe un estado; sin celebrar cantidad) |
 | Detalle de cerveza · encabezado | «Registros recientes» | **«Quién la ha tomado»** |
-| Invitar · intro | «FriaDay es solo por invitación. Genera un código y pásaselo a tu parcero. Cada código sirve una sola vez.» | **«Genera un código y pásaselo a tu parche. Sirve una sola vez.»** (más corto; "parche"; se quita "solo por invitación" — ya se sabe) |
+| Invitar · intro | «FriaDay es solo por invitación. Genera un código y pásaselo a tu parcero. Cada código sirve una sola vez.» | **«FriaDay es solo por invitación. Genera un código y pásaselo a tu parcero.»** (T.1: se conserva "solo por invitación" y "parcero"; solo se quita «Cada código sirve una sola vez») |
 
 # 2) Cambios de tono (zona suelta)
 
@@ -34,8 +34,7 @@ decide.** Si una línea no te suena, se revierte al "antes" sin costo.
 |---|---|---|
 | Feed vacío (EmptyFeed) — título | «Está seco por aquí» | *(sin cambio — buen tono)* |
 | Feed vacío — subtítulo | «Nadie ha registrado nada todavía. La primera salida es la que arranca la costumbre.» | «Nadie ha registrado nada todavía. Empieza tú.» |
-| Leaderboard · pie (unidades) | «Unidades de tus check-ins. Que te etiqueten no acredita cervezas.» | «Solo cuentan tus check-ins.» |
-| Leaderboard · pie (variedad) | «Cervezas distintas que has probado. Solo cuentan tus salidas.» | «Solo cuentan tus salidas.» |
+| Leaderboard · pie | «Unidades de tus check-ins. Que te etiqueten no acredita cervezas.» / «Cervezas distintas que has probado. Solo cuentan tus salidas.» | **Eliminado (T.1)** — explicaba una mecánica, justo lo que esta pasada quita. El eyebrow «solo salidas propias» se conserva. |
 | Crear cerveza (BeerSheet) | «Solo la cervecería es obligatoria. Lo demás se puede completar después, desde el catálogo.» | «Solo la cervecería es obligatoria. El resto lo completas después.» |
 | "No tomé ese día" (TagDismissControl) | «No cuenta para tu racha ni para "quién falta".» | «No afecta tu racha.» |
 | "No tomé ese día" (TagDismissControl) | «Márcalo y esta etiqueta queda neutra: no rompe tu racha ni te cuenta como que falta registrar.» | «Márcalo y no afecta tu racha.» |
@@ -107,3 +106,48 @@ seguidas registradas».
   (fila ✂️), para no perder "de quién es la salida".
 - **Verificado:** 54/54 tests (ninguno depende de copy visible) + WebKit (ningún
   texto nuevo desborda su contenedor).
+
+---
+
+# 6) PROPUESTAS con referencias culturales (T.1) — NO implementadas
+
+> ⚠️ **Nada de esto está en el código.** Son candidatos para que **tú escojas** —
+> conoces el registro local mejor que Code. Vallenato / popular / banda, con
+> preferencia por **ad-libs y muletillas** (habla, cortas, sin derechos de letra).
+
+**Reglas que cumplen todos los candidatos:**
+- La línea **funciona aunque no cojas la referencia** (el guiño es un extra, no el sentido).
+- Ad-libs/gritos antes que letras.
+- Humor de parche sobre estar tomando: permitido. **Nada que empuje a tomar más**
+  (ni metas ni retos que escalen con cantidad).
+- **Máximo una referencia por pantalla** (elige UNA fila por pantalla).
+- **Nunca en zona clara** (errores, confirmaciones destructivas, acceso, aviso de racha).
+
+## Estados vacíos (prioridad)
+
+| Pantalla | Copy base (T.1) | Propuesta con guiño | Referencia | ¿Funciona sin el guiño? |
+|---|---|---|---|---|
+| Feed vacío · subtítulo | «Nadie ha registrado nada todavía. Empieza tú.» | «Nadie ha registrado nada todavía. Arranca tú, ¡ajá!» | «¡Ajá!» — muletilla costeña universal | Sí, se lee como exclamación de ánimo |
+| Feed vacío · subtítulo | (igual) | «Nadie ha registrado nada todavía. Empieza tú, ¡ay hombe!» | «¡Ay hombe!» — grito de Diomedes Díaz / Poncho Zuleta | Sí, suena a exclamación de arranque |
+| Leaderboard sin círculo | «Invita a tu parche y armamos el ranking.» | «Solo no hay ranking, ¡ajá! Invita a tu parche.» | «¡Ajá!» | Sí |
+| Leaderboard sin círculo | (igual) | «Invita a tu parche y armamos el ranking. ¡Eaaa!» | «¡Eaaa!» — grito de gozo de parranda vallenata | Sí, cierra con energía |
+| Catálogo vacío | «Todavía sin cervezas.» | «Todavía sin cervezas, ¡ombe!» | «¡Ombe!» — Diomedes / Zuleta | Sí |
+| Detalle de cerveza · vacío | «Nadie la ha probado todavía.» | «Nadie la ha probado todavía, ¡ombe!» | «¡Ombe!» | Sí |
+| Invitar · sin códigos | «Ninguno todavía. Genera uno arriba.» | «Ninguno todavía, ¡ajá! Genera uno arriba.» | «¡Ajá!» | Sí |
+| Detalle de salida · sin cervezas | «Todavía nada por aquí.» | «Todavía nada por aquí, ¡ay hombe!» | «¡Ay hombe!» | Sí |
+
+## Fuera de estados vacíos (opcional, con más cuidado)
+
+| Pantalla | Copy base | Propuesta con guiño | Referencia | ¿Funciona sin el guiño? |
+|---|---|---|---|---|
+| "✓ Guardado" al guardar detalles (SessionHeaderEditor) | «✓ Guardado» | «✓ Guardado. ¡Fino!» | «¡Fino!» — muletilla de Silvestre Dangond | Sí ("fino" = quedó bien). *Es confirmación de éxito, no destructiva → fuera de la zona clara.* |
+| Feed vacío · título (ya autoconsciente, sin guiño) | «Está seco por aquí» | *(ya cumple el "humor de parche sobre beber" sin referencia — se puede dejar tal cual)* | — | — |
+
+## Nota honesta sobre "popular" y "banda"
+
+Los **gritos vallenatos** (¡ay hombe!, ¡ombe!, ¡eaaa!) y el costeño **¡ajá!** son los
+que mejor se leen **como texto**: son habla pura y se reconocen escritos. Los ad-libs
+de **música popular** (Jessi Uribe, Yeison Jiménez, Giovanny Ayala) y **banda** son
+más melódicos/vocales y pierden fuerza escritos, así que propuse pocos. Si tienes una
+muletilla popular/banda que funcione en texto, encaja igual bajo las mismas reglas —
+tú tienes mejor oído para eso que Code.
