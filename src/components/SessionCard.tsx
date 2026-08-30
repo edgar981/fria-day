@@ -116,7 +116,11 @@ export function SessionCard({
   session: FeedSession;
   viewerId: string;
 }) {
-  const { user, tags, checkIns, totalUnits, isOwner } = session;
+  const { user, tags, checkIns, totalUnits, isOwner, viewerTagged } = session;
+  // Pasada C: no-dueño se divide en "etiquetado" (verde, distintivo real) y "del
+  // círculo" (neutro, sin distintivo de etiqueta — la veo porque hemos salido).
+  const tagged = !isOwner && viewerTagged;
+  const fromCircle = !isOwner && !viewerTagged;
   const single = checkIns.length === 1;
   const visible = single ? checkIns : checkIns.slice(0, 3);
   const hidden = checkIns.length - visible.length;
@@ -130,10 +134,10 @@ export function SessionCard({
         textDecoration: "none",
         color: "var(--color-crema)",
         overflow: "hidden",
-        ...(isOwner ? null : { border: "1px solid rgba(62,143,107,.32)" }),
+        ...(tagged ? { border: "1px solid rgba(62,143,107,.32)" } : null),
       }}
     >
-      {!isOwner && <div style={{ height: 4, background: "var(--color-botella)" }} />}
+      {tagged && <div style={{ height: 4, background: "var(--color-botella)" }} />}
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 11 }}>
         {/* Cabecera */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
@@ -147,10 +151,15 @@ export function SessionCard({
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
               <span style={{ font: "400 13px var(--font-sans)", color: "var(--color-tenue)" }}>{relativeDay(session.date)}</span>
-              {!isOwner && (
+              {tagged && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "4px 9px" }}>
                   <Icon name="lock" size={12} color="#6FC79C" />
                   {user.displayName} te etiquetó
+                </span>
+              )}
+              {fromCircle && (
+                <span style={{ display: "inline-flex", alignItems: "center", background: "rgba(242,160,22,.12)", border: "1px solid rgba(242,160,22,.3)", color: "var(--color-ambar)", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "4px 9px" }}>
+                  Del parche
                 </span>
               )}
             </div>

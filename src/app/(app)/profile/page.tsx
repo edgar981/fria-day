@@ -24,7 +24,7 @@ function StatCard({ value, label }: { value: number; label: string }) {
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const { stats, board, boardVariety, streak, avatarById } = await getProfile(user.id);
+  const { stats, board, boardVariety, streak, avatarById, aloneInCircle } = await getProfile(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -83,7 +83,7 @@ export default async function ProfilePage() {
         </div>
 
         {/* El parche (leaderboard de dos ejes: unidades / variedad) */}
-        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} userId={user.id} avatarById={avatarById} />
+        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} userId={user.id} avatarById={avatarById} aloneInCircle={aloneInCircle} />
 
         {/* Por estilo */}
         {styles.length > 0 && (

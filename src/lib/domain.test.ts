@@ -17,10 +17,12 @@ import {
   leaderboardVariety,
   distinctBeersForUser,
   ownBeerRating,
+  circleOf,
   REGISTRATION_PLAZO_MS,
   type SessionData,
   type UserRef,
   type ExistingCheckIn,
+  type CircleTagEdge,
 } from "./domain";
 
 // Usuarios de prueba
@@ -458,5 +460,69 @@ describe("ownBeerRating (G.3) — rating propio, el más reciente", () => {
       { rating: null, date: d("2026-08-25"), createdAt: d("2026-08-25") }, // más nuevo pero sin rating
     ];
     expect(ownBeerRating(cis)).toEqual({ status: "rated", rating: 4 });
+  });
+});
+
+describe("Pasada C — el círculo (derivado de etiquetas)", () => {
+  const A = "u_ana", B = "u_beto", C = "u_caro";
+  const edge = (ownerId: string, taggedUserId: string): CircleTagEdge => ({ ownerId, taggedUserId });
+
+  it("caso 1: A etiqueta a B → B en el círculo de A y A en el de B (simétrico)", () => {
+    const edges = [edge(A, B)]; // salida de A donde A etiquetó a B
+    expect(circleOf(A, edges).has(B)).toBe(true);
+    expect(circleOf(B, edges).has(A)).toBe(true);
+  });
+
+  it("caso 2: A y B nunca se han etiquetado → no están en el círculo del otro", () => {
+    const edges = [edge(A, C), edge(B, C)]; // ambos etiquetaron a C, nunca entre sí
+    expect(circleOf(A, edges).has(B)).toBe(false);
+    expect(circleOf(B, edges).has(A)).toBe(false);
+  });
+
+  it("caso 3: C etiquetó a B, nunca a A → C NO está en el círculo de A (no transitivo)", () => {
+    const edges = [edge(A, B), edge(C, B)]; // A↔B y C↔B, pero A y C no
+    const circA = circleOf(A, edges);
+    expect(circA.has(B)).toBe(true); // amigo directo
+    expect(circA.has(C)).toBe(false); // amigo de un amigo NO entra
+  });
+
+  it("caso 4: A en el círculo de B (por otra salida) → puede ver una salida de B que NO lo etiqueta", () => {
+    // A y B salieron juntos alguna vez (arista A↔B). En OTRA salida B no etiqueta a A.
+    const edges = [edge(B, A)];
+    const circA = circleOf(A, edges);
+    // El permiso de ver = el dueño está en mi círculo. B lo está → A puede ver.
+    expect(circA.has(B)).toBe(true);
+  });
+
+  it("caso 5: salida de C fuera del círculo de A → A NO puede verla (404)", () => {
+    const edges = [edge(A, B)]; // A solo ha salido con B
+    const circA = circleOf(A, edges);
+    expect(circA.has(C)).toBe(false); // dueño C no está en el círculo → 404
+  });
+
+  it("caso 6: usuario sin círculo → solo él mismo", () => {
+    const circA = circleOf(A, []); // nunca etiquetó ni lo etiquetaron
+    expect([...circA]).toEqual([A]);
+    expect(circA.size).toBe(1);
+  });
+
+  it("caso 7: la etiqueta descartada (dismissedAt) SÍ cuenta para el círculo", () => {
+    // El llamador incluye las descartadas en las aristas; el círculo las considera.
+    const edges = [edge(B, A)]; // B etiquetó a A y A descartó ("no tomé", pero estuvo)
+    expect(circleOf(A, edges).has(B)).toBe(true);
+  });
+
+  it("caso 8: invariante — etiquetado con 0 check-ins propios → 0 en el leaderboard del círculo", () => {
+    const edges = [edge(A, C)]; // C está en el círculo de A pero no tiene salidas propias
+    const circle = circleOf(A, edges);
+    const circleUsers = [ana, beto, caro].filter((u) => circle.has(u.id)); // {A, C}
+    // Solo A tiene una salida propia; C fue etiquetado pero no tiene check-ins propios.
+    const sessions: SessionData[] = [
+      { id: "s1", ownerId: A, date: "2026-08-01", checkIns: [{ beerId: "b1", quantity: 3, format: "LATA", rating: null }] },
+    ];
+    const board = leaderboard(circleUsers, sessions);
+    expect(board.find((r) => r.userId === C)?.units).toBe(0); // etiquetar no acredita
+    expect(board.find((r) => r.userId === A)?.units).toBe(3);
+    expect(board.some((r) => r.userId === B)).toBe(false); // B fuera del círculo, no aparece
   });
 });

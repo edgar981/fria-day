@@ -12,6 +12,7 @@ import {
   dayKeyUTC,
   normalizeKey,
   ownBeerRating,
+  circleOf,
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
@@ -24,13 +25,32 @@ async function loadRegisteredDays(): Promise<Set<string>> {
   return set;
 }
 
-/** Feed: sesiones propias + sesiones donde estoy etiquetado, por fecha desc. */
+/**
+ * El círculo del usuario (Pasada C): las personas con las que ha salido, derivado
+ * de las etiquetas. Aristas = etiquetas a usuarios de la app (el texto libre no
+ * genera arista); las descartadas (`dismissedAt`) SÍ cuentan, por eso NO se filtran.
+ * Una sola implementación (circleOf), usada por feed, permisos y leaderboard.
+ */
+export async function loadCircle(userId: string): Promise<Set<string>> {
+  const rows = await prisma.sessionTag.findMany({
+    where: { taggedUserId: { not: null } },
+    select: { taggedUserId: true, session: { select: { userId: true } } },
+  });
+  const edges = rows.map((r) => ({ ownerId: r.session.userId, taggedUserId: r.taggedUserId as string }));
+  return circleOf(userId, edges);
+}
+
+/**
+ * Feed social (Pasada C): salidas de cualquiera de MI CÍRCULO — propias, donde me
+ * etiquetaron, y de gente con la que he salido aunque esta salida no me etiquete.
+ * Como etiquetar es simétrico, "el dueño está en mi círculo" cubre los tres casos
+ * (a quien me etiqueta lo tengo en el círculo, así que sus salidas ya entran).
+ */
 export async function getFeed(userId: string) {
+  const circle = await loadCircle(userId);
   const [sessions, registeredDays] = await Promise.all([
     prisma.session.findMany({
-      where: {
-        OR: [{ userId }, { tags: { some: { taggedUserId: userId } } }],
-      },
+      where: { userId: { in: [...circle] } },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       include: {
         user: { select: { id: true, displayName: true, avatar: true } },
@@ -54,6 +74,8 @@ export async function getFeed(userId: string) {
     ...s,
     totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
     isOwner: s.userId === userId,
+    // El distintivo "X te etiquetó" SOLO cuando hay etiqueta real (no por círculo).
+    viewerTagged: s.tags.some((t) => t.taggedUserId === userId),
     social: computeSocial(s, registeredDays, now),
   }));
 }
@@ -251,13 +273,14 @@ async function loadMetricsInputs(): Promise<{
   return { users, sessions: mapped, avatarById };
 }
 
-export async function getLeaderboard() {
-  const { users, sessions } = await loadMetricsInputs();
-  return leaderboard(users, sessions);
-}
-
 export async function getProfile(userId: string) {
   const { users, sessions, avatarById } = await loadMetricsInputs();
+
+  // Pasada C: "EL PARCHE" es el CÍRCULO del usuario + él mismo, no todos los que
+  // alguna vez recibieron un código. El invariante sigue: solo cuentan check-ins
+  // propios de cada uno (leaderboard/leaderboardVariety no cambian).
+  const circle = await loadCircle(userId);
+  const circleUsers = users.filter((u) => circle.has(u.id));
 
   // Racha (PIEZA 1): se calcula en cada lectura (NO cachear). Eventos del usuario =
   // días con salida propia ∪ días donde lo etiquetaron y NO descartó.
@@ -275,10 +298,12 @@ export async function getProfile(userId: string) {
 
   return {
     stats: userStats(userId, sessions),
-    board: leaderboard(users, sessions),
-    boardVariety: leaderboardVariety(users, sessions),
+    board: leaderboard(circleUsers, sessions),
+    boardVariety: leaderboardVariety(circleUsers, sessions),
     streak,
     avatarById,
+    // Sin círculo (solo él): el leaderboard muestra copy explicativo, no un vacío raro.
+    aloneInCircle: circle.size === 1,
   };
 }
 

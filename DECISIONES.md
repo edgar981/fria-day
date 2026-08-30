@@ -3,6 +3,46 @@
 Desviaciones, overrides y decisiones tomadas durante la construcción respecto al
 spec. Cada una con su porqué.
 
+## Pasada C — El círculo · rama `pasada/circulo`
+
+"EL PARCHE" eran TODOS los usuarios de la app; con el uso real, alguien invita a
+gente que no conoces y aparece en tu leaderboard. Solución: **derivar el círculo**
+de las etiquetas que ya existen, sin crear entidad `Parche`.
+
+### Definición (función pura `circleOf`, una sola implementación)
+El círculo de A = las personas con las que **ha salido**: B etiquetó a A, o A
+etiquetó a B. **Simétrico** (etiquetar afirma que salieron juntos), **NO transitivo**
+(amigos de amigos no entran), y A **siempre** está en su círculo. El texto libre no
+genera arista (no tienen cuenta); las etiquetas **descartadas (`dismissedAt`) SÍ
+cuentan** (descartar es "no tomé", no "no estuve"). `loadCircle(userId)` en
+`queries.ts` arma las aristas y la usan feed, permisos y leaderboard — una sola vía.
+
+### Feed social
+El feed pasa a mostrar salidas de **cualquiera del círculo**, aunque esta salida no
+te etiquete (eso es lo que lo vuelve red social). Como etiquetar es simétrico,
+"el dueño está en mi círculo" cubre los tres casos (propia, etiquetado, del círculo),
+así que el `where` es `userId IN círculo` — a quien te etiqueta ya lo tienes en el
+círculo, sus salidas entran solas.
+
+### Permisos y distintivo
+- Ver: si el dueño está en tu círculo. Fuera del círculo → **404** (como antes).
+- Editar/borrar/agregar: solo el dueño (sin cambios).
+- El distintivo **"X te etiquetó" solo con etiqueta real**. Una salida del círculo
+  sin etiqueta lleva un chip neutro **"Del parche"** (ámbar), no el verde de etiqueta
+  — no afirmar una etiqueta que no existe.
+
+### Leaderboard acotado al círculo
+"EL PARCHE" lista el círculo + él mismo, no a todos. El invariante intacto: solo
+cuentan check-ins propios (etiquetar no acredita). Se eliminó `getLeaderboard()`
+(código muerto que listaba a todos). Usuario **sin círculo** → aparece solo él, con
+copy que lo explica sin sonar a error ("Todavía no has salido con nadie del parche")
+y apunta a la mecánica (etiquetar arma el parche).
+
+### Descubrimiento: NO
+No se construye forma de encontrar usuarios fuera del círculo. El código de
+invitación sigue siendo la única puerta; salir juntos, la única forma de entrar a un
+círculo. Parches explícitos quedan en `BACKLOG.md` con su disparador.
+
 ## Pasada F — Fotos de cerveza (Vercel Blob) · rama `pasada/fotos`
 
 Primera funcionalidad que sube archivos de usuario. Contexto de uso: bar, noche,

@@ -417,3 +417,39 @@ export function leaderboardVariety(users: UserRef[], sessions: SessionData[]): V
     }))
     .sort((a, b) => b.variety - a.variety || a.displayName.localeCompare(b.displayName));
 }
+
+// ----------------------------------------------------------------------------
+// Pasada C — el círculo.
+//
+// El círculo de un usuario son las personas con las que HA SALIDO. NO es una
+// entidad: se deriva de las etiquetas que ya existen. Una arista por cada
+// etiqueta a un usuario de la app (owner de la salida ↔ etiquetado).
+// ----------------------------------------------------------------------------
+
+/** Arista de círculo: el dueño de una salida etiquetó a un usuario de la app. */
+export interface CircleTagEdge {
+  ownerId: string; // Session.userId (dueño de la salida)
+  taggedUserId: string; // usuario de la app etiquetado (el texto libre NO genera arista)
+}
+
+/**
+ * Círculo de `userId`: el conjunto de usuarios con los que ha salido, derivado de
+ * las etiquetas. **Simétrico**: si B etiqueta a A, cada uno entra al círculo del
+ * otro (etiquetar afirma que salieron juntos). **NO transitivo**: amigos de amigos
+ * no entran. El usuario SIEMPRE está en su propio círculo.
+ *
+ * Reglas de las aristas (responsabilidad del llamador al armarlas):
+ *  - Solo etiquetas a usuarios de la app (el texto libre no cuenta: no tienen cuenta).
+ *  - Las etiquetas descartadas (`dismissedAt`) SÍ cuentan: descartar es "no tomé",
+ *    no "no estuve" — así que deben incluirse en `edges`.
+ *
+ * Una sola implementación, usada por feed, permisos y leaderboard.
+ */
+export function circleOf(userId: string, edges: CircleTagEdge[]): Set<string> {
+  const circle = new Set<string>([userId]);
+  for (const e of edges) {
+    if (e.ownerId === userId) circle.add(e.taggedUserId); // A etiquetó a B
+    else if (e.taggedUserId === userId) circle.add(e.ownerId); // B etiquetó a A (simétrico)
+  }
+  return circle;
+}

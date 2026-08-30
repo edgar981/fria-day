@@ -12,11 +12,13 @@ export function LeaderboardTabs({
   boardVariety,
   userId,
   avatarById,
+  aloneInCircle,
 }: {
   boardUnits: UnitRow[];
   boardVariety: VarietyRow[];
   userId: string;
   avatarById: Record<string, string | null>;
+  aloneInCircle: boolean;
 }) {
   const [axis, setAxis] = useState<"units" | "variety">("units");
 
@@ -61,6 +63,20 @@ export function LeaderboardTabs({
         {chip("units", "Unidades")}
         {chip("variety", "Variedad")}
       </div>
+
+      {/* Pasada C: sin círculo, el ranking eres solo tú. No es un error: se explica
+          y se apunta a la mecánica (etiquetar a quién saliste arma el parche). */}
+      {aloneInCircle && (
+        <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "12px 14px", marginBottom: 13 }}>
+          <div style={{ font: "600 14px var(--font-sans)", color: "var(--color-crema)" }}>
+            Todavía no has salido con nadie del parche
+          </div>
+          <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--color-tenue)", marginTop: 4 }}>
+            Etiqueta a quién saliste (o que te etiqueten) y aparecerán aquí. El código de
+            invitación es la única puerta; salir juntos, la única forma de armar tu parche.
+          </div>
+        </div>
+      )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
         {rows.map((row, i) => {

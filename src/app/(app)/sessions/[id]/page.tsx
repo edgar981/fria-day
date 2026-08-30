@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getSessionDetail } from "@/lib/queries";
+import { getSessionDetail, loadCircle } from "@/lib/queries";
 import { BackHeader } from "@/components/BackHeader";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
@@ -37,7 +37,10 @@ export default async function SessionDetailPage({
   const isOwner = s.userId === viewer.id;
   const myTag = s.tags.find((t) => t.taggedUserId === viewer.id);
   const isTagged = !!myTag;
-  if (!isOwner && !isTagged) notFound();
+  // Pasada C: puedo ver una salida si su dueño está en mi círculo (cubre propia,
+  // etiquetado y "del parche" sin etiqueta). Fuera del círculo → 404, como antes.
+  const circle = await loadCircle(viewer.id);
+  if (!circle.has(s.userId)) notFound();
 
   const total = sessionTotalUnits({ checkIns: s.checkIns });
   const compSummary = companions(
@@ -59,10 +62,16 @@ export default async function SessionDetailPage({
           {!isOwner && (
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
               <Avatar avatar={s.user.avatar} size={32} radius={10} />
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
-                <Icon name="lock" size={12} color="#6FC79C" />
-                {s.user.displayName} te etiquetó
-              </span>
+              {isTagged ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
+                  <Icon name="lock" size={12} color="#6FC79C" />
+                  {s.user.displayName} te etiquetó
+                </span>
+              ) : (
+                <span style={{ display: "inline-flex", alignItems: "center", background: "rgba(242,160,22,.12)", border: "1px solid rgba(242,160,22,.3)", color: "var(--color-ambar)", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
+                  Del parche
+                </span>
+              )}
             </div>
           )}
           <div style={{ font: "800 32px/1.05 var(--font-display)", letterSpacing: "-.025em" }}>
