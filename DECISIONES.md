@@ -28,8 +28,10 @@ círculo, sus salidas entran solas.
 - Ver: si el dueño está en tu círculo. Fuera del círculo → **404** (como antes).
 - Editar/borrar/agregar: solo el dueño (sin cambios).
 - El distintivo **"X te etiquetó" solo con etiqueta real**. Una salida del círculo
-  sin etiqueta lleva un chip neutro **"Del parche"** (ámbar), no el verde de etiqueta
-  — no afirmar una etiqueta que no existe.
+  sin etiqueta aparece **sin distintivo** (en el detalle la identifica el título
+  "Salida de X"). **C.1:** Code había agregado un chip "Del parche" que no estaba en
+  el spec; Edgar decidió que sobraba y se quitó (feed y detalle). No dejó CSS ni
+  componente huérfano (era inline).
 
 ### Leaderboard acotado al círculo
 "EL PARCHE" lista el círculo + él mismo, no a todos. El invariante intacto: solo

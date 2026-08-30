@@ -59,19 +59,16 @@ export default async function SessionDetailPage({
       <main style={{ padding: "18px 18px 40px", display: "flex", flexDirection: "column", gap: 18 }}>
         {/* Título */}
         <div>
-          {!isOwner && (
+          {/* Distintivo SOLO con etiqueta real (C.1: se quitó "Del parche"). Las
+              salidas del círculo sin etiqueta se identifican por el título
+              ("Salida de X"), sin distintivo. */}
+          {isTagged && (
             <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 10 }}>
               <Avatar avatar={s.user.avatar} size={32} radius={10} />
-              {isTagged ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
-                  <Icon name="lock" size={12} color="#6FC79C" />
-                  {s.user.displayName} te etiquetó
-                </span>
-              ) : (
-                <span style={{ display: "inline-flex", alignItems: "center", background: "rgba(242,160,22,.12)", border: "1px solid rgba(242,160,22,.3)", color: "var(--color-ambar)", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
-                  Del parche
-                </span>
-              )}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 12px var(--font-sans)", borderRadius: 999, padding: "5px 10px" }}>
+                <Icon name="lock" size={12} color="#6FC79C" />
+                {s.user.displayName} te etiquetó
+              </span>
             </div>
           )}
           <div style={{ font: "800 32px/1.05 var(--font-display)", letterSpacing: "-.025em" }}>

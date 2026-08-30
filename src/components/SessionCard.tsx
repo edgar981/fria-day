@@ -117,10 +117,9 @@ export function SessionCard({
   viewerId: string;
 }) {
   const { user, tags, checkIns, totalUnits, isOwner, viewerTagged } = session;
-  // Pasada C: no-dueño se divide en "etiquetado" (verde, distintivo real) y "del
-  // círculo" (neutro, sin distintivo de etiqueta — la veo porque hemos salido).
+  // Distintivo verde SOLO cuando hay etiqueta real (Pasada C). Las salidas del
+  // círculo sin etiqueta aparecen sin distintivo alguno (C.1: se quitó "Del parche").
   const tagged = !isOwner && viewerTagged;
-  const fromCircle = !isOwner && !viewerTagged;
   const single = checkIns.length === 1;
   const visible = single ? checkIns : checkIns.slice(0, 3);
   const hidden = checkIns.length - visible.length;
@@ -155,11 +154,6 @@ export function SessionCard({
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "4px 9px" }}>
                   <Icon name="lock" size={12} color="#6FC79C" />
                   {user.displayName} te etiquetó
-                </span>
-              )}
-              {fromCircle && (
-                <span style={{ display: "inline-flex", alignItems: "center", background: "rgba(242,160,22,.12)", border: "1px solid rgba(242,160,22,.3)", color: "var(--color-ambar)", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "4px 9px" }}>
-                  Del parche
                 </span>
               )}
             </div>
