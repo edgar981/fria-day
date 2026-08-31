@@ -408,42 +408,62 @@ export async function yoTambien(
 
   // Tu salida de esa fecha: reutilizar o crear (copiando el lugar). date es medianoche
   // UTC del día, así que la igualdad exacta empareja "mismo día".
-  let target = await prisma.session.findFirst({
-    where: { userId, date: src.session.date },
-    orderBy: { createdAt: "asc" },
-    select: { id: true },
-  });
-  let sessionCreated = false;
-  if (!target) {
-    target = await prisma.session.create({
-      data: { userId, date: src.session.date, placeName: src.session.placeName ?? null },
+  //
+  // Y.2 — advisory lock: sin esto, dos "Yo también" concurrentes del MISMO usuario y
+  // día hacen findFirst-miss ambos y crean DOS salidas (bug verificado en Y.1). El
+  // lock serializa SOLO (userId, día): el segundo espera, ve la salida del primero y
+  // consolida. Variante _xact_ (se libera al commit) → segura con el pooler de Neon.
+  // ACOTADO a yoTambien: en otros flujos crear una 2ª salida el mismo día es válido,
+  // por eso el lock NO va en una helper genérica de find-or-create.
+  const dayStr = src.session.date.toISOString().slice(0, 10);
+  const lockKey = `yt|${userId}|${dayStr}`;
+  const placeName = src.session.placeName ?? null;
+  const add = yoTambienCheckIn({ beerId: src.beerId, format: src.format });
+
+  const { checkInId, sessionCreated, sessionId } = await prisma.$transaction(async (tx) => {
+    // $executeRaw (no $queryRaw): pg_advisory_xact_lock devuelve void y el driver
+    // adapter no serializa esa columna. $executeRaw ejecuta y adquiere el lock igual.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${lockKey}))`;
+
+    let target = await tx.session.findFirst({
+      where: { userId, date: src.session.date },
+      orderBy: { createdAt: "asc" },
       select: { id: true },
     });
-    sessionCreated = true;
-  }
+    let created = false;
+    if (!target) {
+      target = await tx.session.create({
+        data: { userId, date: src.session.date, placeName },
+        select: { id: true },
+      });
+      created = true;
+    }
 
-  const existing = await prisma.checkIn.findMany({
-    where: { sessionId: target.id },
-    select: { id: true, beerId: true, format: true, quantity: true, rating: true },
+    const existing = await tx.checkIn.findMany({
+      where: { sessionId: target.id },
+      select: { id: true, beerId: true, format: true, quantity: true, rating: true },
+    });
+    const plan = planCheckInAdd(existing, add);
+
+    let cid: string;
+    if (plan.action === "merge") {
+      await tx.checkIn.update({
+        where: { id: plan.targetId },
+        data: { quantity: plan.quantity, rating: plan.rating }, // conserva TU rating (no copia el ajeno)
+      });
+      cid = plan.targetId;
+    } else {
+      const row = await tx.checkIn.create({
+        data: { sessionId: target.id, beerId: src.beerId, quantity: 1, format: src.format, rating: null },
+        select: { id: true },
+      });
+      cid = row.id;
+    }
+    return { checkInId: cid, sessionCreated: created, sessionId: target.id };
   });
-  const plan = planCheckInAdd(existing, yoTambienCheckIn({ beerId: src.beerId, format: src.format }));
 
-  let checkInId: string;
-  if (plan.action === "merge") {
-    await prisma.checkIn.update({
-      where: { id: plan.targetId },
-      data: { quantity: plan.quantity, rating: plan.rating }, // conserva TU rating (no copia el ajeno)
-    });
-    checkInId = plan.targetId;
-  } else {
-    const created = await prisma.checkIn.create({
-      data: { sessionId: target.id, beerId: src.beerId, quantity: 1, format: src.format, rating: null },
-      select: { id: true },
-    });
-    checkInId = created.id;
-  }
   revalidatePath("/");
-  revalidatePath(`/sessions/${target.id}`);
+  revalidatePath(`/sessions/${sessionId}`);
   return { ok: true, checkInId, sessionCreated };
 }
 

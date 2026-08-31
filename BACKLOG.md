@@ -91,3 +91,22 @@ queja de haber borrado su única bebida.
 
 _(Nota: "Yo también" ya evita crear salidas vacías: al deshacer, si la salida se creó
 por la acción y queda vacía, se borra — Pasada Y, caso 4.)_
+
+## createSession: doble-submit concurrente crea salidas duplicadas
+
+Diagnóstico por ejecución (Y.2, punto 2): dos pestañas guardando "Nueva salida" a la
+vez → **2 salidas idénticas** (verificado: 2 salidas, mismo contenido). **No se
+arregla en esta pasada** (es un flujo distinto).
+
+- A diferencia de "Yo también" —que INTENTA reutilizar la salida del día y por eso se
+  serializó con advisory lock (Y.2)—, `createSession` **siempre crea**, y tener dos
+  salidas el mismo día puede ser **legítimo** (almuerzo y noche). Por eso **NO** va un
+  `@@unique(userId, date)` ni un lock.
+- El doble-click en **una sola pestaña** ya está protegido (`disabled={busy}` en
+  "Guardar salida"). El duplicado residual necesita **dos pestañas/dispositivos** o un
+  doble-submit real.
+- Fix (si se quiere): guard de doble-submit del MISMO borrador (clave de idempotencia
+  por borrador enviada a `createSession`), no un lock por usuario+día.
+
+**Disparador:** si alguien se queja de salidas duplicadas tras guardar, o si el
+doble-submit resulta molesto en uso real.
