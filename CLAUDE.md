@@ -71,12 +71,33 @@ npm run build    # prisma generate && prisma migrate deploy && next build
 npm start        # server de producción (NODE_ENV=production)
 npm test         # vitest (lógica de dominio pura)
 npm run db:seed  # datos mínimos
+# Datos de GATE para dev (dry-run por defecto; ver "## Datos de gate"):
+node --env-file=.env --import tsx scripts/seed-gate-data.ts [--apply]
 # Mantención (dry-run por defecto; apunta al .env que cargues):
 node --env-file=.env --import tsx scripts/clean-passkey-orphans.ts [--apply]
 node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
   --delete <id> --invites-to <id> [--apply]   # borra un usuario reasignando sus
   #   invitaciones Y cervezas (catálogo compartido) a otro, en una transacción
 ```
+
+## Datos de gate (dev) — para que Edgar revise el preview
+
+`scripts/seed-gate-data.ts` deja **dev** con un estado útil para gates: 3 usuarios con
+contraseña conocida, salidas en varias fechas con etiquetas cruzadas (círculo completo),
+bebidas variadas (cervezas y cócteles, con/sin rating, varios formatos, cantidad > 1),
+una salida donde Ana está etiquetada sin la suya ese día ("Yo también"), reacciones y el
+catálogo. **Idempotente** (`--apply`; correrlo dos veces no duplica).
+
+**Credenciales (documentadas, no `***REDACTED***`):**
+- Ana — `gate-ana@friaday.test` / `***REDACTED***`
+- Beto — `gate-beto@friaday.test` / `***REDACTED***`
+- Caro — `gate-caro@friaday.test` / `***REDACTED***`
+
+**Proceso al cerrar una pasada:** Code limpia los datos **específicos de su verificación**
+(usa cuentas SEPARADAS: `beto@friaday.test`, etc.), pero **deja el seed de gate en pie**.
+Si lo borró (o si dev quedó vacío), **vuelve a correr `seed-gate-data.ts --apply` antes de
+entregar**. **Reportar estas 3 credenciales en el resumen de cada pasada** para que Edgar
+entre al preview sin buscarlas.
 
 ## Reglas de dominio (no negociables)
 
