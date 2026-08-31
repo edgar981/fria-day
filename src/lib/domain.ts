@@ -314,6 +314,17 @@ export function consolidateNewCheckIns(
   return out;
 }
 
+/**
+ * "Yo también" (Pasada Y): a partir de una bebida de una salida ajena donde estás
+ * etiquetado, arma TU check-in — misma bebida y formato, cantidad 1. **SIN rating**
+ * (es personal, no se copia) y sin foto (es de quien la tomó). El registro lo haces
+ * tú, así que el invariante se mantiene: etiquetar sigue sin acreditar nada. La
+ * consolidación (A.2) la resuelve planCheckInAdd sobre TU salida de esa fecha.
+ */
+export function yoTambienCheckIn(source: { beerId: string; format: BeerFormat }): CheckInAddInput {
+  return { beerId: source.beerId, format: source.format, quantity: 1, rating: null };
+}
+
 /** Regla SessionTag: exactamente uno de taggedUserId | freeText. */
 export function isValidTag(tag: {
   taggedUserId?: string | null;

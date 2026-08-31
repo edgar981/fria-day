@@ -70,3 +70,24 @@ recién vale la pena hacerlo.
   riesgo real (migración de tabla/columnas, tocar todo el código) y **cero beneficio
   para el usuario**. El `kind` ya resuelve el problema de producto. No hacerlo hasta
   que el nombre estorbe de verdad.
+
+## Hueco del eje Salidas: una salida vacía sigue contando
+
+Contexto (Pasada E + Y): el eje **Salidas** cuenta salidas propias, y una salida
+puede quedar sin check-ins (borrando el último) y sigue sumando. Tres alternativas,
+**ninguna implementada** — se elige cuando dispare:
+
+- **Reemplazar en vez de bloquear:** si es el último check-in, "Quitar" ofrece
+  "Cambiar la bebida" — resuelve "registré mal" sin dejar la salida vacía.
+- **Que Salidas cuente solo salidas con ≥1 check-in:** una línea en la query, sin
+  tocar la UI. Contradice la decisión del caso 3 de la Pasada E (presencia = estuviste,
+  no consumo), pero es lo más barato.
+- **Bloquear el borrado del último check-in:** *descartada* — contradice A.1 (quitar
+  es frecuente y barato: por eso lleva "Deshacer" y no diálogo) y atrapa al usuario si
+  registró mal su única bebida.
+
+**Disparadores:** si alguien del parche infla el conteo de Salidas, o si alguien se
+queja de haber borrado su única bebida.
+
+_(Nota: "Yo también" ya evita crear salidas vacías: al deshacer, si la salida se creó
+por la acción y queda vacía, se borra — Pasada Y, caso 4.)_

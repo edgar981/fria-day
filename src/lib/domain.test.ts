@@ -20,6 +20,7 @@ import {
   circleOf,
   formatBreakdown,
   leaderboardSessions,
+  yoTambienCheckIn,
   FORMATS_BY_KIND,
   REGISTRATION_PLAZO_MS,
   type SessionData,
@@ -608,5 +609,29 @@ describe("Pasada E — eje Salidas (presencia)", () => {
   it("caso 3: una salida SIN check-ins cuenta (presencia, no consumo)", () => {
     const sessions: SessionData[] = [mk("empty", ana.id, 0)];
     expect(leaderboardSessions([ana], sessions)[0].sessions).toBe(1);
+  });
+});
+
+describe("Pasada Y — 'Yo también'", () => {
+  it("caso 5: arma el check-in con cantidad 1 y SIN rating (no se copia)", () => {
+    const ci = yoTambienCheckIn({ beerId: "b_mojito", format: "VASO" });
+    expect(ci).toEqual({ beerId: "b_mojito", format: "VASO", quantity: 1, rating: null });
+  });
+
+  it("caso 3: consolida en tu salida si ya tienes esa bebida y formato (2× en vez de fila nueva)", () => {
+    const mine: ExistingCheckIn[] = [
+      { id: "c1", beerId: "b_mojito", format: "VASO", quantity: 1, rating: 5 },
+    ];
+    const plan = planCheckInAdd(mine, yoTambienCheckIn({ beerId: "b_mojito", format: "VASO" }));
+    expect(plan.action).toBe("merge");
+    expect(plan).toMatchObject({ quantity: 2, rating: 5 }); // suma cantidad, conserva TU rating
+  });
+
+  it("formato distinto → fila nueva (no consolida)", () => {
+    const mine: ExistingCheckIn[] = [
+      { id: "c1", beerId: "b_mojito", format: "COPA", quantity: 1, rating: null },
+    ];
+    const plan = planCheckInAdd(mine, yoTambienCheckIn({ beerId: "b_mojito", format: "VASO" }));
+    expect(plan.action).toBe("create");
   });
 });

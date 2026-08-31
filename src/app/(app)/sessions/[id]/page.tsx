@@ -5,14 +5,13 @@ import { getSessionDetail, loadCircle } from "@/lib/queries";
 import { BackHeader } from "@/components/BackHeader";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
-import { RatingCell } from "@/components/Glasses";
 import { Tally } from "@/components/Tally";
 import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
+import { TaggedCheckInList } from "@/components/TaggedCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { TagDismissControl } from "@/components/TagDismissControl";
-import { FoamStrip } from "@/components/FoamStrip";
-import { FORMAT_LABEL, formatDay, pendingLabel, formatBreakdownText, joinMeta } from "@/lib/format";
+import { formatDay, pendingLabel, formatBreakdownText } from "@/lib/format";
 import { sessionTotalUnits, formatBreakdown } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
@@ -149,25 +148,20 @@ export default async function SessionDetailPage({
               }))}
             />
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-              {s.checkIns.map((c) => (
-                <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
-                  <FoamStrip size="sm" />
-                  <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
-                    {c.photoUrl && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={c.photoUrl} alt="Foto de la cerveza" width={46} height={46} loading="lazy" style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", flex: "none", border: "1px solid var(--color-borde)" }} />
-                    )}
-                    <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ font: "600 16px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beer.name}</div>
-                      <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.beer.brewery, FORMAT_LABEL[c.format])}</div>
-                    </div>
-                    <RatingCell value={c.rating} size="sm" />
-                  </div>
-                </div>
-              ))}
-            </div>
+            // Salida ajena en solo lectura + "Yo también" por bebida (Pasada Y),
+            // ofrecido SOLO si estás etiquetado (no a un simple visitante del círculo).
+            <TaggedCheckInList
+              canYoTambien={isTagged}
+              checkIns={s.checkIns.map((c) => ({
+                id: c.id,
+                quantity: c.quantity,
+                format: c.format,
+                rating: c.rating,
+                beerName: c.beer.name,
+                brewery: c.beer.brewery,
+                photoUrl: c.photoUrl,
+              }))}
+            />
           )}
         </section>
 

@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay } from "@/lib/format";
 import { sessionSchema, checkInSchema } from "@/lib/validation";
-import { planCheckInAdd, consolidateNewCheckIns } from "@/lib/domain";
+import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn } from "@/lib/domain";
 import { deleteBlobQuietly, deleteBlobsQuietly, isOurBlobUrl } from "@/lib/blob";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
@@ -374,5 +374,108 @@ export async function setTagDismissed(
   });
   revalidatePath("/");
   revalidatePath(`/sessions/${tag.sessionId}`);
+  return { ok: true };
+}
+
+/**
+ * "Yo también" (Pasada Y): desde una bebida de una salida AJENA donde estás
+ * etiquetado, la registra en TU salida de esa misma fecha (la crea si no existe,
+ * copiando el lugar). El registro lo haces tú → el invariante se mantiene (etiquetar
+ * no acredita). Consolida con A.2 si ya tienes esa bebida+formato. Sin rating ni foto.
+ * Devuelve datos para deshacer.
+ */
+export async function yoTambien(
+  sourceCheckInId: string,
+): Promise<Result<{ checkInId: string; sessionCreated: boolean }>> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+
+  const src = await prisma.checkIn.findUnique({
+    where: { id: sourceCheckInId },
+    select: {
+      beerId: true,
+      format: true,
+      session: {
+        select: { userId: true, date: true, placeName: true, tags: { select: { taggedUserId: true } } },
+      },
+    },
+  });
+  if (!src) return { ok: false, error: "No encontramos esa bebida" };
+  // Permiso: no es tu salida y estás etiquetado en ella (solo escribes en la TUYA).
+  if (src.session.userId === userId) return { ok: false, error: "Esa salida ya es tuya" };
+  if (!src.session.tags.some((t) => t.taggedUserId === userId))
+    return { ok: false, error: "No estás en esa salida" };
+
+  // Tu salida de esa fecha: reutilizar o crear (copiando el lugar). date es medianoche
+  // UTC del día, así que la igualdad exacta empareja "mismo día".
+  let target = await prisma.session.findFirst({
+    where: { userId, date: src.session.date },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
+  });
+  let sessionCreated = false;
+  if (!target) {
+    target = await prisma.session.create({
+      data: { userId, date: src.session.date, placeName: src.session.placeName ?? null },
+      select: { id: true },
+    });
+    sessionCreated = true;
+  }
+
+  const existing = await prisma.checkIn.findMany({
+    where: { sessionId: target.id },
+    select: { id: true, beerId: true, format: true, quantity: true, rating: true },
+  });
+  const plan = planCheckInAdd(existing, yoTambienCheckIn({ beerId: src.beerId, format: src.format }));
+
+  let checkInId: string;
+  if (plan.action === "merge") {
+    await prisma.checkIn.update({
+      where: { id: plan.targetId },
+      data: { quantity: plan.quantity, rating: plan.rating }, // conserva TU rating (no copia el ajeno)
+    });
+    checkInId = plan.targetId;
+  } else {
+    const created = await prisma.checkIn.create({
+      data: { sessionId: target.id, beerId: src.beerId, quantity: 1, format: src.format, rating: null },
+      select: { id: true },
+    });
+    checkInId = created.id;
+  }
+  revalidatePath("/");
+  revalidatePath(`/sessions/${target.id}`);
+  return { ok: true, checkInId, sessionCreated };
+}
+
+/**
+ * Deshacer un "Yo también" (Pasada Y). Quita 1 del check-in: si tenía más (consolidado),
+ * baja la cantidad; si era 1, borra el check-in. Si la salida fue CREADA por la acción
+ * y queda vacía, se borra (caso 4: no dejar salida fantasma que infle el eje Salidas).
+ */
+export async function undoYoTambien(
+  checkInId: string,
+  sessionCreated: boolean,
+): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+
+  const ci = await prisma.checkIn.findUnique({
+    where: { id: checkInId },
+    select: { quantity: true, sessionId: true, session: { select: { userId: true } } },
+  });
+  if (!ci || ci.session.userId !== userId) return { ok: false, error: "No es tu salida" };
+
+  if (ci.quantity > 1) {
+    await prisma.checkIn.update({ where: { id: checkInId }, data: { quantity: { decrement: 1 } } });
+  } else {
+    await prisma.checkIn.delete({ where: { id: checkInId } });
+    // Salida creada por "Yo también" que quedó vacía → se borra (caso 4).
+    if (sessionCreated) {
+      const left = await prisma.checkIn.count({ where: { sessionId: ci.sessionId } });
+      if (left === 0) await prisma.session.delete({ where: { id: ci.sessionId } });
+    }
+  }
+  revalidatePath("/");
+  revalidatePath(`/sessions/${ci.sessionId}`);
   return { ok: true };
 }
