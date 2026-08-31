@@ -7,11 +7,15 @@ import type { FormatCount } from "@/lib/domain";
 
 type UnitRow = { userId: string; displayName: string; units: number };
 type VarietyRow = { userId: string; displayName: string; variety: number };
+type SessionsRow = { userId: string; displayName: string; sessions: number };
+type Axis = "units" | "variety" | "sessions";
 
-// Dos ejes al MISMO nivel: unidades y variedad. Un chip cada uno, igual peso.
+// TRES ejes al MISMO nivel: unidades, variedad y salidas (presencia). Un chip cada
+// uno, igual peso. Unidades por defecto. Salidas es el único que no depende de consumo.
 export function LeaderboardTabs({
   boardUnits,
   boardVariety,
+  boardSessions,
   userId,
   avatarById,
   aloneInCircle,
@@ -19,21 +23,23 @@ export function LeaderboardTabs({
 }: {
   boardUnits: UnitRow[];
   boardVariety: VarietyRow[];
+  boardSessions: SessionsRow[];
   userId: string;
   avatarById: Record<string, string | null>;
   aloneInCircle: boolean;
   breakdownByUser: Record<string, FormatCount[]>;
 }) {
-  const [axis, setAxis] = useState<"units" | "variety">("units");
+  const [axis, setAxis] = useState<Axis>("units");
 
   const rows =
     axis === "units"
       ? boardUnits.map((r) => ({ userId: r.userId, displayName: r.displayName, value: r.units }))
-      : boardVariety.map((r) => ({ userId: r.userId, displayName: r.displayName, value: r.variety }));
+      : axis === "variety"
+        ? boardVariety.map((r) => ({ userId: r.userId, displayName: r.displayName, value: r.variety }))
+        : boardSessions.map((r) => ({ userId: r.userId, displayName: r.displayName, value: r.sessions }));
   const max = rows.length ? Math.max(...rows.map((r) => r.value), 1) : 1;
-  const suffix = axis === "units" ? "" : "";
 
-  const chip = (key: "units" | "variety", label: string) => {
+  const chip = (key: Axis, label: string) => {
     const on = axis === key;
     return (
       <button
@@ -63,9 +69,10 @@ export function LeaderboardTabs({
         <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>solo salidas propias</span>
       </div>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 13 }}>
+      <div style={{ display: "flex", gap: 7, marginBottom: 13 }}>
         {chip("units", "Unidades")}
         {chip("variety", "Variedad")}
+        {chip("sessions", "Salidas")}
       </div>
 
       {/* Sin círculo, el ranking eres solo tú. Una línea que INVITA a actuar (T.1):
@@ -108,7 +115,7 @@ export function LeaderboardTabs({
                   <span style={{ display: "block", height: 6, width: `${Math.round((row.value / max) * 100)}%`, background: barColor }} />
                 </span>
               </span>
-              <span style={{ font: "700 16px var(--font-display)", color: me ? "var(--color-ambar)" : "var(--color-tenue)", flex: "none" }}>{row.value}{suffix}</span>
+              <span style={{ font: "700 16px var(--font-display)", color: me ? "var(--color-ambar)" : "var(--color-tenue)", flex: "none" }}>{row.value}</span>
             </div>
           );
         })}

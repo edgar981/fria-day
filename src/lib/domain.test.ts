@@ -19,6 +19,7 @@ import {
   ownBeerRating,
   circleOf,
   formatBreakdown,
+  leaderboardSessions,
   FORMATS_BY_KIND,
   REGISTRATION_PLAZO_MS,
   type SessionData,
@@ -573,5 +574,39 @@ describe("Pasada D — desglose por formato y formatos por tipo", () => {
     expect(FORMATS_BY_KIND.COCTEL).not.toContain("BOTELLA");
     expect(FORMATS_BY_KIND.COCTEL).not.toContain("LATA");
     expect(FORMATS_BY_KIND.CERVEZA).toEqual(["BOTELLA", "LATA", "JARRA", "PINTA"]);
+  });
+});
+
+describe("Pasada E — eje Salidas (presencia)", () => {
+  const mk = (id: string, ownerId: string, qty: number): SessionData => ({
+    id,
+    ownerId,
+    date: "2026-08-01",
+    checkIns: qty > 0 ? [{ beerId: "b", quantity: qty, format: "LATA", rating: null }] : [],
+  });
+
+  it("caso 1: A con 5 salidas de 1 vs B con 2 de 10 → A arriba en Salidas, B en Unidades", () => {
+    const sessions: SessionData[] = [
+      mk("a1", ana.id, 1), mk("a2", ana.id, 1), mk("a3", ana.id, 1), mk("a4", ana.id, 1), mk("a5", ana.id, 1),
+      mk("b1", beto.id, 10), mk("b2", beto.id, 10),
+    ];
+    const bySessions = leaderboardSessions([ana, beto], sessions);
+    expect(bySessions[0].userId).toBe(ana.id); // 5 > 2
+    expect(bySessions.find((r) => r.userId === ana.id)?.sessions).toBe(5);
+    expect(bySessions.find((r) => r.userId === beto.id)?.sessions).toBe(2);
+    // El eje Unidades invierte el orden: B (20) arriba de A (5).
+    expect(leaderboard([ana, beto], sessions)[0].userId).toBe(beto.id);
+  });
+
+  it("caso 2: etiquetado en salidas ajenas, 0 propias → 0 en Salidas (invariante)", () => {
+    // caro no es dueño de ninguna salida (solo lo etiquetan en las de otros → irrelevante aquí).
+    const sessions: SessionData[] = [mk("x1", ana.id, 3), mk("x2", beto.id, 2)];
+    const row = leaderboardSessions([ana, beto, caro], sessions).find((r) => r.userId === caro.id);
+    expect(row?.sessions).toBe(0);
+  });
+
+  it("caso 3: una salida SIN check-ins cuenta (presencia, no consumo)", () => {
+    const sessions: SessionData[] = [mk("empty", ana.id, 0)];
+    expect(leaderboardSessions([ana], sessions)[0].sessions).toBe(1);
   });
 });

@@ -454,6 +454,29 @@ export function leaderboardVariety(users: UserRef[], sessions: SessionData[]): V
     .sort((a, b) => b.variety - a.variety || a.displayName.localeCompare(b.displayName));
 }
 
+export interface SessionsRow {
+  userId: string;
+  displayName: string;
+  sessions: number;
+}
+
+/**
+ * PIEZA — Leaderboard por PRESENCIA (Pasada E): cuántas salidas PROPIAS registró cada
+ * quien. Es el único eje que NO depende de cuánto tomas: quien sale seguido y toma
+ * poco puede ir primero aquí y último en Unidades. Mismo invariante: solo salidas
+ * propias (que te etiqueten no suma). Una salida sin check-ins SÍ cuenta: es presencia
+ * (registraste que saliste), no consumo. Ordena por nº de salidas desc, luego nombre.
+ */
+export function leaderboardSessions(users: UserRef[], sessions: SessionData[]): SessionsRow[] {
+  return users
+    .map((u) => ({
+      userId: u.id,
+      displayName: u.displayName,
+      sessions: sessions.filter((s) => s.ownerId === u.id).length,
+    }))
+    .sort((a, b) => b.sessions - a.sessions || a.displayName.localeCompare(b.displayName));
+}
+
 // ----------------------------------------------------------------------------
 // Pasada C — el círculo.
 //
