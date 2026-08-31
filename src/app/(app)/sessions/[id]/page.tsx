@@ -10,8 +10,8 @@ import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { TaggedCheckInList } from "@/components/TaggedCheckInList";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
-import { TagDismissControl } from "@/components/TagDismissControl";
-import { formatDay, pendingLabel, formatBreakdownText } from "@/lib/format";
+import { ReactionBar } from "@/components/ReactionBar";
+import { formatDay, formatBreakdownText } from "@/lib/format";
 import { sessionTotalUnits, formatBreakdown } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
@@ -30,7 +30,7 @@ export default async function SessionDetailPage({
 }) {
   const { id } = await params;
   const viewer = await requireUser();
-  const s = await getSessionDetail(id);
+  const s = await getSessionDetail(id, viewer.id);
   if (!s) notFound();
 
   const isOwner = s.userId === viewer.id;
@@ -99,25 +99,16 @@ export default async function SessionDetailPage({
           {total > 0 && <Tally count={total} color="var(--color-espuma)" barW={3} barH={30} gap={4} maxGroups={5} labelColor="rgba(251,240,213,.7)" />}
         </div>
 
-        {/* Pasada B: contador "quién falta" (social, acotado al grupo de la salida). */}
-        {s.social && s.social.total > 1 && (
-          <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "12px 15px", display: "flex", flexDirection: "column", gap: 6 }}>
-            <span style={{ font: "700 15px var(--font-sans)" }}>
-              {s.social.registered} de {s.social.total} registraron
-            </span>
-            {s.social.pending.length > 0 && (
-              <span style={{ font: "500 13px/1.4 var(--font-sans)", color: "var(--color-ambar)" }}>
-                {pendingLabel(s.social.pending, viewer.id)} · {s.social.plazoLabel}
-              </span>
-            )}
-            {s.social.pending.length === 0 && s.social.registered < s.social.total && (
-              <span style={{ font: "500 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>Ya se venció el plazo.</span>
-            )}
-          </div>
-        )}
-
-        {/* Control "no tomé" — solo el propio etiquetado. */}
-        {myTag && <TagDismissControl tagId={myTag.id} dismissed={!!myTag.dismissedAt} />}
+        {/* Reacciones (Pasada R). Reemplazan al contador "X de N registraron" y al
+            control "No tomé ese día", ambos quitados: la racha queda privada (perfil). */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <ReactionBar sessionId={s.id} groups={s.reactions.groups} mine={s.reactions.mine} />
+          {s.reactionWho.length > 0 && (
+            <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--color-tenue)" }}>
+              {s.reactionWho.map((w) => `${w.emoji} ${w.names.join(", ")}`).join("   ·   ")}
+            </div>
+          )}
+        </div>
 
         {isOwner && (
           <>

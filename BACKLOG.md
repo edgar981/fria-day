@@ -110,3 +110,17 @@ arregla en esta pasada** (es un flujo distinto).
 
 **Disparador:** si alguien se queja de salidas duplicadas tras guardar, o si el
 doble-submit resulta molesto en uso real.
+
+## SessionTag.dismissedAt: columna sin uso en la UI (Pasada R)
+
+La Pasada R quitó el contador "X de N registraron" y el control "No tomé ese día".
+`dismissedAt` era la salida de ese contador; sin él, ya no se puede setear desde la
+interfaz. **La columna NO se borró** (borrar es destructivo; reversible es mejor).
+
+- La **lógica de la racha NO cambió**: sigue leyendo `dismissedAt` (una etiqueta
+  descartada no cuenta como evento). Como ya nadie la setea, en la práctica será null
+  para etiquetas nuevas; las viejas conservan su valor.
+- El componente `TagDismissControl` y la acción `setTagDismissed` quedan sin uso.
+
+**Disparador para retomar:** si se decide volver a mostrar presencia/racha de forma
+social, o si se hace una limpieza de esquema y se confirma que nada la lee.

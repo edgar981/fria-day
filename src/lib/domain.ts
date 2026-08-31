@@ -20,6 +20,48 @@ export const FORMATS_BY_KIND: Record<DrinkKind, BeerFormat[]> = {
   COCTEL: ["COPA", "VASO", "JARRA_COMPARTIDA"],
 };
 
+/**
+ * Reacciones a salidas (Pasada R): set fijo y corto. Cambiar el set es editar SOLO
+ * esta lista. El orden manda en cómo se muestran los grupos.
+ */
+export const REACTIONS = ["🍻", "🔥", "😂", "🤤", "❤️", "🫡"] as const;
+export type Reaction = (typeof REACTIONS)[number];
+export function isReaction(v: string): v is Reaction {
+  return (REACTIONS as readonly string[]).includes(v);
+}
+
+export interface ReactionInput {
+  emoji: string;
+  userId: string;
+}
+export interface ReactionGroup {
+  emoji: string;
+  count: number;
+  mine: boolean;
+}
+
+/**
+ * Agrupa reacciones por emoji: conteo + si el viewer reaccionó con ese. Devuelve solo
+ * los emojis con ≥1 reacción, en el orden del set. `mine` = el emoji del viewer (o null).
+ */
+export function groupReactions(
+  reactions: ReactionInput[],
+  viewerId: string,
+): { groups: ReactionGroup[]; mine: string | null } {
+  const byEmoji = new Map<string, number>();
+  let mine: string | null = null;
+  for (const r of reactions) {
+    byEmoji.set(r.emoji, (byEmoji.get(r.emoji) ?? 0) + 1);
+    if (r.userId === viewerId) mine = r.emoji;
+  }
+  const groups = REACTIONS.filter((e) => byEmoji.has(e)).map((e) => ({
+    emoji: e,
+    count: byEmoji.get(e) as number,
+    mine: mine === e,
+  }));
+  return { groups, mine };
+}
+
 export interface CheckInData {
   beerId: string;
   /** Estilo de la cerveza del check-in (para agregación por estilo). */

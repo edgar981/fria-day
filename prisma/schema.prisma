@@ -51,6 +51,7 @@ model User {
   createdInvitations Invitation[] @relation("InvitationCreatedBy")
   usedInvitation     Invitation?  @relation("InvitationUsedBy")
   taggedIn           SessionTag[] @relation("SessionTagTaggedUser")
+  reactions          SessionReaction[]
 
   @@map("user")
 }
@@ -183,12 +184,29 @@ model Session {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  checkIns CheckIn[]
-  tags     SessionTag[]
+  checkIns  CheckIn[]
+  tags      SessionTag[]
+  reactions SessionReaction[]
 
   @@index([userId])
   @@index([date])
   @@map("session")
+}
+
+// Reacciones a salidas (Pasada R). Una por (salida, usuario): tocar de nuevo la
+// quita, tocar otra la cambia. Puede reaccionar cualquiera que pueda ver la salida.
+model SessionReaction {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([sessionId, userId])
+  @@index([sessionId])
+  @@map("session_reaction")
 }
 
 model SessionTag {

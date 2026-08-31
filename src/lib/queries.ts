@@ -1,13 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { avisoPlazo } from "@/lib/format";
 import {
   leaderboard,
   leaderboardVariety,
   userStats,
   beerRanking,
   sessionTotalUnits,
-  sessionRegistration,
   registrationStreak,
   dayKeyUTC,
   normalizeKey,
@@ -15,6 +13,7 @@ import {
   circleOf,
   formatBreakdown,
   leaderboardSessions,
+  groupReactions,
   type SessionData,
   type UserRef,
   type FormatCount,
@@ -51,92 +50,68 @@ export async function loadCircle(userId: string): Promise<Set<string>> {
  */
 export async function getFeed(userId: string) {
   const circle = await loadCircle(userId);
-  const [sessions, registeredDays] = await Promise.all([
-    prisma.session.findMany({
-      where: { userId: { in: [...circle] } },
-      orderBy: [{ date: "desc" }, { createdAt: "desc" }],
-      include: {
-        user: { select: { id: true, displayName: true, avatar: true } },
-        tags: {
-          include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
-          orderBy: { createdAt: "asc" },
-        },
-        checkIns: {
-          include: {
-            beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
-          },
-          orderBy: { createdAt: "asc" },
-        },
+  const sessions = await prisma.session.findMany({
+    where: { userId: { in: [...circle] } },
+    orderBy: [{ date: "desc" }, { createdAt: "desc" }],
+    include: {
+      user: { select: { id: true, displayName: true, avatar: true } },
+      tags: {
+        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
+        orderBy: { createdAt: "asc" },
       },
-    }),
-    loadRegisteredDays(),
-  ]);
+      checkIns: {
+        include: {
+          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      reactions: { select: { emoji: true, userId: true } }, // Pasada R
+    },
+  });
 
-  const now = Date.now();
   return sessions.map((s) => ({
     ...s,
     totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
     isOwner: s.userId === userId,
     // El distintivo "X te etiquetó" SOLO cuando hay etiqueta real (no por círculo).
     viewerTagged: s.tags.some((t) => t.taggedUserId === userId),
-    social: computeSocial(s, registeredDays, now),
+    // Pasada R: reacciones agrupadas + la del viewer. El contador social se quitó.
+    reactions: groupReactions(s.reactions, userId),
   }));
-}
-
-/** Contador "quién falta" + aviso de una salida (null si no hay etiquetas de la app). */
-function computeSocial(
-  s: {
-    userId: string;
-    date: Date;
-    tags: { taggedUserId: string | null; dismissedAt: Date | null; taggedUser: { id: string; displayName: string } | null }[];
-  },
-  registeredDays: Set<string>,
-  now: number,
-) {
-  const active = s.tags.filter((t) => t.taggedUserId && !t.dismissedAt);
-  if (active.length === 0) return null; // sin etiquetas de usuarios de la app
-  const nameById = new Map<string, string>();
-  for (const t of active) if (t.taggedUser) nameById.set(t.taggedUser.id, t.taggedUser.displayName);
-  const r = sessionRegistration({
-    registeredDays,
-    ownerId: s.userId,
-    taggedUserIds: active.map((t) => t.taggedUserId as string),
-    sessionDayKey: dayKeyUTC(s.date),
-    nowMs: now,
-  });
-  return {
-    registered: r.registered,
-    total: r.total,
-    deadlineMs: r.deadlineMs,
-    pending: r.pending.map((id) => ({ id, displayName: nameById.get(id) ?? "alguien" })),
-    plazoLabel: r.pending.length > 0 ? avisoPlazo(r.deadlineMs, now) : "",
-  };
 }
 
 export type FeedSession = Awaited<ReturnType<typeof getFeed>>[number];
 
-export async function getSessionDetail(id: string) {
-  const [session, registeredDays] = await Promise.all([
-    prisma.session.findUnique({
-      where: { id },
-      include: {
-        user: { select: { id: true, displayName: true, avatar: true } },
-        tags: {
-          include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
-          orderBy: { createdAt: "asc" },
-        },
-        checkIns: {
-          include: {
-            beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
-          },
-          orderBy: { createdAt: "asc" },
-        },
+export async function getSessionDetail(id: string, viewerId: string) {
+  const session = await prisma.session.findUnique({
+    where: { id },
+    include: {
+      user: { select: { id: true, displayName: true, avatar: true } },
+      tags: {
+        include: { taggedUser: { select: { id: true, displayName: true, avatar: true } } },
+        orderBy: { createdAt: "asc" },
       },
-    }),
-    loadRegisteredDays(),
-  ]);
+      checkIns: {
+        include: {
+          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+        },
+        orderBy: { createdAt: "asc" },
+      },
+      reactions: { select: { emoji: true, userId: true, user: { select: { displayName: true } } } }, // Pasada R
+    },
+  });
   if (!session) return null;
-  return { ...session, social: computeSocial(session, registeredDays, Date.now()) };
+  const { reactions, ...rest } = session;
+  const grouped = groupReactions(reactions, viewerId);
+  // "Quién reaccionó" (solo en el detalle): nombres por emoji, en el orden de los grupos.
+  const whoByEmoji = new Map<string, string[]>();
+  for (const r of reactions) {
+    const arr = whoByEmoji.get(r.emoji) ?? [];
+    arr.push(r.userId === viewerId ? "tú" : r.user.displayName);
+    whoByEmoji.set(r.emoji, arr);
+  }
+  const reactionWho = grouped.groups.map((g) => ({ emoji: g.emoji, names: whoByEmoji.get(g.emoji) ?? [] }));
+  return { ...rest, reactions: grouped, reactionWho };
 }
 
 export type SessionDetail = NonNullable<

@@ -5,8 +5,9 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay } from "@/lib/format";
 import { sessionSchema, checkInSchema } from "@/lib/validation";
-import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn } from "@/lib/domain";
+import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction } from "@/lib/domain";
 import { deleteBlobQuietly, deleteBlobsQuietly, isOurBlobUrl } from "@/lib/blob";
+import { loadCircle } from "@/lib/queries";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -497,5 +498,59 @@ export async function undoYoTambien(
   }
   revalidatePath("/");
   revalidatePath(`/sessions/${ci.sessionId}`);
+  return { ok: true };
+}
+
+/**
+ * Reacciona a una salida (Pasada R). Una por (salida, usuario): tocar la misma la
+ * quita, tocar otra la cambia, ninguna la crea. Puede reaccionar cualquiera que pueda
+ * VER la salida (dueño o círculo). El único compuesto (sessionId, userId) garantiza
+ * una sola fila por usuario.
+ */
+export async function toggleReaction(sessionId: string, emoji: string): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+  if (!isReaction(emoji)) return { ok: false, error: "Reacción inválida" };
+
+  const session = await prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true } });
+  if (!session) return { ok: false, error: "No existe la salida" };
+  // Permiso = puede ver la salida (dueño está en su círculo; el círculo incluye a sí mismo).
+  const circle = await loadCircle(userId);
+  if (!circle.has(session.userId)) return { ok: false, error: "No puedes ver esa salida" };
+
+  const existing = await prisma.sessionReaction.findUnique({
+    where: { sessionId_userId: { sessionId, userId } },
+    select: { emoji: true },
+  });
+  if (!existing) {
+    await prisma.sessionReaction.create({ data: { sessionId, userId, emoji } });
+  } else if (existing.emoji === emoji) {
+    await prisma.sessionReaction.delete({ where: { sessionId_userId: { sessionId, userId } } });
+  } else {
+    await prisma.sessionReaction.update({ where: { sessionId_userId: { sessionId, userId } }, data: { emoji } });
+  }
+  revalidatePath("/");
+  revalidatePath(`/sessions/${sessionId}`);
+  return { ok: true };
+}
+
+/**
+ * Ajusta la cantidad de un check-in en ±1 (Pasada R · stepper). Solo el dueño. Es una
+ * ACTUALIZACIÓN RELATIVA y atómica (increment con clamp a mínimo 1) en una sola
+ * sentencia con el dueño en el WHERE: así cinco "+" rápidos suman 5 aunque lleguen
+ * desordenados (no se pisan como haría un "set" absoluto). Bajar a 0 no borra — para
+ * eso está la X con "Deshacer".
+ */
+export async function bumpCheckInQuantity(checkInId: string, delta: number): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+  const d = delta > 0 ? 1 : -1;
+
+  const affected = await prisma.$executeRaw`
+    UPDATE check_in ci SET quantity = GREATEST(1, ci.quantity + ${d})
+    FROM session s
+    WHERE ci.id = ${checkInId} AND ci."sessionId" = s.id AND s."userId" = ${userId}`;
+  if (affected === 0) return { ok: false, error: "No es tu salida" };
+  revalidatePath("/");
   return { ok: true };
 }

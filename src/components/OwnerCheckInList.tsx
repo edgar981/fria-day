@@ -1,8 +1,8 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteCheckIn, addCheckIn, updateCheckIn, setCheckInPhoto, removeCheckInPhoto } from "@/app/actions/sessions";
+import { deleteCheckIn, addCheckIn, updateCheckIn, setCheckInPhoto, removeCheckInPhoto, bumpCheckInQuantity } from "@/app/actions/sessions";
 import { FORMAT_LABEL, joinMeta } from "@/lib/format";
 import { FoamStrip } from "@/components/FoamStrip";
 import { PhotoField } from "@/components/PhotoField";
@@ -50,6 +50,56 @@ function RatingEditor({ checkInId, initial }: { checkInId: string; initial: numb
         </button>
       ))}
     </span>
+  );
+}
+
+/**
+ * Stepper de cantidad (Pasada R): −/+ inmediato al servidor. "me tomé otra igual" es
+ * un toque. Mínimo 1 (bajar a 0 no borra: para eso está la X con Deshacer).
+ *
+ * Robustez de taps rápidos: el bump es RELATIVO (±1) y atómico en el servidor, y el
+ * efecto NO va dentro del updater de setState (StrictMode lo invoca dos veces en dev y
+ * doblaría los taps). Se usa un ref con la cantidad actual, se calcula fuera y se
+ * dispara el bump una vez por tap. router.refresh solo tras asentarse (debounce), para
+ * no pisar el optimismo ni el conteo en vuelo.
+ */
+function QtyStepper({ checkInId, initial }: { checkInId: string; initial: number }) {
+  const router = useRouter();
+  const [qty, setQty] = useState(initial);
+  const qtyRef = useRef(initial);
+  const pending = useRef(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resincroniza con el servidor cuando llegan props nuevas (tras refresh), si no hay
+  // taps en vuelo. En el caso normal ya coinciden (optimismo == servidor) → no-op.
+  useEffect(() => {
+    if (pending.current === 0) {
+      qtyRef.current = initial;
+      setQty(initial);
+    }
+  }, [initial]);
+
+  function bump(delta: 1 | -1) {
+    const next = Math.max(1, qtyRef.current + delta);
+    if (next === qtyRef.current) return; // ya en el mínimo: "−" no hace nada
+    qtyRef.current = next;
+    setQty(next);
+    pending.current++;
+    void bumpCheckInQuantity(checkInId, delta).finally(() => {
+      pending.current--;
+    });
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (pending.current === 0) router.refresh();
+    }, 1200);
+  }
+
+  return (
+    <div style={{ display: "inline-flex", alignItems: "center", border: "1px solid var(--color-borde)", borderRadius: 12, overflow: "hidden", background: "var(--color-barra-alta)", flex: "none" }}>
+      <button type="button" aria-label="Una menos" onClick={() => bump(-1)} disabled={qty <= 1} style={{ width: 44, height: 40, border: "none", background: "transparent", font: "600 20px var(--font-sans)", color: qty <= 1 ? "#4A3A28" : "var(--color-tenue)", cursor: qty <= 1 ? "default" : "pointer" }}>−</button>
+      <span style={{ minWidth: 40, textAlign: "center", font: "700 17px var(--font-display)", color: "var(--color-crema)" }}>{qty}×</span>
+      <button type="button" aria-label="Una más" onClick={() => bump(1)} style={{ width: 44, height: 40, border: "none", background: "var(--color-borde)", font: "600 20px var(--font-sans)", color: "var(--color-ambar)", cursor: "pointer" }}>＋</button>
+    </div>
   );
 }
 
@@ -106,22 +156,26 @@ export function OwnerCheckInList({
         {visible.map((c) => (
           <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
             <FoamStrip size="sm" />
-            <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 10 }}>
-              <PhotoField value={c.photoUrl} onChange={(url) => onRowPhoto(c.id, url)} size={46} />
-              <span style={{ minWidth: 34, height: 32, padding: "0 8px", borderRadius: 10, background: "#2E2217", color: "var(--color-ambar)", font: "700 15px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
-                <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.brewery, FORMAT_LABEL[c.format])}</div>
+            <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <PhotoField value={c.photoUrl} onChange={(url) => onRowPhoto(c.id, url)} size={46} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
+                  <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.brewery, FORMAT_LABEL[c.format])}</div>
+                </div>
+                <button
+                  type="button"
+                  aria-label="Quitar bebida"
+                  onClick={() => remove(c)}
+                  style={{ width: 30, height: 30, borderRadius: 9, border: "1px solid var(--color-borde)", background: "transparent", color: "var(--color-tenue)", cursor: "pointer", fontSize: 15, lineHeight: 1, flex: "none" }}
+                >
+                  ×
+                </button>
               </div>
-              <RatingEditor checkInId={c.id} initial={c.rating} />
-              <button
-                type="button"
-                aria-label="Quitar cerveza"
-                onClick={() => remove(c)}
-                style={{ width: 30, height: 30, borderRadius: 9, border: "1px solid var(--color-borde)", background: "transparent", color: "var(--color-tenue)", cursor: "pointer", fontSize: 15, lineHeight: 1, flex: "none" }}
-              >
-                ×
-              </button>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                <QtyStepper checkInId={c.id} initial={c.quantity} />
+                <RatingEditor checkInId={c.id} initial={c.rating} />
+              </div>
             </div>
           </div>
         ))}
@@ -131,7 +185,7 @@ export function OwnerCheckInList({
       {undo && (
         <div style={{ position: "fixed", left: 0, right: 0, bottom: "calc(env(safe-area-inset-bottom,0px) + 18px)", display: "flex", justifyContent: "center", zIndex: 70, pointerEvents: "none" }}>
           <div style={{ pointerEvents: "auto", display: "flex", alignItems: "center", gap: 14, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "12px 16px", boxShadow: "0 12px 30px rgba(0,0,0,.5)", maxWidth: 360 }}>
-            <span style={{ font: "500 14px var(--font-sans)", color: "var(--color-crema)" }}>Cerveza eliminada</span>
+            <span style={{ font: "500 14px var(--font-sans)", color: "var(--color-crema)" }}>Bebida eliminada</span>
             <button type="button" onClick={doUndo} style={{ font: "700 14px var(--font-sans)", color: "var(--color-ambar)", background: "none", border: "none", cursor: "pointer" }}>Deshacer</button>
           </div>
         </div>

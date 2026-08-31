@@ -21,6 +21,9 @@ import {
   formatBreakdown,
   leaderboardSessions,
   yoTambienCheckIn,
+  REACTIONS,
+  isReaction,
+  groupReactions,
   FORMATS_BY_KIND,
   REGISTRATION_PLAZO_MS,
   type SessionData,
@@ -633,5 +636,33 @@ describe("Pasada Y — 'Yo también'", () => {
     ];
     const plan = planCheckInAdd(mine, yoTambienCheckIn({ beerId: "b_mojito", format: "VASO" }));
     expect(plan.action).toBe("create");
+  });
+});
+
+describe("Pasada R — reacciones", () => {
+  it("agrupa por emoji, marca la del viewer y ordena por el orden del set", () => {
+    const rs = [
+      { emoji: "🔥", userId: "u1" },
+      { emoji: "🍻", userId: "u2" },
+      { emoji: "🔥", userId: "u3" },
+    ];
+    const { groups, mine } = groupReactions(rs, "u3");
+    expect(mine).toBe("🔥");
+    expect(groups).toEqual([
+      { emoji: "🍻", count: 1, mine: false }, // 🍻 antes de 🔥 (orden del set)
+      { emoji: "🔥", count: 2, mine: true },
+    ]);
+  });
+
+  it("viewer sin reacción → mine null; emojis sin reacción no aparecen", () => {
+    const { groups, mine } = groupReactions([{ emoji: "🍻", userId: "u1" }], "u2");
+    expect(mine).toBe(null);
+    expect(groups).toEqual([{ emoji: "🍻", count: 1, mine: false }]);
+  });
+
+  it("isReaction valida contra el set fijo", () => {
+    expect(isReaction("🍻")).toBe(true);
+    expect(REACTIONS.every((e) => isReaction(e))).toBe(true);
+    expect(isReaction("🍕")).toBe(false);
   });
 });

@@ -16,7 +16,7 @@ export default async function EditSessionPage({
 }) {
   const { id } = await params;
   const viewer = await requireUser();
-  const s = await getSessionDetail(id);
+  const s = await getSessionDetail(id, viewer.id);
   if (!s) notFound();
   if (s.userId !== viewer.id) redirect(`/sessions/${id}`);
 
