@@ -15,12 +15,13 @@ recién vale la pena hacerlo.
 - **Por qué esperar:** el círculo se deriva de datos que ya existen (etiquetas). Una
   entidad con membresía es peso muerto hasta que alguien necesite cortar el grupo.
 
-## Reacciones y comentarios en salidas
+## Comentarios en salidas (plana, sin hilos)
 
-- **Qué:** reaccionar (o comentar) una salida del feed.
+- **Qué:** comentar una salida del feed, lista **plana** (sin hilos anidados).
+- **Estado:** las **reacciones** ya se hicieron (Pasada R). Queda el comentario en texto.
 - **Disparador:** cuando la gente ya comente las salidas **por fuera** (WhatsApp,
   en persona) sobre lo que ve en el feed, o pida responder dentro. La señal es que
-  el feed del círculo (nuevo en Pasada C) genera conversación que hoy se va a otro lado.
+  el feed del círculo (Pasada C) genera conversación que hoy se va a otro lado.
 
 ## Historia compartible con métricas
 
@@ -124,3 +125,28 @@ interfaz. **La columna NO se borró** (borrar es destructivo; reversible es mejo
 
 **Disparador para retomar:** si se decide volver a mostrar presencia/racha de forma
 social, o si se hace una limpieza de esquema y se confirma que nada la lee.
+
+## Modo bar (Pasada N)
+
+- **Qué:** perfil de establecimiento, con sus propios retos y ranking del sitio.
+- **Disparador:** que un **bar lo pida**, o que haya **suficientes usuarios** para que
+  a algún local le interese.
+- **Por qué esperar:** es un producto aparte (lado B2B); no aporta al parche privado
+  hasta que exista demanda real de un establecimiento.
+
+## Puntos (Pasada N)
+
+- **Qué:** un sistema de puntos.
+- **Restricción dura:** si se implementan, es **por registrar una salida, NO por
+  bebida**. Registrar una o siete da lo mismo: el incentivo apunta al **registro**, no
+  al consumo (regla de producto — nada que premie tomar más).
+- **Disparador:** cuando haga falta un empujón para que la gente registre seguido y
+  el resto de señales (racha, feed) no basten.
+
+## Rachas entre amigos (Pasada N)
+
+- **Qué:** racha de pares del círculo, tipo "Edgar y Carlos · 12 salidas juntos".
+- **Por qué encaja:** sale del **círculo** (gente con la que sales), no premia cantidad
+  de bebida — celebra aparecer juntos.
+- **Disparador:** cuando el círculo (Pasada C) ya se sienta vivo y la gente quiera ver
+  con **quién** sale más, no solo cuánto.
