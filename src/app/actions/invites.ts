@@ -37,7 +37,7 @@ export async function createInvite(input: unknown): Promise<CreateInviteResult> 
       const inv = await prisma.invitation.create({
         data: { code, createdById: user.id, expiresAt },
       });
-      revalidatePath("/invite");
+      revalidatePath("/leaderboard"); // Pasada N: la lista de códigos vive en el Leaderboard
       return { ok: true, code: inv.code };
     } catch {
       // colisión del code único: reintenta con otro

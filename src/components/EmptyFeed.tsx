@@ -24,7 +24,7 @@ export function EmptyFeed() {
       <Link href="/sessions/new" className="btn btn-primary" style={{ width: "100%", maxWidth: 340 }}>
         Registrar mi primera salida
       </Link>
-      <Link href="/invite" style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-ambar)" }}>
+      <Link href="/leaderboard?invite=1" style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-ambar)" }}>
         Invitar al parche
       </Link>
       </div>

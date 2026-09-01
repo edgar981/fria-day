@@ -2,16 +2,19 @@
 
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
-import { Icon } from "@/components/Icon";
+import { Icon, type IconName } from "@/components/Icon";
 
-type Item = { href: string; label: string; icon: "home" | "mug" | "chart" | "mail" };
+type Item = { href: string; label: string; icon: IconName };
+// Barra (Pasada N): Feed · Catálogo · [+] · Leaderboard · Perfil. "Invitar" salió de la
+// barra (es acción de dos veces en la vida, no un lugar; pasó a una hoja en el header
+// del Leaderboard). El leaderboard subió a pestaña propia: antes vivía dentro de Perfil.
 const LEFT: Item[] = [
   { href: "/", label: "Feed", icon: "home" },
   { href: "/beers", label: "Catálogo", icon: "mug" },
 ];
 const RIGHT: Item[] = [
-  { href: "/profile", label: "Perfil", icon: "chart" },
-  { href: "/invite", label: "Invitar", icon: "mail" },
+  { href: "/leaderboard", label: "Leaderboard", icon: "chart" },
+  { href: "/profile", label: "Perfil", icon: "user" },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -32,7 +35,12 @@ function TabInner({ item, active }: { item: Item; active: boolean }) {
         alignItems: "center",
         gap: 3,
         color: on ? "var(--color-ambar)" : "var(--color-tenue)",
-        font: `${on ? 700 : 500} 11px var(--font-sans)`,
+        // 10.5px + tracking apretado: "Leaderboard" es la etiqueta más larga y a 320px
+        // (iPhone SE) el 1fr le queda al ras. Bajarla un pelo le da holgura sin que se
+        // note frente a las demás. whiteSpace:nowrap para que nunca parta en dos líneas.
+        font: `${on ? 700 : 500} 10.5px var(--font-sans)`,
+        letterSpacing: "-.015em",
+        whiteSpace: "nowrap",
         transition: "color .1s ease",
       }}
     >

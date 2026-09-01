@@ -38,6 +38,12 @@ export function formatBreakdownText(breakdown: FormatCount[]): string {
     .join(" · ");
 }
 
+/** Solo el sustantivo, concordado con la cantidad ("botella"/"botellas"). Para la
+ *  fila de métricas de la tarjeta (Pasada N), donde el número va aparte, grande. */
+export function formatNoun(format: BeerFormat, count: number): string {
+  return FORMAT_NOUN[format][count === 1 ? 0 : 1];
+}
+
 /** "N bebida(s)" — el conteo cuenta registros de consumo, no volumen (Pasada D). */
 export function bebidasLabel(n: number): string {
   return `${n} bebida${n !== 1 ? "s" : ""}`;

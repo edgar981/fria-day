@@ -2,10 +2,10 @@ import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
-import { Tally } from "@/components/Tally";
 import { FoamStrip } from "@/components/FoamStrip";
-import { FORMAT_LABEL, formatAbv, relativeDay, joinMeta } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, relativeDay, joinMeta, formatNoun } from "@/lib/format";
 import { ReactionBar } from "@/components/ReactionBar";
+import { formatBreakdown } from "@/lib/domain";
 import type { FeedSession } from "@/lib/queries";
 
 type CheckIn = FeedSession["checkIns"][number];
@@ -108,6 +108,21 @@ function CompanionChips({ tags, viewerId }: { tags: Tag[]; viewerId: string }) {
   );
 }
 
+// Métrica compacta de la tarjeta (Pasada N, estilo Pivka): número grande arriba,
+// etiqueta pequeña debajo. El total va en ámbar; el desglose por formato, en crema.
+function Stat({ value, label, primary = false }: { value: number; label: string; primary?: boolean }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+      <span style={{ font: `800 ${primary ? 22 : 19}px/1 var(--font-display)`, letterSpacing: "-.01em", color: primary ? "var(--color-ambar)" : "var(--color-crema)" }}>
+        {value}
+      </span>
+      <span style={{ font: "500 11px var(--font-sans)", color: "var(--color-tenue)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {label}
+      </span>
+    </div>
+  );
+}
+
 export function SessionCard({
   session,
   viewerId,
@@ -116,6 +131,9 @@ export function SessionCard({
   viewerId: string;
 }) {
   const { user, tags, checkIns, totalUnits, isOwner, viewerTagged } = session;
+  // Desglose por formato para la fila de métricas. Solo se pinta con más de un
+  // formato: con uno, "5 bebidas · 5 botellas" es redundante (misma regla que el detalle).
+  const bd = formatBreakdown(checkIns.map((c) => ({ format: c.format, quantity: c.quantity })));
   // Distintivo verde SOLO cuando hay etiqueta real (Pasada C). Las salidas del
   // círculo sin etiqueta aparecen sin distintivo alguno (C.1: se quitó "Del parche").
   const tagged = !isOwner && viewerTagged;
@@ -179,14 +197,13 @@ export function SessionCard({
           </div>
         )}
 
-        {/* Pie: total (marcas de conteo + unidades). Sin "N check-ins": es un
-            detalle de implementación. El total conserva las marcas de conteo,
-            distinto del número-en-chip de cada cerveza (item A.1-8). */}
-        <div style={{ display: "flex", alignItems: "center", gap: 9, borderTop: "1px solid #241A12", paddingTop: 11 }}>
-          {totalUnits > 0 && <Tally count={totalUnits} barW={2.5} barH={14} gap={3} maxGroups={6} />}
-          <span style={{ font: "700 15px var(--font-sans)", color: "var(--color-ambar)" }}>
-            {totalUnits} bebida{totalUnits !== 1 ? "s" : ""}
-          </span>
+        {/* Pie: fila compacta de métricas (Pasada N, estilo Pivka). Bebidas totales +
+            desglose por formato. Sin unidades de alcohol ni duración: la app no mide
+            consumo con precisión clínica. */}
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 18, borderTop: "1px solid #241A12", paddingTop: 12, flexWrap: "wrap", rowGap: 12 }}>
+          <Stat value={totalUnits} label={`bebida${totalUnits !== 1 ? "s" : ""}`} primary />
+          {bd.length > 1 &&
+            bd.map((b) => <Stat key={b.format} value={b.count} label={formatNoun(b.format, b.count)} />)}
         </div>
 
         {/* Reacciones (Pasada R). Los botones cortan la navegación de la tarjeta-Link. */}

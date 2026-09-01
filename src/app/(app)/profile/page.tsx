@@ -5,7 +5,6 @@ import { prisma } from "@/lib/prisma";
 import { BottomNav } from "@/components/BottomNav";
 import { ProfileAvatarEditor } from "@/components/ProfileAvatarEditor";
 import { AccountAccess } from "@/components/AccountAccess";
-import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { LogoutButton } from "@/components/LogoutButton";
 import { Tally } from "@/components/Tally";
 import { formatBreakdownText } from "@/lib/format";
@@ -25,7 +24,9 @@ function StatCard({ value, label }: { value: number; label: string }) {
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const { stats, board, boardVariety, boardSessions, breakdown, breakdownByUser, streak, avatarById, aloneInCircle } = await getProfile(user.id);
+  // Leaderboard salió a su propia pestaña (Pasada N): Perfil ya no usa board*/círculo,
+  // solo las métricas personales (stats, breakdown propio, racha).
+  const { stats, breakdown, streak } = await getProfile(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -89,9 +90,6 @@ export default async function ProfilePage() {
           <StatCard value={stats.distinctBeers} label="bebidas distintas probadas" />
           <StatCard value={stats.sessionsCount} label="salidas registradas" />
         </div>
-
-        {/* El parche (leaderboard de dos ejes: unidades / variedad) */}
-        <LeaderboardTabs boardUnits={board} boardVariety={boardVariety} boardSessions={boardSessions} userId={user.id} avatarById={avatarById} aloneInCircle={aloneInCircle} breakdownByUser={breakdownByUser} />
 
         {/* Por estilo */}
         {styles.length > 0 && (

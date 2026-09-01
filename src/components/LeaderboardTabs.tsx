@@ -20,6 +20,7 @@ export function LeaderboardTabs({
   avatarById,
   aloneInCircle,
   breakdownByUser,
+  onInvite,
 }: {
   boardUnits: UnitRow[];
   boardVariety: VarietyRow[];
@@ -28,6 +29,9 @@ export function LeaderboardTabs({
   avatarById: Record<string, string | null>;
   aloneInCircle: boolean;
   breakdownByUser: Record<string, FormatCount[]>;
+  // Pasada N: abrir la hoja de invitación desde el copy del ranking vacío. Opcional
+  // (si no se pasa, el copy no muestra el botón).
+  onInvite?: () => void;
 }) {
   const [axis, setAxis] = useState<Axis>("units");
 
@@ -64,11 +68,8 @@ export function LeaderboardTabs({
 
   return (
     <section>
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 11 }}>
-        <span className="eyebrow">El parche</span>
-        <span style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>solo salidas propias</span>
-      </div>
-
+      {/* El título del parche y el "solo salidas propias" viven ahora en el header de
+          la pantalla (Pasada N). Aquí quedan solo los ejes y el ranking. */}
       <div style={{ display: "flex", gap: 7, marginBottom: 13 }}>
         {chip("units", "Unidades")}
         {chip("variety", "Variedad")}
@@ -78,10 +79,16 @@ export function LeaderboardTabs({
       {/* Sin círculo, el ranking eres solo tú. Una línea que INVITA a actuar (T.1):
           no describe un estado, empuja a invitar/traer gente. Sin celebrar cantidad. */}
       {aloneInCircle && (
-        <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "12px 14px", marginBottom: 13 }}>
+        <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "14px", marginBottom: 13, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ font: "500 13.5px/1.4 var(--font-sans)", color: "var(--color-tenue)" }}>
             Invita a tu parche y armamos el ranking.
           </div>
+          {/* Pasada N: el copy ya tiene a dónde apuntar — abre la hoja de invitación. */}
+          {onInvite && (
+            <button type="button" onClick={onInvite} className="btn btn-primary" style={{ alignSelf: "flex-start", height: 42, padding: "0 18px" }}>
+              Invitar al parche
+            </button>
+          )}
         </div>
       )}
 
