@@ -150,3 +150,40 @@ social, o si se hace una limpieza de esquema y se confirma que nada la lee.
   de bebida — celebra aparecer juntos.
 - **Disparador:** cuando el círculo (Pasada C) ya se sienta vivo y la gente quiera ver
   con **quién** sale más, no solo cuánto.
+
+## Invitation.expiresAt: columna sin uso desde la interfaz (N.2)
+
+N.2 quitó el campo "Expira en (días)" de la hoja de invitar: un parche de amigos no
+necesita códigos con vencimiento. Desde ahora todos los códigos se generan **sin
+expiración** (`expiresAt` null).
+
+- La **columna NO se borró** (borrar es destructivo; reversible es mejor). Los códigos
+  viejos con `expiresAt` conservan su valor y la validación los sigue respetando
+  (`getMyInvitations` filtra `expiresAt: null OR > now`).
+- `createInvite` aún acepta `expiresInDays`; el cliente siempre manda `""` → null.
+
+**Disparador para retomar:** si alguna vez se quiere códigos con vencimiento (p.ej. un
+enlace público temporal), el backend ya lo soporta — solo faltaría reponer el control.
+
+## Sistema de interacciones (rediseño) — pendiente de DISEÑO
+
+- **Qué:** replantear qué se puede hacer sobre una salida ajena. Hoy son **seis emojis
+  genéricos** en una fila plana (Pasada R): funcionan, pero no se sienten parte de la
+  app y la forma de reaccionar es sosa. Edgar va a rediseñar el sistema completo: si son
+  reacciones, comentarios, ambos, o algo del dominio (reaccionar a una **bebida** concreta,
+  "yo pido una de esas").
+- **Estado:** lo implementado hoy (reacciones optimistas, N.2) se queda como está mientras
+  tanto. Ver también "Comentarios en salidas (plana, sin hilos)" en este backlog.
+- **Sin disparador de tiempo:** depende de que Edgar lo defina (decisión de producto +
+  sesión de diseño), no de una condición del uso.
+
+## Fotos: cómo se ven y para qué sirven — pendiente de DISEÑO
+
+- **Qué:** definir el modelo completo de fotos. Hoy se suben a 1200px pero en el **detalle**
+  se ven como thumbnail de ~46px (nadie puede mirar una foto), y la **tarjeta del feed**
+  las muestra mejor que el detalle — al revés de lo esperado. Falta decidir: si hay **"tap
+  para ampliar"**, si una salida puede tener **varias fotos**, si la foto es de la **bebida**
+  o de la **noche**.
+- **Punto de partida del replanteo:** hoy subir existe, **mirar** no.
+- **Sin disparador de tiempo:** depende de que Edgar lo defina, no del uso. (El original a
+  1200px ya se guarda, así que "tap para ampliar" no requeriría re-subir nada.)

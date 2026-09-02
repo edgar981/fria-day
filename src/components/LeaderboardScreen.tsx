@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { InviteSheet, type InviteRow } from "@/components/InviteSheet";
-import type { FormatCount } from "@/lib/domain";
 
 type UnitRow = { userId: string; displayName: string; units: number };
 type VarietyRow = { userId: string; displayName: string; variety: number };
@@ -23,7 +22,6 @@ export function LeaderboardScreen({
   userId,
   avatarById,
   aloneInCircle,
-  breakdownByUser,
   invitations,
   autoOpenInvite = false,
 }: {
@@ -33,7 +31,6 @@ export function LeaderboardScreen({
   userId: string;
   avatarById: Record<string, string | null>;
   aloneInCircle: boolean;
-  breakdownByUser: Record<string, FormatCount[]>;
   invitations: InviteRow[];
   autoOpenInvite?: boolean;
 }) {
@@ -65,7 +62,6 @@ export function LeaderboardScreen({
         userId={userId}
         avatarById={avatarById}
         aloneInCircle={aloneInCircle}
-        breakdownByUser={breakdownByUser}
         onInvite={() => setInviteOpen(true)}
       />
 

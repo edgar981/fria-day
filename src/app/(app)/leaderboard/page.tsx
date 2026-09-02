@@ -15,7 +15,7 @@ export default async function LeaderboardPage({
 }) {
   const user = await requireUser();
   const { invite } = await searchParams;
-  const [{ board, boardVariety, boardSessions, breakdownByUser, avatarById, aloneInCircle }, invites] =
+  const [{ board, boardVariety, boardSessions, avatarById, aloneInCircle }, invites] =
     await Promise.all([getProfile(user.id), getMyInvitations(user.id)]);
 
   return (
@@ -28,7 +28,6 @@ export default async function LeaderboardPage({
           userId={user.id}
           avatarById={avatarById}
           aloneInCircle={aloneInCircle}
-          breakdownByUser={breakdownByUser}
           invitations={invites.map((i) => ({ id: i.id, code: i.code, createdAt: i.createdAt, expiresAt: i.expiresAt }))}
           autoOpenInvite={invite === "1"}
         />

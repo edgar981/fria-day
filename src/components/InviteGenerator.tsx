@@ -7,7 +7,6 @@ import { ShareCodeButton } from "@/components/ShareCodeButton";
 
 export function InviteGenerator() {
   const router = useRouter();
-  const [expiresInDays, setExpiresInDays] = useState("");
   const [code, setCode] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +19,9 @@ export function InviteGenerator() {
     setCopied(null);
     setBusy(true);
     try {
-      const res = await createInvite({ expiresInDays: expiresInDays === "" ? "" : expiresInDays });
+      // N.2: los códigos ya no expiran (un parche de amigos no lo necesita). Se manda
+      // "" → expiresAt null. La columna Invitation.expiresAt se queda en el esquema.
+      const res = await createInvite({ expiresInDays: "" });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -45,12 +46,6 @@ export function InviteGenerator() {
   return (
     <div className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
       <div className="eyebrow">Generar código</div>
-      <div>
-        <label style={{ display: "block", font: "500 13px var(--font-sans)", color: "var(--color-tenue)", marginBottom: 6 }} htmlFor="exp">
-          Expira en (días, opcional)
-        </label>
-        <input id="exp" className="field" inputMode="numeric" placeholder="Sin expiración" value={expiresInDays} onChange={(e) => setExpiresInDays(e.target.value.replace(/[^\d]/g, ""))} />
-      </div>
       {error && <p style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
       <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={generate} disabled={busy}>
         {busy ? "Generando…" : "Generar código"}

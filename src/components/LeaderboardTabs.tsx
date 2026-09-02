@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import { Avatar } from "@/components/Avatar";
-import { formatBreakdownText } from "@/lib/format";
-import type { FormatCount } from "@/lib/domain";
 
 type UnitRow = { userId: string; displayName: string; units: number };
 type VarietyRow = { userId: string; displayName: string; variety: number };
@@ -19,7 +17,6 @@ export function LeaderboardTabs({
   userId,
   avatarById,
   aloneInCircle,
-  breakdownByUser,
   onInvite,
 }: {
   boardUnits: UnitRow[];
@@ -28,7 +25,6 @@ export function LeaderboardTabs({
   userId: string;
   avatarById: Record<string, string | null>;
   aloneInCircle: boolean;
-  breakdownByUser: Record<string, FormatCount[]>;
   // Pasada N: abrir la hoja de invitación desde el copy del ranking vacío. Opcional
   // (si no se pasa, el copy no muestra el botón).
   onInvite?: () => void;
@@ -96,9 +92,6 @@ export function LeaderboardTabs({
         {rows.map((row, i) => {
           const me = row.userId === userId;
           const barColor = me || i === 0 ? "var(--color-ambar)" : "#8A5E1E";
-          // Desglose por formato bajo el nombre, solo en el eje Unidades y si hay
-          // más de un formato (Pasada D). En Variedad no aplica (cuenta distintas).
-          const bd = axis === "units" ? breakdownByUser[row.userId] ?? [] : [];
           return (
             <div
               key={row.userId}
@@ -113,11 +106,8 @@ export function LeaderboardTabs({
               <Avatar avatar={avatarById[row.userId] ?? null} size={36} radius={11} />
               <span style={{ flex: 1, minWidth: 0 }}>
                 <span style={{ font: `${me ? 700 : 600} 15px var(--font-sans)`, display: "block" }}>{me ? "Tú" : row.displayName}</span>
-                {bd.length > 1 && (
-                  <span style={{ display: "block", font: "400 11px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {formatBreakdownText(bd)}
-                  </span>
-                )}
+                {/* N.2: el desglose por formato se quitó del leaderboard (ilegible en una
+                    lista de personas). Sigue en la tarjeta del feed y en el perfil. */}
                 <span style={{ display: "block", height: 6, borderRadius: 99, background: "var(--color-borde)", marginTop: 5, overflow: "hidden" }}>
                   <span style={{ display: "block", height: 6, width: `${Math.round((row.value / max) * 100)}%`, background: barColor }} />
                 </span>
