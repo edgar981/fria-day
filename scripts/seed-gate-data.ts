@@ -41,6 +41,8 @@ const EXTRA_USERS = [
   { key: "eli", email: "gate-x-eli@friaday.test", displayName: "Eli", avatar: "jaguar" },
   { key: "fabio", email: "gate-x-fabio@friaday.test", displayName: "Fabio", avatar: "mono" },
   { key: "gabo", email: "gate-x-gabo@friaday.test", displayName: "Gabo", avatar: "rana" },
+  { key: "hugo", email: "gate-x-hugo@friaday.test", displayName: "Hugo", avatar: "chucha" },
+  { key: "iris", email: "gate-x-iris@friaday.test", displayName: "Iris", avatar: "armadillo" },
 ] as const;
 
 type CatalogItem = { name: string; brewery: string | null; style: string | null; abv: number | null; kind: DrinkKind };
@@ -60,10 +62,13 @@ type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null
 type React = { by: string; emoji: string }; // by = key de USERS o de EXTRA_USERS
 type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[] };
 
-// Reacciones repartidas para ejercitar los 4 estados del pie de brindis (I-1.2),
-// VIENDO EL FEED COMO ANA:
-//   · Bar de la 85 (de Ana)     → 6 reactores → estado "+N" (3 avatares + "+3")
-//   · Andrés Carne de Res       → 2 reactores (Ana + Beto) → "pocos" (Ana con anillo)
+// Reacciones repartidas para ejercitar los estados del pie de brindis y las reglas del
+// racimo (I-1.5), VIENDO EL FEED COMO ANA:
+//   · Bar de la 85 (de Ana)     → CASO DEL GATE: 4 emojis con 2 reacciones c/u (8 personas)
+//                                  + Ana con 🫡 (el MENOS usado). El racimo muestra los 4
+//                                  más usados (🍻🔥😂❤️) y 🫡 NO entra, pero el avatar de
+//                                  Ana SÍ va primero (anillo). Texto "Tú y 8 más".
+//   · Andrés Carne de Res       → 2 reactores (Ana + Beto) → "Tú y 1 más" (Ana con anillo)
 //   · Casa de Beto              → 1 reactor (Caro) → "Caro brindó"
 //   · Bogotá Beer Company (hoy) → 0 reactores → "Nadie ha brindado" (y sigue el caso
 //                                  "Yo también": Ana etiquetada hoy, sin salida propia)
@@ -76,8 +81,11 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Mojito", fmt: "COPA", qty: 1, rating: 5 }, // cóctel con rating
     ],
     reactions: [
-      { by: "beto", emoji: "🍻" }, { by: "caro", emoji: "🔥" },
-      { by: "dani", emoji: "🔥" }, { by: "eli", emoji: "😂" }, { by: "fabio", emoji: "❤️" }, { by: "gabo", emoji: "🍻" },
+      { by: "beto", emoji: "🍻" }, { by: "gabo", emoji: "🍻" }, // 🍻 x2
+      { by: "caro", emoji: "🔥" }, { by: "dani", emoji: "🔥" }, // 🔥 x2
+      { by: "eli", emoji: "😂" }, { by: "hugo", emoji: "😂" }, // 😂 x2
+      { by: "fabio", emoji: "❤️" }, { by: "iris", emoji: "❤️" }, // ❤️ x2
+      { by: "ana", emoji: "🫡" }, // Ana: el 5º emoji, MENOS usado → fuera del racimo, avatar visible
     ],
   },
   {

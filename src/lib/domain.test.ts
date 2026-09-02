@@ -24,6 +24,8 @@ import {
   REACTIONS,
   isReaction,
   groupReactions,
+  rankClusterEmojis,
+  reactionPile,
   FORMATS_BY_KIND,
   REGISTRATION_PLAZO_MS,
   type SessionData,
@@ -664,5 +666,61 @@ describe("Pasada R — reacciones", () => {
     expect(isReaction("🍻")).toBe(true);
     expect(REACTIONS.every((e) => isReaction(e))).toBe(true);
     expect(isReaction("🍕")).toBe(false);
+  });
+});
+
+describe("I-1.5 — racimo (más usados) y pila (propio primero)", () => {
+  const r = (userId: string, emoji: string) => ({ userId, emoji });
+
+  it("caso 3: 3 iguales + 1 distinta → el repetido primero", () => {
+    const cluster = rankClusterEmojis([r("a", "🔥"), r("b", "🔥"), r("c", "🔥"), r("d", "😂")]);
+    expect(cluster).toEqual(["🔥", "😂"]);
+  });
+
+  it("caso 4: empate en conteo → gana el más reciente (última aparición)", () => {
+    // 🍻 y 🔥 con 1 cada uno; 🔥 llegó después → va primero.
+    expect(rankClusterEmojis([r("a", "🍻"), r("b", "🔥")])).toEqual(["🔥", "🍻"]);
+    // y al revés: si 🍻 es el más reciente, 🍻 primero.
+    expect(rankClusterEmojis([r("a", "🔥"), r("b", "🍻")])).toEqual(["🍻", "🔥"]);
+  });
+
+  it("caso 1: 5 emojis distintos → el racimo muestra los 4 más usados (dropea el menos usado)", () => {
+    const entries = [
+      r("a", "🍻"), r("b", "🍻"), // 🍻 x2
+      r("c", "🔥"), r("d", "🔥"), // 🔥 x2
+      r("e", "😂"), r("f", "❤️"), r("g", "🫡"), // singles, en ese orden
+    ];
+    const cluster = rankClusterEmojis(entries, 4);
+    expect(cluster).toHaveLength(4);
+    // los dos con conteo 2 van primero (empate → más reciente: 🔥 antes que 🍻)
+    expect(cluster.slice(0, 2)).toEqual(["🔥", "🍻"]);
+    // 😂 es el single más viejo → es el que queda fuera
+    expect(cluster).not.toContain("😂");
+  });
+
+  it("caso 2: viewer reacciona con el MENOS usado → su emoji no entra al racimo, pero su avatar va PRIMERO", () => {
+    // 4 emojis con 2 reacciones c/u + la del viewer (🫡, una sola, aunque sea la más nueva).
+    const entries = [
+      r("o1", "🍻"), r("o2", "🍻"),
+      r("o3", "🔥"), r("o4", "🔥"),
+      r("o5", "😂"), r("o6", "😂"),
+      r("o7", "❤️"), r("o8", "❤️"),
+      r("me", "🫡"),
+    ];
+    // El 🫡 del viewer (1 reacción) queda fuera del racimo: hay 4 emojis MÁS usados.
+    const cluster = rankClusterEmojis(entries, 4);
+    expect(cluster).toHaveLength(4);
+    expect(cluster).not.toContain("🫡");
+    // ...pero su avatar SÍ está, y primero (anillo ámbar en la UI), con "+N" para el resto.
+    const pile = reactionPile(entries, "me", 3);
+    expect(pile.visible[0].userId).toBe("me");
+    expect(pile.visible).toHaveLength(3);
+    expect(pile.extra).toBe(6); // 9 personas, 3 visibles → +6
+  });
+
+  it("pila sin el viewer: muestra los más recientes primero", () => {
+    const pile = reactionPile([r("a", "🍻"), r("b", "🔥"), r("c", "😂")], "me", 3);
+    expect(pile.visible.map((p) => p.userId)).toEqual(["c", "b", "a"]); // c es el más reciente
+    expect(pile.extra).toBe(0);
   });
 });

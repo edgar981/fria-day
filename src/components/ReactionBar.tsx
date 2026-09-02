@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
-import { REACTIONS } from "@/lib/domain";
+import { REACTIONS, rankClusterEmojis, reactionPile } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
 
 type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
@@ -87,13 +87,16 @@ export function ReactionBar({
   }, [mine]);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
 
-  // Reactores EFECTIVOS = los demás (del servidor) + mi reacción OPTIMISTA superpuesta.
+  // Reactores en orden CRONOLÓGICO (servidor asc) + mi reacción OPTIMISTA al final (la
+  // más reciente). El racimo rankea por MÁS USADOS (empate: más reciente); la pila pone
+  // MI avatar primero. Así, aunque mi emoji no quepa en el racimo, mi presencia se ve (I-1.5).
   const others = reactors.filter((r) => r.userId !== viewer.id);
-  const effective: Reactor[] = myEmoji
-    ? [{ userId: viewer.id, name: viewer.displayName, avatar: viewer.avatar, emoji: myEmoji }, ...others]
+  const entries: Reactor[] = myEmoji
+    ? [...others, { userId: viewer.id, name: viewer.displayName, avatar: viewer.avatar, emoji: myEmoji }]
     : others;
-  const total = effective.length;
-  const distinctEmojis = REACTIONS.filter((e) => effective.some((r) => r.emoji === e)).slice(0, 4);
+  const total = entries.length;
+  const clusterEmojis = rankClusterEmojis(entries, 4);
+  const pile = reactionPile(entries, viewer.id, 3);
 
   function apply(emoji: string) {
     const prev = myEmoji;
@@ -157,37 +160,57 @@ export function ReactionBar({
 
   const reacted = myEmoji != null;
   const showEmoji = myEmoji ?? DEFAULT_EMOJI;
-  const visibleAvatars = effective.slice(0, 3);
-  const iReacted = effective.some((r) => r.userId === viewer.id);
+  const iReacted = entries.some((r) => r.userId === viewer.id);
+  const lead = pile.visible[0]; // avatar líder: el propio si brindaste, si no el más reciente
   // Texto (en "tú"): 1 → "Caro brindó"/"Brindaste"; varios → "Tú y N más"/"Nombre y N más".
-  // Guardado para total 0 (effective vacío) — solo se usa en el JSX cuando total > 0.
+  // Guardado para total 0 (entries vacío) — solo se usa en el JSX cuando total > 0.
   const displayText =
     total === 0
       ? ""
       : total === 1
-        ? effective[0].userId === viewer.id
+        ? lead.userId === viewer.id
           ? "Brindaste"
-          : `${effective[0].name} brindó`
+          : `${lead.name} brindó`
         : iReacted
           ? `Tú y ${total - 1} más`
-          : `${effective[0].name} y ${total - 1} más`;
+          : `${lead.name} y ${total - 1} más`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-      {/* --- Display 1a: racimo de emojis + avatares + texto (sin tally) --- */}
+      {/* --- Display 1a: racimo de emojis (en círculos) + avatares + texto (sin tally) --- */}
       {total === 0 ? (
         <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
       ) : (
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-          {/* Racimo de hasta 4 emojis distintos (SOLO display, sin cajas). */}
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-            {distinctEmojis.map((e) => (
-              <span key={e} style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
+          {/* Racimo: hasta 4 emojis MÁS USADOS, cada uno en un círculo superpuesto (1a).
+              SOLO display (no son blancos de toque; el único interactivo es Brindar). */}
+          <span style={{ display: "inline-flex", alignItems: "center" }}>
+            {clusterEmojis.map((e, i) => (
+              <span
+                key={e}
+                style={{
+                  marginLeft: i ? -6 : 0,
+                  width: 26,
+                  height: 26,
+                  borderRadius: 999,
+                  background: "var(--color-barra-alta)",
+                  boxShadow: "0 0 0 2px var(--color-barra)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 14,
+                  lineHeight: 1,
+                  position: "relative",
+                  zIndex: 10 - i, // el más usado, encima
+                }}
+              >
+                {e}
+              </span>
             ))}
           </span>
-          {/* Avatares de quienes brindaron (hasta 3); el tuyo con anillo ámbar. */}
+          {/* Avatares: el propio SIEMPRE primero (anillo ámbar) + los más recientes (I-1.5). */}
           <span style={{ display: "inline-flex", alignItems: "center" }}>
-            {visibleAvatars.map((r, i) => (
+            {pile.visible.map((r, i) => (
               <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
             ))}
           </span>

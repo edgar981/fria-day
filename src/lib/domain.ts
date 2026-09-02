@@ -62,6 +62,47 @@ export function groupReactions(
   return { groups, mine };
 }
 
+/** Reacción en orden CRONOLÓGICO (la más vieja primero) para el racimo/pila del pie. */
+export interface ReactionRef {
+  userId: string;
+  emoji: string;
+}
+
+/**
+ * Racimo del pie de brindis (I-1.5): hasta `max` emojis DISTINTOS, por los MÁS USADOS
+ * (conteo desc). Empate → gana el más RECIENTE (última aparición en el orden
+ * cronológico de entrada). Antes se mostraban los primeros del set fijo (no por uso).
+ */
+export function rankClusterEmojis(reactions: ReactionRef[], max = 4): string[] {
+  const count = new Map<string, number>();
+  const lastIdx = new Map<string, number>();
+  reactions.forEach((r, i) => {
+    count.set(r.emoji, (count.get(r.emoji) ?? 0) + 1);
+    lastIdx.set(r.emoji, i);
+  });
+  return [...count.keys()]
+    .sort((a, b) => count.get(b)! - count.get(a)! || lastIdx.get(b)! - lastIdx.get(a)!)
+    .slice(0, max);
+}
+
+/**
+ * Pila de avatares del pie (I-1.5): el del viewer SIEMPRE va primero si reaccionó
+ * (en la UI lleva anillo ámbar), aunque su emoji no haya cabido en el racimo; luego
+ * los más RECIENTES, hasta `max` visibles. `extra` = cuántos quedan fuera. La entrada
+ * viene en orden cronológico (más vieja primero); una persona reacciona una sola vez.
+ */
+export function reactionPile<T extends { userId: string }>(
+  reactions: T[],
+  viewerId: string,
+  max = 3,
+): { visible: T[]; extra: number } {
+  const mine = reactions.find((r) => r.userId === viewerId);
+  const others = reactions.filter((r) => r.userId !== viewerId).reverse(); // más recientes primero
+  const ordered = mine ? [mine, ...others] : others;
+  const visible = ordered.slice(0, max);
+  return { visible, extra: ordered.length - visible.length };
+}
+
 export interface CheckInData {
   beerId: string;
   /** Estilo de la cerveza del check-in (para agregación por estilo). */
