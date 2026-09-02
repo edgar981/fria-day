@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createInvite } from "@/app/actions/invites";
 import { ShareCodeButton } from "@/components/ShareCodeButton";
+import { QrCode } from "@/components/QrCode";
 
 export function InviteGenerator() {
   const router = useRouter();
@@ -59,6 +60,11 @@ export function InviteGenerator() {
                 código SÍ debe poder seleccionarse y copiarse a mano (long-press → Copiar),
                 por si la hoja nativa de Compartir no sirve. Se re-habilita solo aquí. */}
             <div style={{ font: "700 30px var(--font-display)", letterSpacing: ".18em", color: "var(--color-espuma)", marginTop: 4, WebkitUserSelect: "text", userSelect: "text", WebkitTouchCallout: "default" }}>{code}</div>
+          </div>
+          {/* Pasada Q: QR de la URL de registro con el código. El camino rápido: el parcero
+              lo escanea y llega al alta con el código puesto. */}
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <QrCode code={code} size={150} />
           </div>
           <ShareCodeButton code={code} variant="primary" />
           <div style={{ display: "flex", gap: 9 }}>

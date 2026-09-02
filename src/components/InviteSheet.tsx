@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { InviteGenerator } from "@/components/InviteGenerator";
 import { ShareCodeButton } from "@/components/ShareCodeButton";
+import { QrCode } from "@/components/QrCode";
 import { formatDay } from "@/lib/format";
 
 export interface InviteRow {
@@ -92,17 +93,24 @@ export function InviteSheet({
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
               {invitations.map((inv) => (
-                <div key={inv.id} className="card" style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                  <div style={{ minWidth: 0 }}>
-                    {/* I-1.4: código seleccionable/copiable a mano (la app está en
-                        user-select:none por el hold de reacciones; aquí se re-habilita). */}
-                    <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)", WebkitUserSelect: "text", userSelect: "text", WebkitTouchCallout: "default" }}>{inv.code}</div>
-                    <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>
-                      Creada {formatDay(inv.createdAt)}
-                      {inv.expiresAt ? ` · expira ${formatDay(inv.expiresAt)}` : ""}
+                <div key={inv.id} className="card" style={{ padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
+                  {/* Pasada Q: QR de cada código disponible. */}
+                  <QrCode code={inv.code} size={84} />
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div>
+                      {/* I-1.4: código seleccionable/copiable a mano (la app está en
+                          user-select:none por el hold de reacciones; aquí se re-habilita). */}
+                      <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)", WebkitUserSelect: "text", userSelect: "text", WebkitTouchCallout: "default" }}>{inv.code}</div>
+                      {/* suppressHydrationWarning: la abreviatura de mes de Intl difiere
+                          entre Node ("sep.") y WebKit ("sept") → desajuste cosmético de
+                          hidratación cuando la hoja se abre por SSR (?invite=1). */}
+                      <div suppressHydrationWarning style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>
+                        Creada {formatDay(inv.createdAt)}
+                        {inv.expiresAt ? ` · expira ${formatDay(inv.expiresAt)}` : ""}
+                      </div>
                     </div>
+                    <ShareCodeButton code={inv.code} />
                   </div>
-                  <ShareCodeButton code={inv.code} />
                 </div>
               ))}
             </div>
