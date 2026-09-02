@@ -5,60 +5,70 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS } from "@/lib/domain";
+import { Avatar } from "@/components/Avatar";
+import { Tally } from "@/components/Tally";
 
-type Group = { emoji: string; count: number; mine: boolean };
+type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
+type Viewer = { id: string; displayName: string; avatar: string | null };
 
-const DEFAULT_EMOJI = "🍻"; // la reacción por defecto del tap simple
-const HOLD_MS = 400; // umbral de hold para abrir el selector
-const MOVE_CANCEL = 10; // px de movimiento que convierten el gesto en scroll, no hold
+const DEFAULT_EMOJI = "🍻"; // el brindis por defecto del tap simple
+const HOLD_MS = 400;
+const MOVE_CANCEL = 10;
 
-// Gesto CSS por emoji (I-1). El brindis fino de 🍻 y la mano de 🫡 son versiones
-// simples; los assets propios están en BACKLOG por si saben a poco.
+// Gesto CSS por emoji (I-1). Brindis fino de 🍻 y mano de 🫡: assets propios en BACKLOG.
 const ANIM_KEY: Record<string, string> = {
-  "🍻": "beer",
-  "🔥": "fire",
-  "😂": "laugh",
-  "🤤": "drool",
-  "❤️": "heart",
-  "🫡": "salute",
+  "🍻": "beer", "🔥": "fire", "😂": "laugh", "🤤": "drool", "❤️": "heart", "🫡": "salute",
 };
 
-function toCounts(groups: Group[]): Record<string, number> {
-  const m: Record<string, number> = {};
-  for (const g of groups) m[g.emoji] = g.count;
-  return m;
+// Avatar con anillo: el del usuario en ámbar; los demás en el color de la tarjeta
+// (separa los apilados). z-index sube el del usuario para que su anillo no se tape.
+function RingAvatar({ reactor, viewerId, overlap }: { reactor: Reactor; viewerId: string; overlap: boolean }) {
+  const me = reactor.userId === viewerId;
+  return (
+    <span
+      title={me ? "Tú" : reactor.name}
+      style={{
+        display: "inline-block",
+        marginLeft: overlap ? -8 : 0,
+        borderRadius: 9,
+        boxShadow: `0 0 0 2px ${me ? "var(--color-ambar)" : "var(--color-barra)"}`,
+        position: "relative",
+        zIndex: me ? 1 : 0,
+      }}
+    >
+      <Avatar avatar={reactor.avatar} size={24} radius={7} />
+    </span>
+  );
 }
 
 /**
- * Barra de acciones de la salida (I-1). La fila de seis emojis (Pasada R/N.2) se
- * comprime a UNA acción visible, "Reaccionar"; Comentar (I-3) y Compartir (share-card)
- * van ocultos hasta que existan — no se estrenan botones muertos, pero la fila queda
- * lista para sumarlos.
+ * Pie de brindis + barra de acciones (I-1.2). Basado en el tablero de diseño
+ * (opción 1c con avatares de 1a = recomendación 1d).
  *
- * Interacción (táctil, primaria):
- *  - Tap simple: sin reacción → aplica 🍻; con reacción → la quita.
- *  - Hold (~400ms): abre el selector con las seis. Elegir aplica; tocar la activa quita.
- *  - Si el dedo se mueve > umbral es scroll (no hold); la tarjeta es un <Link> y ni tap
- *    ni hold navegan (preventDefault en touchend/click). El callout de iOS se evita por
- *    CSS (-webkit-touch-callout/user-select) + onContextMenu.
+ * Display (híbrido):
+ *  - 0 → "Nadie ha brindado"
+ *  - 1 → emoji + avatar + nombre ("Caro brindó" / "Brindaste" si eres tú)
+ *  - 2+ → total en marcas de conteo (Tally) + emojis distintos (grandes, sin cajas,
+ *         SOLO display) + avatares apilados (3 + "+N"; el tuyo con anillo ámbar).
  *
- * Estado: optimista y serializado como en N.2 (pinta al instante, la cola ordena las
- * escrituras, el refresh trae la verdad solo al drenar). Una reacción por usuario/salida.
+ * Acción: botón "Brindar" (tu emoji + "Brindaste" si ya brindaste). Tap aplica 🍻 o
+ * quita; hold (~400ms) abre las seis. Optimista + serializado como en N.2 (pinta al
+ * instante; la cola ordena las escrituras; el refresh trae la verdad al drenar). El
+ * arrastre desde el botón hace scroll (no hold); la tarjeta es <Link> y no navega.
+ * Comentar (I-3) y Compartir (share-card) van OCULTOS: la fila queda lista para ellos.
  */
 export function ReactionBar({
   sessionId,
-  groups,
+  reactors,
   mine,
-  showSummary = true,
+  viewer,
 }: {
   sessionId: string;
-  groups: Group[];
+  reactors: Reactor[];
   mine: string | null;
-  // El detalle ya lista quién reaccionó por nombre; ahí no hace falta el resumen.
-  showSummary?: boolean;
+  viewer: Viewer;
 }) {
   const router = useRouter();
-  const [counts, setCounts] = useState<Record<string, number>>(() => toCounts(groups));
   const [myEmoji, setMyEmoji] = useState<string | null>(mine);
   const [anim, setAnim] = useState<{ emoji: string; nonce: number } | null>(null);
   const [selector, setSelector] = useState<{ x: number; y: number } | null>(null);
@@ -68,41 +78,29 @@ export function ReactionBar({
   const chain = useRef<Promise<unknown>>(Promise.resolve());
   const nonce = useRef(0);
   const btnRef = useRef<HTMLButtonElement>(null);
-
-  // Gesto táctil
   const gesture = useRef({ x: 0, y: 0, moved: false, held: false, endedAt: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => setMounted(true), []);
-
-  // Resync con el servidor tras el refresh, solo sin toques en vuelo (patrón N.2/stepper).
+  // Resync con el servidor tras el refresh, solo sin toques en vuelo (patrón N.2).
   useEffect(() => {
-    if (pending.current === 0) {
-      setCounts(toCounts(groups));
-      setMyEmoji(mine);
-    }
-  }, [groups, mine]);
-
+    if (pending.current === 0) setMyEmoji(mine);
+  }, [mine]);
   useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
 
-  // Aplica/quita una reacción de forma optimista + persiste en segundo plano (serializado).
+  // Reactores EFECTIVOS = los demás (del servidor) + mi reacción OPTIMISTA superpuesta.
+  const others = reactors.filter((r) => r.userId !== viewer.id);
+  const effective: Reactor[] = myEmoji
+    ? [{ userId: viewer.id, name: viewer.displayName, avatar: viewer.avatar, emoji: myEmoji }, ...others]
+    : others;
+  const total = effective.length;
+  const distinctEmojis = REACTIONS.filter((e) => effective.some((r) => r.emoji === e)).slice(0, 4);
+
   function apply(emoji: string) {
     const prev = myEmoji;
     const removing = prev === emoji;
-    setCounts((c) => {
-      const n = { ...c };
-      if (removing) {
-        n[emoji] = Math.max(0, (n[emoji] ?? 0) - 1);
-      } else {
-        if (prev) n[prev] = Math.max(0, (n[prev] ?? 0) - 1);
-        n[emoji] = (n[emoji] ?? 0) + 1;
-      }
-      return n;
-    });
     setMyEmoji(removing ? null : emoji);
-    // Animar SOLO al aplicar (no al quitar), una vez.
     if (!removing) setAnim({ emoji, nonce: ++nonce.current });
-
     pending.current++;
     chain.current = chain.current
       .catch(() => {})
@@ -118,11 +116,9 @@ export function ReactionBar({
     if (!r) return;
     setSelector({ x: r.left + r.width / 2, y: r.top });
   }
-  function closeSelector() {
-    setSelector(null);
-  }
+  const closeSelector = () => setSelector(null);
 
-  // ---- Gestos táctiles sobre el botón "Reaccionar" ----
+  // ---- Gestos táctiles (tap/hold/scroll) sobre "Brindar" ----
   function onTouchStart(e: React.TouchEvent) {
     if (selector) return;
     const t = e.touches[0];
@@ -142,88 +138,109 @@ export function ReactionBar({
       if (holdTimer.current) clearTimeout(holdTimer.current);
     }
   }
-  function endGesture() {
-    if (holdTimer.current) clearTimeout(holdTimer.current);
-  }
+  const endGesture = () => { if (holdTimer.current) clearTimeout(holdTimer.current); };
   function onTouchEnd(e: React.TouchEvent) {
     endGesture();
     const g = gesture.current;
     g.endedAt = Date.now();
-    if (g.held) { e.preventDefault(); return; } // el hold ya abrió el selector
-    if (g.moved) return; // fue scroll
-    // Tap: preventDefault suprime el click sintético → no navega el <Link>.
-    e.preventDefault();
+    if (g.held) { e.preventDefault(); return; }
+    if (g.moved) return;
+    e.preventDefault(); // suprime el click sintético → el <Link> no navega
     apply(myEmoji ?? DEFAULT_EMOJI);
   }
-  function onTouchCancel() {
-    endGesture();
-    gesture.current.moved = true;
-  }
-  // Fallback ratón (desktop, no es el objetivo): click = tap por defecto. Un click
-  // originado por touch (reciente) se ignora aquí; siempre se corta la navegación.
+  function onTouchCancel() { endGesture(); gesture.current.moved = true; }
   function onClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (Date.now() - gesture.current.endedAt < 600) return;
+    if (Date.now() - gesture.current.endedAt < 600) return; // ya lo manejó el toque
     apply(myEmoji ?? DEFAULT_EMOJI);
   }
 
   const reacted = myEmoji != null;
   const showEmoji = myEmoji ?? DEFAULT_EMOJI;
-  const total = Object.values(counts).reduce((a, b) => a + b, 0);
-  const present = REACTIONS.filter((e) => (counts[e] ?? 0) > 0);
+  const visibleAvatars = effective.slice(0, 3);
+  const extra = effective.length - visibleAvatars.length;
+
+  const emojiRow = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+      {distinctEmojis.map((e) => (
+        <span key={e} style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
+      ))}
+    </span>
+  );
 
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-      {/* Acción: Reaccionar. (Comentar → I-3; Compartir → share-card: ocultos por ahora,
-          la fila queda lista para sumarlos.) */}
-      <button
-        ref={btnRef}
-        type="button"
-        aria-label={reacted ? `Reaccionaste ${showEmoji}. Tocar para quitar; mantener para elegir otra` : "Reaccionar; mantener para elegir"}
-        aria-pressed={reacted}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onTouchCancel={onTouchCancel}
-        onClick={onClick}
-        onContextMenu={(e) => e.preventDefault()}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 7,
-          height: 34,
-          padding: "0 14px 0 11px",
-          borderRadius: 999,
-          cursor: "pointer",
-          border: `1px solid ${reacted ? "var(--color-ambar)" : "var(--color-borde)"}`,
-          background: reacted ? "rgba(242,160,22,.14)" : "var(--color-barra-alta)",
-          color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
-          font: "700 13.5px var(--font-sans)",
-          WebkitTouchCallout: "none",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-          touchAction: "pan-y", // deja scrollear el feed; el movimiento cancela el hold
-        }}
-      >
-        <span
-          key={anim ? `a${anim.nonce}` : "s"}
-          className={anim ? `fd-react fd-react-${ANIM_KEY[anim.emoji]}` : "fd-react"}
-          onAnimationEnd={() => setAnim(null)}
-          style={{ fontSize: 17, lineHeight: 1 }}
-        >
-          {showEmoji}
-        </span>
-        {reacted ? "Reaccionaste" : "Reaccionar"}
-      </button>
-
-      {/* Resumen compacto de reacciones (no interactivo): que no se pierda el social. */}
-      {showSummary && total > 0 && (
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: "var(--color-tenue)" }}>
-          <span style={{ fontSize: 14, lineHeight: 1, letterSpacing: "-.02em" }}>{present.join("")}</span>
-          <span style={{ font: "700 12.5px var(--font-sans)" }}>{total}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      {/* --- Display híbrido --- */}
+      {total === 0 ? (
+        <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
+      ) : total === 1 ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 18, lineHeight: 1 }}>{effective[0].emoji}</span>
+          <RingAvatar reactor={effective[0]} viewerId={viewer.id} overlap={false} />
+          <span style={{ font: "500 13.5px var(--font-sans)", color: "var(--color-crema)" }}>
+            {effective[0].userId === viewer.id ? "Brindaste" : `${effective[0].name} brindó`}
+          </span>
+        </div>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Tally count={total} barW={2.5} barH={13} gap={3} maxGroups={6} />
+          {emojiRow}
+          <span style={{ display: "inline-flex", alignItems: "center" }}>
+            {visibleAvatars.map((r, i) => (
+              <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
+            ))}
+            {extra > 0 && (
+              <span style={{ marginLeft: -8, height: 24, minWidth: 24, padding: "0 6px", borderRadius: 9, background: "var(--color-barra-alta)", boxShadow: "0 0 0 2px var(--color-barra)", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 11px var(--font-sans)", color: "var(--color-tenue)" }}>
+                +{extra}
+              </span>
+            )}
+          </span>
         </div>
       )}
+
+      {/* --- Barra de acciones (Comentar → I-3, Compartir → share-card: ocultos) --- */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          ref={btnRef}
+          type="button"
+          aria-label={reacted ? `Brindaste ${showEmoji}. Tocar para quitar; mantener para elegir otra` : "Brindar; mantener para elegir"}
+          aria-pressed={reacted}
+          onTouchStart={onTouchStart}
+          onTouchMove={onTouchMove}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={onTouchCancel}
+          onClick={onClick}
+          onContextMenu={(e) => e.preventDefault()}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 7,
+            height: 34,
+            padding: "0 14px 0 11px",
+            borderRadius: 999,
+            cursor: "pointer",
+            border: `1px solid ${reacted ? "var(--color-ambar)" : "var(--color-borde)"}`,
+            background: reacted ? "rgba(242,160,22,.14)" : "var(--color-barra-alta)",
+            color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
+            font: "700 13.5px var(--font-sans)",
+            WebkitTouchCallout: "none",
+            WebkitUserSelect: "none",
+            userSelect: "none",
+            touchAction: "pan-y",
+          }}
+        >
+          <span
+            key={anim ? `a${anim.nonce}` : "s"}
+            className={anim ? `fd-react fd-react-${ANIM_KEY[anim.emoji]}` : "fd-react"}
+            onAnimationEnd={() => setAnim(null)}
+            style={{ fontSize: 17, lineHeight: 1 }}
+          >
+            {showEmoji}
+          </span>
+          {reacted ? "Brindaste" : "Brindar"}
+        </button>
+      </div>
 
       {/* Selector (hold): en portal para escapar el overflow:hidden de la tarjeta. */}
       {mounted && selector &&
@@ -236,11 +253,9 @@ export function ReactionBar({
             />
             <div
               role="menu"
-              aria-label="Elegir reacción"
+              aria-label="Elegir brindis"
               style={{
                 position: "fixed",
-                // Centrado en el botón, pero clamp con la MITAD del ancho del popover
-                // (~140px) para que no se recorte contra los bordes del viewport.
                 left: Math.min(Math.max(selector.x, 148), (typeof window !== "undefined" ? window.innerWidth : 400) - 148),
                 top: selector.y - 12,
                 transform: "translate(-50%, -100%)",
@@ -260,7 +275,7 @@ export function ReactionBar({
                     key={emoji}
                     type="button"
                     role="menuitem"
-                    aria-label={`Reaccionar ${emoji}`}
+                    aria-label={`Brindar ${emoji}`}
                     aria-pressed={on}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); apply(emoji); closeSelector(); }}
                     style={{

@@ -125,11 +125,12 @@ function Stat({ value, label, primary = false }: { value: number; label: string;
 
 export function SessionCard({
   session,
-  viewerId,
+  viewer,
 }: {
   session: FeedSession;
-  viewerId: string;
+  viewer: { id: string; displayName: string; avatar: string | null };
 }) {
+  const viewerId = viewer.id;
   const { user, tags, checkIns, totalUnits, isOwner, viewerTagged } = session;
   // Desglose por formato para la fila de métricas. Solo se pinta con más de un
   // formato: con uno, "5 bebidas · 5 botellas" es redundante (misma regla que el detalle).
@@ -235,8 +236,9 @@ export function SessionCard({
             bd.map((b) => <Stat key={b.format} value={b.count} label={formatNoun(b.format, b.count)} />)}
         </div>
 
-        {/* Reacciones (Pasada R). Los botones cortan la navegación de la tarjeta-Link. */}
-        <ReactionBar sessionId={session.id} groups={session.reactions.groups} mine={session.reactions.mine} />
+        {/* Pie de brindis (I-1.2): total + emojis + avatares + botón Brindar. Los botones
+            cortan la navegación de la tarjeta-Link. */}
+        <ReactionBar sessionId={session.id} reactors={session.reactions.reactors} mine={session.reactions.mine} viewer={viewer} />
       </div>
     </Link>
   );

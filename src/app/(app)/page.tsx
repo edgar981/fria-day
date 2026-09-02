@@ -20,7 +20,11 @@ export default async function FeedPage() {
         ) : (
           <main style={{ padding: "16px 18px 0", display: "flex", flexDirection: "column", gap: 12 }}>
             {feed.map((s) => (
-              <SessionCard key={s.id} session={s} viewerId={user.id} />
+              <SessionCard
+                key={s.id}
+                session={s}
+                viewer={{ id: user.id, displayName: user.displayName, avatar: user.avatar ?? null }}
+              />
             ))}
           </main>
         )}

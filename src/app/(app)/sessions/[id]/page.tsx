@@ -99,16 +99,13 @@ export default async function SessionDetailPage({
           {total > 0 && <Tally count={total} color="var(--color-espuma)" barW={3} barH={30} gap={4} maxGroups={5} labelColor="rgba(251,240,213,.7)" />}
         </div>
 
-        {/* Reacciones (Pasada R). Reemplazan al contador "X de N registraron" y al
-            control "No tomé ese día", ambos quitados: la racha queda privada (perfil). */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <ReactionBar sessionId={s.id} groups={s.reactions.groups} mine={s.reactions.mine} showSummary={false} />
-          {s.reactionWho.length > 0 && (
-            <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--color-tenue)" }}>
-              {s.reactionWho.map((w) => `${w.emoji} ${w.names.join(", ")}`).join("   ·   ")}
-            </div>
-          )}
-        </div>
+        {/* Pie de brindis (I-1.2): total + emojis + avatares + botón Brindar. */}
+        <ReactionBar
+          sessionId={s.id}
+          reactors={s.reactions.reactors}
+          mine={s.reactions.mine}
+          viewer={{ id: viewer.id, displayName: viewer.displayName, avatar: viewer.avatar ?? null }}
+        />
 
         {isOwner && (
           <>

@@ -85,8 +85,12 @@ node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
 `scripts/seed-gate-data.ts` deja **dev** con un estado útil para gates: 3 usuarios con
 contraseña conocida, salidas en varias fechas con etiquetas cruzadas (círculo completo),
 bebidas variadas (cervezas y cócteles, con/sin rating, varios formatos, cantidad > 1),
-una salida donde Ana está etiquetada sin la suya ese día ("Yo también"), reacciones y el
-catálogo. **Idempotente** (`--apply`; correrlo dos veces no duplica).
+una salida donde Ana está etiquetada sin la suya ese día ("Yo también"), y el catálogo.
+Las **reacciones** están repartidas para ejercitar los 4 estados del pie de brindis
+(I-1.2) viendo el feed como Ana: 0 ("Nadie ha brindado"), 1 ("Caro brindó"), pocos, y
+"+N". Para el "+N" hay **usuarios solo-display** (`gate-x-*`, sin login, sin salidas ni
+etiquetas → solo avatares de reacción; no aparecen en círculo/leaderboard/feed).
+**Idempotente** (`--apply`; correrlo dos veces no duplica).
 
 **Credenciales (documentadas, no `***REDACTED***`):**
 - Ana — `gate-ana@friaday.test` / `***REDACTED***`

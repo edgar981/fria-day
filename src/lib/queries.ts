@@ -64,7 +64,11 @@ export async function getFeed(userId: string) {
         },
         orderBy: { createdAt: "asc" },
       },
-      reactions: { select: { emoji: true, userId: true } }, // Pasada R
+      // I-1.2: el pie híbrido necesita QUIÉN reaccionó (avatar + nombre), no solo el conteo.
+      reactions: {
+        select: { emoji: true, userId: true, user: { select: { displayName: true, avatar: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
 
@@ -74,8 +78,11 @@ export async function getFeed(userId: string) {
     isOwner: s.userId === userId,
     // El distintivo "X te etiquetó" SOLO cuando hay etiqueta real (no por círculo).
     viewerTagged: s.tags.some((t) => t.taggedUserId === userId),
-    // Pasada R: reacciones agrupadas + la del viewer. El contador social se quitó.
-    reactions: groupReactions(s.reactions, userId),
+    // Pasada R / I-1.2: la reacción del viewer (mine) + la lista de reactores.
+    reactions: {
+      mine: groupReactions(s.reactions, userId).mine,
+      reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
+    },
   }));
 }
 
@@ -96,21 +103,23 @@ export async function getSessionDetail(id: string, viewerId: string) {
         },
         orderBy: { createdAt: "asc" },
       },
-      reactions: { select: { emoji: true, userId: true, user: { select: { displayName: true } } } }, // Pasada R
+      reactions: {
+        select: { emoji: true, userId: true, user: { select: { displayName: true, avatar: true } } },
+        orderBy: { createdAt: "asc" },
+      }, // Pasada R / I-1.2
     },
   });
   if (!session) return null;
   const { reactions, ...rest } = session;
-  const grouped = groupReactions(reactions, viewerId);
-  // "Quién reaccionó" (solo en el detalle): nombres por emoji, en el orden de los grupos.
-  const whoByEmoji = new Map<string, string[]>();
-  for (const r of reactions) {
-    const arr = whoByEmoji.get(r.emoji) ?? [];
-    arr.push(r.userId === viewerId ? "tú" : r.user.displayName);
-    whoByEmoji.set(r.emoji, arr);
-  }
-  const reactionWho = grouped.groups.map((g) => ({ emoji: g.emoji, names: whoByEmoji.get(g.emoji) ?? [] }));
-  return { ...rest, reactions: grouped, reactionWho };
+  // I-1.2: mismo pie híbrido que el feed (mine + reactores con avatar/nombre). El
+  // listado "quién reaccionó por emoji" se reemplazó por los avatares apilados.
+  return {
+    ...rest,
+    reactions: {
+      mine: groupReactions(reactions, viewerId).mine,
+      reactors: reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
+    },
+  };
 }
 
 export type SessionDetail = NonNullable<

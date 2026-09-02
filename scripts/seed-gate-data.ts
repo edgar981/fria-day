@@ -32,6 +32,17 @@ const USERS = [
 ] as const;
 type UserKey = (typeof USERS)[number]["key"];
 
+// Usuarios SOLO-DISPLAY (I-1.2): existen únicamente para poblar avatares de brindis y
+// llegar al estado "+N" del pie (con 3 usuarios no se alcanza). NO tienen cuenta (no
+// hacen login), ni salidas, ni etiquetas → no aparecen en círculo, leaderboard ni feed;
+// solo como avatares de reacción. No son credenciales que reportar.
+const EXTRA_USERS = [
+  { key: "dani", email: "gate-x-dani@friaday.test", displayName: "Dani", avatar: "tucan" },
+  { key: "eli", email: "gate-x-eli@friaday.test", displayName: "Eli", avatar: "jaguar" },
+  { key: "fabio", email: "gate-x-fabio@friaday.test", displayName: "Fabio", avatar: "mono" },
+  { key: "gabo", email: "gate-x-gabo@friaday.test", displayName: "Gabo", avatar: "rana" },
+] as const;
+
 type CatalogItem = { name: string; brewery: string | null; style: string | null; abv: number | null; kind: DrinkKind };
 const CATALOG: CatalogItem[] = [
   { name: "Club Colombia Dorada", brewery: "Bavaria", style: "Lager", abv: 4.7, kind: "CERVEZA" },
@@ -46,9 +57,16 @@ const CATALOG: CatalogItem[] = [
 ];
 
 type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null };
-type React = { by: UserKey; emoji: string };
+type React = { by: string; emoji: string }; // by = key de USERS o de EXTRA_USERS
 type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[] };
 
+// Reacciones repartidas para ejercitar los 4 estados del pie de brindis (I-1.2),
+// VIENDO EL FEED COMO ANA:
+//   · Bar de la 85 (de Ana)     → 6 reactores → estado "+N" (3 avatares + "+3")
+//   · Andrés Carne de Res       → 2 reactores (Ana + Beto) → "pocos" (Ana con anillo)
+//   · Casa de Beto              → 1 reactor (Caro) → "Caro brindó"
+//   · Bogotá Beer Company (hoy) → 0 reactores → "Nadie ha brindado" (y sigue el caso
+//                                  "Yo también": Ana etiquetada hoy, sin salida propia)
 const SESSIONS: SessionSpec[] = [
   {
     owner: "ana", daysAgo: 7, place: "Bar de la 85", tags: ["beto", "caro"],
@@ -57,7 +75,10 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Corona Extra", fmt: "LATA", qty: 1, rating: 4 },
       { beer: "Mojito", fmt: "COPA", qty: 1, rating: 5 }, // cóctel con rating
     ],
-    reactions: [{ by: "beto", emoji: "🍻" }, { by: "caro", emoji: "🔥" }],
+    reactions: [
+      { by: "beto", emoji: "🍻" }, { by: "caro", emoji: "🔥" },
+      { by: "dani", emoji: "🔥" }, { by: "eli", emoji: "😂" }, { by: "fabio", emoji: "❤️" }, { by: "gabo", emoji: "🍻" },
+    ],
   },
   {
     owner: "beto", daysAgo: 3, place: "Casa de Beto", tags: ["ana"],
@@ -65,7 +86,7 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Águila", fmt: "LATA", qty: 2, rating: null }, // qty > 1, sin rating
       { beer: "Cuba Libre", fmt: "VASO", qty: 1, rating: null }, // cóctel sin rating
     ],
-    reactions: [{ by: "ana", emoji: "❤️" }],
+    reactions: [{ by: "caro", emoji: "❤️" }], // 1 reactor (no Ana) → "Caro brindó"
   },
   {
     owner: "caro", daysAgo: 1, place: "Andrés Carne de Res", tags: ["ana", "beto"],
@@ -74,16 +95,17 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Margarita", fmt: "COPA", qty: 2, rating: 5 }, // cóctel qty > 1
       { beer: "Corona Extra", fmt: "JARRA", qty: 1, rating: null },
     ],
-    reactions: [{ by: "ana", emoji: "🤤" }, { by: "beto", emoji: "🫡" }],
+    reactions: [{ by: "ana", emoji: "🤤" }, { by: "beto", emoji: "🫡" }], // 2 → "pocos"
   },
   {
     // HOY, Beto etiqueta a Ana (y Caro). Ana NO tiene salida propia hoy → "Yo también".
+    // Sin reacciones → estado "0" del pie ("Nadie ha brindado").
     owner: "beto", daysAgo: 0, place: "Bogotá Beer Company", tags: ["ana", "caro"],
     drinks: [
       { beer: "Club Colombia Dorada", fmt: "BOTELLA", qty: 2, rating: 5 },
       { beer: "BBC Cajicá Honey Ale", fmt: "LATA", qty: 1, rating: 4 },
     ],
-    reactions: [{ by: "ana", emoji: "😂" }],
+    reactions: [],
   },
 ];
 
@@ -100,6 +122,18 @@ async function ensureUser(email: string, password: string, displayName: string):
   await auth.api.signUpEmail({ body: { email, password, name: displayName, displayName } });
   const u = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (!u) throw new Error(`No se pudo crear ${email}`);
+  return u.id;
+}
+
+// Usuario SOLO-DISPLAY (I-1.2): fila User mínima, sin cuenta de auth (no login). Sirve
+// para avatares de brindis. Idempotente por email.
+async function ensureDisplayUser(email: string, displayName: string, avatar: string): Promise<string> {
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) return existing.id;
+  const u = await prisma.user.create({
+    data: { id: crypto.randomUUID(), email, name: displayName, displayName, avatar, emailVerified: false },
+    select: { id: true },
+  });
   return u.id;
 }
 
@@ -124,14 +158,17 @@ async function main() {
     console.log(`  Usuarios (${USERS.length}): ${USERS.map((u) => `${u.email} / ${u.password}`).join("  ·  ")}`);
     console.log(`  Catálogo asegurado: ${CATALOG.length} bebidas (${CATALOG.filter((c) => c.kind === "COCTEL").length} cócteles)`);
     console.log(`  Salidas: ${SESSIONS.length} en varias fechas, con etiquetas cruzadas (círculo completo)`);
-    console.log(`  Reacciones: ${SESSIONS.reduce((n, s) => n + s.reactions.length, 0)}`);
+    console.log(`  Reacciones: ${SESSIONS.reduce((n, s) => n + s.reactions.length, 0)} (pie de brindis: estados 0 / 1 / pocos / +N)`);
+    console.log(`  Usuarios solo-display (avatares de brindis, sin login): ${EXTRA_USERS.length}`);
     console.log(`  "Yo también": Ana está etiquetada HOY (salida de Beto) y no tiene salida propia hoy.`);
     console.log("\nCorre con --apply para escribir. Idempotente: no duplica.");
     return prisma.$disconnect();
   }
 
-  const uid: Record<UserKey, string> = {} as Record<UserKey, string>;
+  const uid: Record<string, string> = {};
   for (const u of USERS) uid[u.key] = await ensureUser(u.email, u.password, u.displayName);
+  // Usuarios solo-display para los avatares de brindis (estado "+N"). Sin login.
+  for (const u of EXTRA_USERS) uid[u.key] = await ensureDisplayUser(u.email, u.displayName, u.avatar);
 
   const beerId: Record<string, string> = {};
   for (const b of CATALOG) beerId[b.name] = await ensureBeer(uid.ana, b);
