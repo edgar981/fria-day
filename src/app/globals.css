@@ -240,6 +240,66 @@ textarea.field {
   }
 }
 
+/* Animación de reacción (I-1): corre UNA sola vez al aplicar la reacción; NUNCA en
+   loop en el feed. Cada emoji tiene su gesto. El glifo se remonta (key nueva) para
+   reiniciar la animación en cada aplicación; onAnimationEnd la limpia. */
+.fd-react {
+  display: inline-block;
+  transform-origin: center 70%;
+  will-change: transform;
+}
+@keyframes fd-react-beer {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  25% { transform: translateY(-7px) rotate(-6deg); }
+  50% { transform: translateY(0) rotate(4deg); }
+  75% { transform: translateY(-3px) rotate(-2deg); }
+}
+@keyframes fd-react-fire {
+  0%, 100% { transform: rotate(0) skewX(0); }
+  20% { transform: rotate(-9deg) skewX(7deg) scale(1.08); }
+  45% { transform: rotate(8deg) skewX(-6deg) scale(1.12); }
+  70% { transform: rotate(-4deg) skewX(3deg) scale(1.05); }
+}
+@keyframes fd-react-laugh {
+  0%, 100% { transform: translateY(0); }
+  15% { transform: translateY(-4px); }
+  30% { transform: translateY(2px); }
+  45% { transform: translateY(-3px); }
+  60% { transform: translateY(1px); }
+  80% { transform: translateY(-1px); }
+}
+@keyframes fd-react-drool {
+  0%, 100% { transform: rotate(0); }
+  40% { transform: rotate(16deg); }
+  70% { transform: rotate(7deg); }
+}
+@keyframes fd-react-heart {
+  0%, 100% { transform: scale(1); }
+  30% { transform: scale(1.45); }
+  55% { transform: scale(0.9); }
+  75% { transform: scale(1.15); }
+}
+@keyframes fd-react-salute {
+  0%, 100% { transform: scale(1); }
+  40% { transform: scale(1.28); }
+}
+.fd-react-beer { animation: fd-react-beer 0.55s ease; }
+.fd-react-fire { animation: fd-react-fire 0.55s ease; }
+.fd-react-laugh { animation: fd-react-laugh 0.55s ease; }
+.fd-react-drool { animation: fd-react-drool 0.5s ease; }
+.fd-react-heart { animation: fd-react-heart 0.6s ease; }
+.fd-react-salute { animation: fd-react-salute 0.45s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .fd-react-beer,
+  .fd-react-fire,
+  .fd-react-laugh,
+  .fd-react-drool,
+  .fd-react-heart,
+  .fd-react-salute {
+    animation: none;
+  }
+}
+
 /* Motivo: franja de espuma → única implementación en el componente FoamStrip (G.2).
    Se eliminaron las clases .foam/.foam-scallop (estaban sin uso; eran una segunda
    implementación del mismo festón). */

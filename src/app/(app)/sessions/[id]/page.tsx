@@ -102,7 +102,7 @@ export default async function SessionDetailPage({
         {/* Reacciones (Pasada R). Reemplazan al contador "X de N registraron" y al
             control "No tomé ese día", ambos quitados: la racha queda privada (perfil). */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <ReactionBar sessionId={s.id} groups={s.reactions.groups} mine={s.reactions.mine} />
+          <ReactionBar sessionId={s.id} groups={s.reactions.groups} mine={s.reactions.mine} showSummary={false} />
           {s.reactionWho.length > 0 && (
             <div style={{ font: "400 12.5px/1.5 var(--font-sans)", color: "var(--color-tenue)" }}>
               {s.reactionWho.map((w) => `${w.emoji} ${w.names.join(", ")}`).join("   ·   ")}

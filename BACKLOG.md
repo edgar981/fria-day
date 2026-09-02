@@ -172,10 +172,20 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   app y la forma de reaccionar es sosa. Edgar va a rediseñar el sistema completo: si son
   reacciones, comentarios, ambos, o algo del dominio (reaccionar a una **bebida** concreta,
   "yo pido una de esas").
-- **Estado:** lo implementado hoy (reacciones optimistas, N.2) se queda como está mientras
-  tanto. Ver también "Comentarios en salidas (plana, sin hilos)" en este backlog.
+- **Estado:** I-1 ya dio el primer paso — barra de acciones (Reaccionar visible; Comentar
+  I-3 y Compartir/share-card ocultos), tap/hold con selector, y una animación CSS por emoji.
+  Lo demás sigue pendiente de diseño. Ver también "Comentarios en salidas (plana, sin hilos)".
 - **Sin disparador de tiempo:** depende de que Edgar lo defina (decisión de producto +
   sesión de diseño), no de una condición del uso.
+
+## Assets animados propios de reacciones: 🍻 y 🫡 (I-1)
+
+- **Qué:** en I-1 las seis reacciones se animan con CSS al aplicarlas (una vez). Dos son
+  versiones simples a propósito: **🍻 rebota** (falta el **brindis real** — dos jarras que
+  chocan) y **🫡 hace un pulso** (falta la **coreografía de la mano** del saludo).
+- **Disparador:** si las versiones CSS **saben a poco** en uso real, hacer assets animados
+  propios (SVG/Lottie) para esas dos.
+- **Nota:** el resto (❤️ 🔥 😂 🤤) con CSS probablemente basta; revisar caso por caso.
 
 ## Fotos: cómo se ven y para qué sirven — pendiente de DISEÑO
 
