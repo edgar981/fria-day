@@ -26,9 +26,9 @@ const APPLY = process.argv.includes("--apply");
 
 // Credenciales de gate — DOCUMENTADAS (no ***REDACTED***). Se reportan en cada pasada.
 const USERS = [
-  { key: "ana", email: "gate-ana@friaday.test", password: "***REDACTED***", displayName: "Ana" },
-  { key: "beto", email: "gate-beto@friaday.test", password: "***REDACTED***", displayName: "Beto" },
-  { key: "caro", email: "gate-caro@friaday.test", password: "***REDACTED***", displayName: "Caro" },
+  { key: "ana", email: "gate-ana@friaday.test", password: "***REDACTED***", displayName: "Ana", avatar: "capibara" },
+  { key: "beto", email: "gate-beto@friaday.test", password: "***REDACTED***", displayName: "Beto", avatar: "condor" },
+  { key: "caro", email: "gate-caro@friaday.test", password: "***REDACTED***", displayName: "Caro", avatar: "iguana" },
 ] as const;
 type UserKey = (typeof USERS)[number]["key"];
 
@@ -167,6 +167,10 @@ async function main() {
 
   const uid: Record<string, string> = {};
   for (const u of USERS) uid[u.key] = await ensureUser(u.email, u.password, u.displayName);
+  // Avatares de los usuarios de gate (I-1.3): sin esto quedan como anónimo punteado y
+  // no se aprecia el anillo ámbar del pie. ensureUser (signUpEmail) no los pone, así
+  // que se fijan aquí (idempotente).
+  for (const u of USERS) await prisma.user.update({ where: { id: uid[u.key] }, data: { avatar: u.avatar } });
   // Usuarios solo-display para los avatares de brindis (estado "+N"). Sin login.
   for (const u of EXTRA_USERS) uid[u.key] = await ensureDisplayUser(u.email, u.displayName, u.avatar);
 

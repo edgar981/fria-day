@@ -46,6 +46,22 @@ body {
   color: var(--color-crema);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+  /* I-1.3: la selección nativa de iOS en el hold (long-press) resaltaba TODA la app.
+     Diagnóstico medido: el user-select:none SOLO en la tarjeta no bastaba — todos los
+     ancestros (main, pb-scroll, app-shell, body, html) seguían "text", así que el
+     long-press caía en el shell y lo tintaba. La app es táctil, no un documento para
+     seleccionar → se desactiva la selección a nivel raíz. Los campos de texto la
+     recuperan abajo (edición). NOTA: la selección nativa NO se reproduce headless;
+     lo confirma Edgar en iPhone real. */
+  -webkit-user-select: none;
+  user-select: none;
+}
+/* Recuperar selección donde SÍ hace falta escribir/editar. */
+input,
+textarea,
+[contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 * {

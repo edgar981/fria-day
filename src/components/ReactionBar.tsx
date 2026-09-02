@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
-import { Tally } from "@/components/Tally";
 
 type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
 type Viewer = { id: string; displayName: string; avatar: string | null };
@@ -42,14 +41,14 @@ function RingAvatar({ reactor, viewerId, overlap }: { reactor: Reactor; viewerId
 }
 
 /**
- * Pie de brindis + barra de acciones (I-1.2). Basado en el tablero de diseño
- * (opción 1c con avatares de 1a = recomendación 1d).
+ * Pie de brindis + barra de acciones (I-1.3, opción 1a del tablero de diseño).
  *
- * Display (híbrido):
+ * Display (1a): racimo de hasta 4 emojis distintos + avatares de quienes brindaron
+ * (el tuyo con anillo ámbar) + texto. SIN tally (el tally vive en los totales de
+ * bebidas, donde ya estaba). Los emojis son SOLO display (no son blancos de toque).
  *  - 0 → "Nadie ha brindado"
- *  - 1 → emoji + avatar + nombre ("Caro brindó" / "Brindaste" si eres tú)
- *  - 2+ → total en marcas de conteo (Tally) + emojis distintos (grandes, sin cajas,
- *         SOLO display) + avatares apilados (3 + "+N"; el tuyo con anillo ámbar).
+ *  - 1 → "Caro brindó" (o "Brindaste" si eres tú)
+ *  - 2+ → "Tú y N más" (o "Nombre y N más" si no brindaste)
  *
  * Acción: botón "Brindar" (tu emoji + "Brindaste" si ya brindaste). Tap aplica 🍻 o
  * quita; hold (~400ms) abre las seis. Optimista + serializado como en N.2 (pinta al
@@ -159,43 +158,40 @@ export function ReactionBar({
   const reacted = myEmoji != null;
   const showEmoji = myEmoji ?? DEFAULT_EMOJI;
   const visibleAvatars = effective.slice(0, 3);
-  const extra = effective.length - visibleAvatars.length;
-
-  const emojiRow = (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-      {distinctEmojis.map((e) => (
-        <span key={e} style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
-      ))}
-    </span>
-  );
+  const iReacted = effective.some((r) => r.userId === viewer.id);
+  // Texto (en "tú"): 1 → "Caro brindó"/"Brindaste"; varios → "Tú y N más"/"Nombre y N más".
+  // Guardado para total 0 (effective vacío) — solo se usa en el JSX cuando total > 0.
+  const displayText =
+    total === 0
+      ? ""
+      : total === 1
+        ? effective[0].userId === viewer.id
+          ? "Brindaste"
+          : `${effective[0].name} brindó`
+        : iReacted
+          ? `Tú y ${total - 1} más`
+          : `${effective[0].name} y ${total - 1} más`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-      {/* --- Display híbrido --- */}
+      {/* --- Display 1a: racimo de emojis + avatares + texto (sin tally) --- */}
       {total === 0 ? (
         <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
-      ) : total === 1 ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 18, lineHeight: 1 }}>{effective[0].emoji}</span>
-          <RingAvatar reactor={effective[0]} viewerId={viewer.id} overlap={false} />
-          <span style={{ font: "500 13.5px var(--font-sans)", color: "var(--color-crema)" }}>
-            {effective[0].userId === viewer.id ? "Brindaste" : `${effective[0].name} brindó`}
-          </span>
-        </div>
       ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <Tally count={total} barW={2.5} barH={13} gap={3} maxGroups={6} />
-          {emojiRow}
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          {/* Racimo de hasta 4 emojis distintos (SOLO display, sin cajas). */}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            {distinctEmojis.map((e) => (
+              <span key={e} style={{ fontSize: 18, lineHeight: 1 }}>{e}</span>
+            ))}
+          </span>
+          {/* Avatares de quienes brindaron (hasta 3); el tuyo con anillo ámbar. */}
           <span style={{ display: "inline-flex", alignItems: "center" }}>
             {visibleAvatars.map((r, i) => (
               <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
             ))}
-            {extra > 0 && (
-              <span style={{ marginLeft: -8, height: 24, minWidth: 24, padding: "0 6px", borderRadius: 9, background: "var(--color-barra-alta)", boxShadow: "0 0 0 2px var(--color-barra)", display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 11px var(--font-sans)", color: "var(--color-tenue)" }}>
-                +{extra}
-              </span>
-            )}
           </span>
+          <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-crema)" }}>{displayText}</span>
         </div>
       )}
 
