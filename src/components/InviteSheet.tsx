@@ -94,7 +94,9 @@ export function InviteSheet({
               {invitations.map((inv) => (
                 <div key={inv.id} className="card" style={{ padding: "12px 14px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)" }}>{inv.code}</div>
+                    {/* I-1.4: código seleccionable/copiable a mano (la app está en
+                        user-select:none por el hold de reacciones; aquí se re-habilita). */}
+                    <div style={{ font: "700 17px var(--font-display)", letterSpacing: ".12em", color: "var(--color-espuma)", WebkitUserSelect: "text", userSelect: "text", WebkitTouchCallout: "default" }}>{inv.code}</div>
                     <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>
                       Creada {formatDay(inv.createdAt)}
                       {inv.expiresAt ? ` · expira ${formatDay(inv.expiresAt)}` : ""}

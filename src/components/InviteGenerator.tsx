@@ -55,7 +55,10 @@ export function InviteGenerator() {
         <div style={{ background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 18, padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ textAlign: "center" }}>
             <div style={{ font: "400 11.5px var(--font-sans)", color: "var(--color-tenue)", letterSpacing: ".1em" }}>CÓDIGO</div>
-            <div style={{ font: "700 30px var(--font-display)", letterSpacing: ".18em", color: "var(--color-espuma)", marginTop: 4 }}>{code}</div>
+            {/* I-1.4: la app está en user-select:none (para el hold de reacciones). El
+                código SÍ debe poder seleccionarse y copiarse a mano (long-press → Copiar),
+                por si la hoja nativa de Compartir no sirve. Se re-habilita solo aquí. */}
+            <div style={{ font: "700 30px var(--font-display)", letterSpacing: ".18em", color: "var(--color-espuma)", marginTop: 4, WebkitUserSelect: "text", userSelect: "text", WebkitTouchCallout: "default" }}>{code}</div>
           </div>
           <ShareCodeButton code={code} variant="primary" />
           <div style={{ display: "flex", gap: 9 }}>
