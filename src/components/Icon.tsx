@@ -8,7 +8,8 @@ export type IconName =
   | "search"
   | "lock"
   | "user"
-  | "users";
+  | "users"
+  | "share";
 
 // "user"/"users" (Pasada N: Perfil e Invitar) se dibujan INLINE, no en el sprite:
 // Sprite.tsx está marcado "No editar a mano" (se regenera desde Claude Design) y
@@ -27,6 +28,13 @@ const INLINE: Partial<Record<IconName, React.ReactNode>> = {
       <path d="M3 19a6 6 0 0 1 12 0" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
       <path d="M15.5 6.2a3.3 3.3 0 0 1 0 6" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
       <path d="M16.5 13.4A6 6 0 0 1 21 19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+    </>
+  ),
+  share: (
+    <>
+      <path d="M12 3.5v11" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
+      <path d="M8 7l4-3.5L16 7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 11H5.5A1.5 1.5 0 0 0 4 12.5v6A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 18.5 11H18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </>
   ),
 };

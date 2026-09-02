@@ -197,3 +197,13 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
 - **Punto de partida del replanteo:** hoy subir existe, **mirar** no.
 - **Sin disparador de tiempo:** depende de que Edgar lo defina, no del uso. (El original a
   1200px ya se guarda, así que "tap para ampliar" no requeriría re-subir nada.)
+
+## Nombres de etiquetados en la share-card: ¿opcional? (Pasada S)
+
+- **Qué:** la share-card (imagen que va a Instagram/afuera) incluye los **nombres de los
+  etiquetados** ("con Beto y Caro"). Alguien podría no querer salir en una imagen pública.
+- **Estado v1 (Pasada S):** se dejan los nombres (recomendación aceptada). La imagen sale
+  del círculo y muestra quién salió — es parte del sentido.
+- **Disparador para retomar:** si alguien del parche pide no aparecer, o incomoda en uso
+  real. Opciones: opt-out por usuario (no aparecer en imágenes de otros), o que el dueño
+  elija incluir/omitir compañía al compartir. Decisión de producto de Edgar.

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS, rankClusterEmojis, reactionPile } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
+import { ShareButton } from "@/components/ShareButton";
 
 type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
 type Viewer = { id: string; displayName: string; avatar: string | null };
@@ -218,8 +219,8 @@ export function ReactionBar({
         </div>
       )}
 
-      {/* --- Barra de acciones (Comentar → I-3, Compartir → share-card: ocultos) --- */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* --- Barra de acciones. Compartir activo (Pasada S). Comentar → I-3 (oculto). --- */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <button
           ref={btnRef}
           type="button"
@@ -259,6 +260,7 @@ export function ReactionBar({
           </span>
           {reacted ? "Brindaste" : "Brindar"}
         </button>
+        <ShareButton sessionId={sessionId} />
       </div>
 
       {/* Selector (hold): en portal para escapar el overflow:hidden de la tarjeta. */}
