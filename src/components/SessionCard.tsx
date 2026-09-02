@@ -153,6 +153,14 @@ export function SessionCard({
         textDecoration: "none",
         color: "var(--color-crema)",
         overflow: "hidden",
+        // I-1.1: la tarjeta es un tap-target (Link), no texto para seleccionar. El
+        // user-select:none del botón no bastaba: al sostener el hold, iOS seleccionaba
+        // el texto SELECCIONABLE de alrededor (diagnóstico: cardRoot/nombre = "text").
+        // Poniéndolo en el contenedor (hereda a todo el texto) no hay nada que iOS
+        // pueda resaltar cerca del dedo. No afecta scroll ni tap.
+        WebkitUserSelect: "none",
+        userSelect: "none",
+        WebkitTouchCallout: "none",
         ...(tagged ? { border: "1px solid rgba(62,143,107,.32)" } : null),
       }}
     >
