@@ -178,14 +178,15 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
 - **Sin disparador de tiempo:** depende de que Edgar lo defina (decisión de producto +
   sesión de diseño), no de una condición del uso.
 
-## Assets animados propios de reacciones: 🍻 y 🫡 (I-1)
+## Assets animados propios de reacciones — RESUELTO en Pasada A-1
 
-- **Qué:** en I-1 las seis reacciones se animan con CSS al aplicarlas (una vez). Dos son
-  versiones simples a propósito: **🍻 rebota** (falta el **brindis real** — dos jarras que
-  chocan) y **🫡 hace un pulso** (falta la **coreografía de la mano** del saludo).
-- **Disparador:** si las versiones CSS **saben a poco** en uso real, hacer assets animados
-  propios (SVG/Lottie) para esas dos.
-- **Nota:** el resto (❤️ 🔥 😂 🤤) con CSS probablemente basta; revisar caso por caso.
+- **Resuelto:** las seis reacciones pasaron de emoji Unicode a **glifos SVG propios**
+  (`ReactionGlyph`) con animaciones por parte: 🍻 brinda de verdad (dos jarras que chocan),
+  🔥🤤😂 con partes separadas, ❤️ escala. El saludo 🫡 se **descartó**: no leía a 18px; el
+  sexto se dibuja como **«sopla»** (matasuegras) — la clave en `REACTIONS`/DB sigue siendo
+  🫡 (el dibujo cambió, el fallback Unicode ya no coincide, pero el glifo siempre se
+  renderiza). Peso <1 KB gzip, sin runtime. Habilita, además, mostrar reacciones en el
+  share-card (satori no puede emoji) — no implementado aún.
 
 ## Fotos: cómo se ven y para qué sirven — RESUELTO en Pasada I-2
 

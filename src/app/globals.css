@@ -256,64 +256,58 @@ textarea.field {
   }
 }
 
-/* Animación de reacción (I-1): corre UNA sola vez al aplicar la reacción; NUNCA en
-   loop en el feed. Cada emoji tiene su gesto. El glifo se remonta (key nueva) para
-   reiniciar la animación en cada aplicación; onAnimationEnd la limpia. */
-.fd-react {
-  display: inline-block;
-  transform-origin: center 70%;
-  will-change: transform;
-}
-@keyframes fd-react-beer {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  25% { transform: translateY(-7px) rotate(-6deg); }
-  50% { transform: translateY(0) rotate(4deg); }
-  75% { transform: translateY(-3px) rotate(-2deg); }
-}
-@keyframes fd-react-fire {
-  0%, 100% { transform: rotate(0) skewX(0); }
-  20% { transform: rotate(-9deg) skewX(7deg) scale(1.08); }
-  45% { transform: rotate(8deg) skewX(-6deg) scale(1.12); }
-  70% { transform: rotate(-4deg) skewX(3deg) scale(1.05); }
-}
-@keyframes fd-react-laugh {
-  0%, 100% { transform: translateY(0); }
-  15% { transform: translateY(-4px); }
-  30% { transform: translateY(2px); }
-  45% { transform: translateY(-3px); }
-  60% { transform: translateY(1px); }
-  80% { transform: translateY(-1px); }
-}
-@keyframes fd-react-drool {
-  0%, 100% { transform: rotate(0); }
-  40% { transform: rotate(16deg); }
-  70% { transform: rotate(7deg); }
-}
-@keyframes fd-react-heart {
-  0%, 100% { transform: scale(1); }
-  30% { transform: scale(1.45); }
-  55% { transform: scale(0.9); }
-  75% { transform: scale(1.15); }
-}
-@keyframes fd-react-salute {
-  0%, 100% { transform: scale(1); }
-  40% { transform: scale(1.28); }
-}
-.fd-react-beer { animation: fd-react-beer 0.55s ease; }
-.fd-react-fire { animation: fd-react-fire 0.55s ease; }
-.fd-react-laugh { animation: fd-react-laugh 0.55s ease; }
-.fd-react-drool { animation: fd-react-drool 0.5s ease; }
-.fd-react-heart { animation: fd-react-heart 0.6s ease; }
-.fd-react-salute { animation: fd-react-salute 0.45s ease; }
+/* Animaciones de reacción (Pasada A-1): corren UNA sola vez al aplicar la reacción,
+   NUNCA en loop. Sobre glifos SVG propios (ReactionGlyph): cada PARTE (`data-p`) se
+   anima por separado, no el glifo entero. La barra pone `.go` en el mismo tick del tap
+   y remonta el glifo (key nueva) para reiniciar. Keyframes de 1e–1h + «sopla» (8e) del
+   tablero; ❤️ escala el glifo entero. En compacto a propósito (son muchos). */
+.fd-rg { display: inline-block; will-change: transform; }
+/* 🍻 brindis */
+@keyframes fd-clink-l { 0% { transform: rotate(0) translateX(0); } 30% { transform: rotate(20deg) translateX(5px); } 42% { transform: rotate(13deg) translateX(2px); } 60% { transform: rotate(17deg) translateX(3px); } 100% { transform: rotate(0) translateX(0); } }
+@keyframes fd-clink-r { 0% { transform: rotate(0) translateX(0); } 30% { transform: rotate(-20deg) translateX(-5px); } 42% { transform: rotate(-13deg) translateX(-2px); } 60% { transform: rotate(-17deg) translateX(-3px); } 100% { transform: rotate(0) translateX(0); } }
+@keyframes fd-spark { 0%, 26% { opacity: 0; transform: scale(0.3); } 34% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.6) translate(var(--dx, 0), var(--dy, -10px)); } }
+/* 🔥 fuego */
+@keyframes fd-flame { 0%, 100% { transform: scaleY(1) skewX(0); } 22% { transform: scaleY(1.14) skewX(-6deg); } 48% { transform: scaleY(0.93) skewX(5deg); } 72% { transform: scaleY(1.09) skewX(-3deg); } }
+@keyframes fd-core { 0%, 100% { opacity: 0.9; transform: scaleY(1); } 30% { opacity: 1; transform: scaleY(1.2); } 60% { opacity: 0.75; transform: scaleY(0.88); } }
+@keyframes fd-ember { 0% { opacity: 0; transform: translateY(0) scale(0.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px) scale(0.8); } }
+/* 😂 risa */
+@keyframes fd-laugh { 0% { transform: scale(1) rotate(0); } 18% { transform: scale(1.12, 0.9) rotate(-7deg); } 36% { transform: scale(0.93, 1.1) rotate(6deg); } 56% { transform: scale(1.07, 0.95) rotate(-4deg); } 76% { transform: scale(0.98, 1.03) rotate(2deg); } 100% { transform: scale(1) rotate(0); } }
+@keyframes fd-mouth { 0% { transform: scaleY(0.45); } 22% { transform: scaleY(1.2); } 44% { transform: scaleY(0.65); } 66% { transform: scaleY(1.08); } 100% { transform: scaleY(0.85); } }
+@keyframes fd-tear { 0% { opacity: 0; transform: translate(0, 0) scale(0.4); } 25% { opacity: 1; transform: translate(0, 2px) scale(1); } 100% { opacity: 0; transform: translate(-3px, 15px) scale(0.85); } }
+@keyframes fd-blink { 0%, 100% { transform: scaleY(1); } 40% { transform: scaleY(0.2); } }
+/* 🤤 baba */
+@keyframes fd-drool { 0% { transform: scaleY(0.25); opacity: 0; } 18% { opacity: 1; } 55% { transform: scaleY(1.7); } 72% { transform: scaleY(1.9); opacity: 1; } 80% { opacity: 0; } 100% { opacity: 0; transform: scaleY(0.4); } }
+@keyframes fd-fall { 0%, 70% { opacity: 0; transform: translateY(0) scale(0.5); } 78% { opacity: 1; transform: translateY(4px) scale(1); } 100% { opacity: 0; transform: translateY(20px) scale(0.9); } }
+/* 🫡→sopla (matasuegras) */
+@keyframes fd-blow-tube { 0% { transform: scaleX(1); } 22% { transform: scaleX(1.52); } 34% { transform: scaleX(1.45); } 70% { transform: scaleX(1.06); } 82% { transform: scaleX(0.96); } 100% { transform: scaleX(1); } }
+@keyframes fd-blow-knob { 0% { transform: translateX(0) scale(1); } 22% { transform: translateX(8.6px) scale(0.7); } 34% { transform: translateX(7.8px) scale(0.74); } 70% { transform: translateX(1px) scale(0.96); } 82% { transform: translateX(-0.6px) scale(1.02); } 100% { transform: translateX(0) scale(1); } }
+@keyframes fd-blow-head { 0%, 100% { transform: translateX(0) scaleY(1); } 22% { transform: translateX(-1.2px) scaleY(0.97); } 50% { transform: translateX(0) scaleY(1.02); } }
+@keyframes fd-blow-cone { 0%, 100% { transform: scaleY(1) scaleX(1); } 22% { transform: scaleY(1.1) scaleX(0.95); } 55% { transform: scaleY(0.98) scaleX(1.01); } }
+/* ❤️ escala el glifo entero */
+@keyframes fd-rg-heart { 0%, 100% { transform: scale(1); } 30% { transform: scale(1.45); } 55% { transform: scale(0.9); } 75% { transform: scale(1.15); } }
+
+[data-anim="clink"].go [data-p="l"] { animation: fd-clink-l 0.78s cubic-bezier(.34, 1.4, .5, 1) both; }
+[data-anim="clink"].go [data-p="r"] { animation: fd-clink-r 0.78s cubic-bezier(.34, 1.4, .5, 1) both; }
+[data-anim="clink"].go [data-p="s"] { animation: fd-spark 0.78s ease-out both; }
+[data-anim="fire"].go [data-p="f1"] { animation: fd-flame 0.9s ease-in-out both; }
+[data-anim="fire"].go [data-p="f2"] { animation: fd-flame 0.9s ease-in-out 0.06s both; }
+[data-anim="fire"].go [data-p="core"] { animation: fd-core 0.9s ease-in-out both; }
+[data-anim="fire"].go [data-p="e"] { animation: fd-ember 0.9s ease-out both; }
+[data-anim="laugh"].go [data-p="face"] { animation: fd-laugh 0.85s cubic-bezier(.3, 1.3, .4, 1) both; }
+[data-anim="laugh"].go [data-p="mouth"] { animation: fd-mouth 0.85s ease-in-out both; }
+[data-anim="laugh"].go [data-p="tear"] { animation: fd-tear 0.85s ease-in 0.12s both; }
+[data-anim="laugh"].go [data-p="eye"] { animation: fd-blink 0.85s ease-in-out both; }
+[data-anim="drool"].go [data-p="strand"] { animation: fd-drool 1s ease-in both; }
+[data-anim="drool"].go [data-p="drop"] { animation: fd-fall 1s ease-in both; }
+[data-anim="blow"].go [data-p="tube"] { animation: fd-blow-tube 0.8s cubic-bezier(.25, .9, .3, 1) both; }
+[data-anim="blow"].go [data-p="knob"] { animation: fd-blow-knob 0.8s cubic-bezier(.25, .9, .3, 1) both; }
+[data-anim="blow"].go [data-p="head"] { animation: fd-blow-head 0.8s ease-in-out both; }
+[data-anim="blow"].go [data-p="cone"] { animation: fd-blow-cone 0.8s cubic-bezier(.34, 1.3, .5, 1) both; }
+[data-anim="blow"].go [data-p="s"] { animation: fd-spark 0.8s ease-out 0.12s both; }
+[data-anim="heart"].go { animation: fd-rg-heart 0.6s ease; }
 @media (prefers-reduced-motion: reduce) {
-  .fd-react-beer,
-  .fd-react-fire,
-  .fd-react-laugh,
-  .fd-react-drool,
-  .fd-react-heart,
-  .fd-react-salute {
-    animation: none;
-  }
+  [data-anim].go [data-p],
+  [data-anim="heart"].go { animation: none !important; }
 }
 
 /* Motivo: franja de espuma → única implementación en el componente FoamStrip (G.2).

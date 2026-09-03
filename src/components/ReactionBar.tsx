@@ -7,6 +7,7 @@ import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS, rankClusterEmojis, reactionPile } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
+import { ReactionGlyph } from "@/components/ReactionGlyph";
 import { ShareButton } from "@/components/ShareButton";
 import { CommentSheet } from "@/components/CommentSheet";
 
@@ -37,11 +38,6 @@ type Viewer = { id: string; displayName: string; avatar: string | null };
 const DEFAULT_EMOJI = "🍻"; // el brindis por defecto del tap simple
 const HOLD_MS = 400;
 const MOVE_CANCEL = 10;
-
-// Gesto CSS por emoji (I-1). Brindis fino de 🍻 y mano de 🫡: assets propios en BACKLOG.
-const ANIM_KEY: Record<string, string> = {
-  "🍻": "beer", "🔥": "fire", "😂": "laugh", "🤤": "drool", "❤️": "heart", "🫡": "salute",
-};
 
 // Avatar con anillo: el del usuario en ámbar; los demás en el color de la tarjeta
 // (separa los apilados). z-index sube el del usuario para que su anillo no se tape.
@@ -115,13 +111,14 @@ export function ReactionBar({
     }
   }
   const [myEmoji, setMyEmoji] = useState<string | null>(mine);
-  const [anim, setAnim] = useState<{ emoji: string; nonce: number } | null>(null);
+  // A-1: `pulse` re-dispara la animación del glifo (un run por tap). 0 = nunca tocado
+  // → el botón arranca ESTÁTICO en el feed; solo se anima el glifo recién elegido.
+  const [pulse, setPulse] = useState(0);
   const [selector, setSelector] = useState<{ x: number; y: number } | null>(null);
   const [mounted, setMounted] = useState(false);
 
   const pending = useRef(0);
   const chain = useRef<Promise<unknown>>(Promise.resolve());
-  const nonce = useRef(0);
   const btnRef = useRef<HTMLButtonElement>(null);
   const gesture = useRef({ x: 0, y: 0, moved: false, held: false, endedAt: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -148,7 +145,7 @@ export function ReactionBar({
     const prev = myEmoji;
     const removing = prev === emoji;
     setMyEmoji(removing ? null : emoji);
-    if (!removing) setAnim({ emoji, nonce: ++nonce.current });
+    if (!removing) setPulse((p) => p + 1);
     pending.current++;
     chain.current = chain.current
       .catch(() => {})
@@ -244,13 +241,11 @@ export function ReactionBar({
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 14,
-                  lineHeight: 1,
                   position: "relative",
                   zIndex: 10 - i, // el más usado, encima
                 }}
               >
-                {e}
+                <ReactionGlyph emoji={e} size={18} />
               </span>
             ))}
           </span>
@@ -286,14 +281,7 @@ export function ReactionBar({
             background: reacted ? "rgba(242,160,22,.12)" : "transparent",
           }}
         >
-          <span
-            key={anim ? `a${anim.nonce}` : "s"}
-            className={anim ? `fd-react fd-react-${ANIM_KEY[anim.emoji]}` : "fd-react"}
-            onAnimationEnd={() => setAnim(null)}
-            style={{ fontSize: 15, lineHeight: 1 }}
-          >
-            {showEmoji}
-          </span>
+          <ReactionGlyph emoji={showEmoji} size={20} animate={pulse > 0} animKey={pulse} />
           {reacted ? "Brindaste" : "Brindar"}
         </button>
         <button type="button" onClick={onComment} aria-label="Comentar" style={actionBtn}>
@@ -357,15 +345,17 @@ export function ReactionBar({
                       borderRadius: 999,
                       border: `1px solid ${on ? "var(--color-ambar)" : "transparent"}`,
                       background: on ? "rgba(242,160,22,.16)" : "transparent",
-                      fontSize: 21,
-                      lineHeight: 1,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
                       cursor: "pointer",
                       WebkitTouchCallout: "none",
                       WebkitUserSelect: "none",
                       userSelect: "none",
                     }}
                   >
-                    {emoji}
+                    {/* Estático: el selector no anima (solo el botón tras elegir). */}
+                    <ReactionGlyph emoji={emoji} size={28} />
                   </button>
                 );
               })}
