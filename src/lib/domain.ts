@@ -712,7 +712,10 @@ export function isValidCommentBody(body: string): boolean {
   return t.length > 0 && t.length <= MAX_COMMENT_LENGTH;
 }
 
-/** Permiso para borrar un comentario (I-3): su autor, o el dueño de la salida. */
-export function canDeleteComment(args: { authorId: string; sessionOwnerId: string; viewerId: string }): boolean {
-  return args.viewerId === args.authorId || args.viewerId === args.sessionOwnerId;
+/**
+ * Permiso para borrar un comentario (I-3.2): SOLO su autor. El dueño de la salida ya
+ * NO puede borrar comentarios ajenos (moderación por el dueño quedó en BACKLOG).
+ */
+export function canDeleteComment(args: { authorId: string; viewerId: string }): boolean {
+  return args.viewerId === args.authorId;
 }

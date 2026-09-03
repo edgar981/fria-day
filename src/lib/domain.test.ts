@@ -851,9 +851,9 @@ describe("I-3 · comentarios", () => {
     expect(isValidCommentBody("a".repeat(281))).toBe(false);
     expect(isValidCommentBody("  " + "a".repeat(280) + "  ")).toBe(true); // recorta antes de medir
   });
-  it("borrar: solo el autor o el dueño de la salida", () => {
-    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "u1" })).toBe(true); // autor
-    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "own" })).toBe(true); // dueño
-    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "u2" })).toBe(false); // ni uno ni otro
+  it("borrar: SOLO el autor (I-3.2: el dueño de la salida ya NO borra ajenos)", () => {
+    expect(canDeleteComment({ authorId: "u1", viewerId: "u1" })).toBe(true); // autor → sí
+    expect(canDeleteComment({ authorId: "u1", viewerId: "own" })).toBe(false); // dueño de la salida → NO
+    expect(canDeleteComment({ authorId: "u1", viewerId: "u2" })).toBe(false); // cualquier otro → no
   });
 });

@@ -194,6 +194,16 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   pantalla completa. La miniatura de 46px de las filas de bebida desapareció. La tarjeta
   del feed muestra la primera foto con indicador "1/N".
 
+## Moderación de comentarios por el dueño de la salida
+
+- **Qué:** que el dueño de una salida pueda **quitar un comentario ajeno** de su propia
+  publicación. En I-3.2 se quitó (solo el autor borra el suyo): con 8 personas moderar es
+  irrelevante y el poder de borrar lo ajeno se presta a abuso.
+- **Disparador:** que alguien pida quitar un comentario de su salida, o el círculo crezca
+  lo bastante para que aparezcan comentarios molestos.
+- **Nota:** la lógica ya existió (canDeleteComment con `sessionOwnerId`); reintroducirla
+  es volver a pasar el dueño de la salida al permiso y a la hoja/lista de comentarios.
+
 ## Rediseño de la pantalla de detalle de salida — pendiente de DISEÑO
 
 - **Qué:** la pantalla de detalle creció y hoy es la más densa de la app: header con

@@ -19,7 +19,6 @@ export function CommentSheet({
   open,
   onClose,
   sessionId,
-  sessionOwnerId,
   viewer,
   draft,
   onDraftChange,
@@ -27,7 +26,6 @@ export function CommentSheet({
   open: boolean;
   onClose: () => void;
   sessionId: string;
-  sessionOwnerId: string;
   viewer: UserRef;
   draft: string;
   onDraftChange: (text: string) => void;
@@ -143,7 +141,6 @@ export function CommentSheet({
               sessionId={sessionId}
               comments={comments}
               viewer={viewer}
-              sessionOwnerId={sessionOwnerId}
               autoFocus
               initialText={draft}
               onDraftChange={onDraftChange}

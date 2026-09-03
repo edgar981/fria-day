@@ -86,7 +86,6 @@ export function ReactionBar({
   mine,
   viewer,
   commentCount,
-  sessionOwnerId,
   feed,
 }: {
   sessionId: string;
@@ -94,7 +93,6 @@ export function ReactionBar({
   mine: string | null;
   viewer: Viewer;
   commentCount?: number; // feed: muestra el conteo; detalle: se omite (la lista ya lo tiene)
-  sessionOwnerId: string; // para la hoja de comentarios (permiso de borrado)
   feed?: boolean; // en el feed, Comentar abre una hoja; en el detalle, enfoca el campo
 }) {
   const router = useRouter();
@@ -311,7 +309,6 @@ export function ReactionBar({
           open={sheetOpen}
           onClose={() => setSheetOpen(false)}
           sessionId={sessionId}
-          sessionOwnerId={sessionOwnerId}
           viewer={viewer}
           draft={draft}
           onDraftChange={setDraft}

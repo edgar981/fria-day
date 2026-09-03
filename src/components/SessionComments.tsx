@@ -29,7 +29,6 @@ export function SessionComments({
   sessionId,
   comments,
   viewer,
-  sessionOwnerId,
   autoFocus,
   initialText,
   onDraftChange,
@@ -37,7 +36,6 @@ export function SessionComments({
   sessionId: string;
   comments: { id: string; body: string; createdAt: string | Date; user: UserRef }[];
   viewer: UserRef;
-  sessionOwnerId: string;
   autoFocus?: boolean;
   // I-3.1: para conservar el borrador cuando esto vive en una hoja que se cierra y
   // reabre (feed). El padre (que sobrevive al cierre) guarda el texto y lo re-inyecta.
@@ -147,7 +145,7 @@ export function SessionComments({
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 }}>
           {items.map((c) => {
             const mine = c.user.id === viewer.id;
-            const canDelete = !c.pending && canDeleteComment({ authorId: c.user.id, sessionOwnerId, viewerId: viewer.id });
+            const canDelete = !c.pending && canDeleteComment({ authorId: c.user.id, viewerId: viewer.id });
             return (
               <div key={c.id} style={{ display: "flex", gap: 10, opacity: c.pending ? 0.6 : 1 }}>
                 <Avatar avatar={c.user.avatar} size={32} radius={10} />

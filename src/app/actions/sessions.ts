@@ -359,10 +359,10 @@ export async function deleteComment(commentId: string): Promise<Result> {
 
   const c = await prisma.sessionComment.findUnique({
     where: { id: commentId },
-    select: { userId: true, sessionId: true, session: { select: { userId: true } } },
+    select: { userId: true, sessionId: true },
   });
   if (!c) return { ok: false, error: "No existe el comentario" };
-  if (!canDeleteComment({ authorId: c.userId, sessionOwnerId: c.session.userId, viewerId: userId }))
+  if (!canDeleteComment({ authorId: c.userId, viewerId: userId }))
     return { ok: false, error: "No puedes borrar este comentario" };
 
   await prisma.sessionComment.delete({ where: { id: commentId } });
