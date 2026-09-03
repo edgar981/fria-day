@@ -139,9 +139,8 @@ export function SessionComments({
     <section>
       <div className="eyebrow" style={{ marginBottom: 11 }}>Comentarios{items.length > 0 ? ` · ${items.length}` : ""}</div>
 
-      {items.length === 0 ? (
-        <p style={{ font: "400 14px var(--font-sans)", color: "var(--color-tenue)", margin: "0 0 12px" }}>Todavía nadie comenta.</p>
-      ) : (
+      {/* Lista vacía: no se muestra nada; el campo de abajo basta. */}
+      {items.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 14 }}>
           {items.map((c) => {
             const mine = c.user.id === viewer.id;
@@ -179,7 +178,7 @@ export function SessionComments({
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Escribe un comentario…"
+          placeholder="Suéltalo..."
           rows={2}
           className="field"
           style={{ resize: "none", height: "auto", minHeight: 44, lineHeight: 1.4, padding: "10px 13px" }}
