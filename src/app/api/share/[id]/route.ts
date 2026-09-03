@@ -4,6 +4,7 @@ import { getSessionDetail, loadCircle } from "@/lib/queries";
 import { isOurBlobUrl } from "@/lib/blob";
 import { FORMAT_LABEL, formatDay, joinMeta } from "@/lib/format";
 import { renderShareCard, type ShareData } from "./card";
+import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
 // Node runtime (no edge): usamos Prisma + auth por cookie. ImageResponse (next/og)
 // funciona en Node. Nada de esto consume la cuota de Optimización de Imágenes de
@@ -61,21 +62,15 @@ export async function GET(
     single: checkIns.length === 1,
   };
 
-  // Fuentes desde /public (mismo origen). Robusto en dev y prod, sin resolver assets
-  // por el bundler ni tracing de fs. satori soporta woff (no woff2).
-  const font = (f: string) => fetch(new URL(`/fonts/${f}`, reqUrl.origin)).then((r) => r.arrayBuffer());
-  const [syne800, outfit400, outfit700] = await Promise.all([
-    font("Syne-800.woff"),
-    font("Outfit-400.woff"),
-    font("Outfit-700.woff"),
-  ]);
-
+  // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
+  // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
+  // 500). Embebidas funciona igual en local, preview y prod.
   return new ImageResponse(renderShareCard(data, format), {
     ...DIM[format],
     fonts: [
-      { name: "Syne", data: syne800, weight: 800, style: "normal" },
-      { name: "Outfit", data: outfit400, weight: 400, style: "normal" },
-      { name: "Outfit", data: outfit700, weight: 700, style: "normal" },
+      { name: "Syne", data: SYNE_800, weight: 800, style: "normal" },
+      { name: "Outfit", data: OUTFIT_400, weight: 400, style: "normal" },
+      { name: "Outfit", data: OUTFIT_700, weight: 700, style: "normal" },
     ],
   });
 }

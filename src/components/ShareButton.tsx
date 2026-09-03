@@ -26,7 +26,20 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
     setBusy(format);
     try {
       const res = await fetch(`/api/share/${sessionId}?format=${format}`);
-      if (!res.ok) throw new Error("gen");
+      if (!res.ok) {
+        // Mensaje distinto según la causa, sin exponer detalles técnicos, y dejando
+        // claro si vale la pena reintentar (S.1).
+        setError(
+          res.status === 401 || res.status === 403
+            ? "No tienes permiso para compartir esta salida."
+            : res.status === 404
+              ? "No se encontró la salida."
+              : res.status === 504 || res.status === 408
+                ? "Se tardó demasiado. Reintenta."
+                : "El servidor no pudo crear la imagen. Reintenta.",
+        );
+        return;
+      }
       const blob = await res.blob();
       const file = new File([blob], `friaday-${sessionId}.png`, { type: "image/png" });
       const canShareFiles = typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] });
@@ -44,7 +57,8 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
       setOpen(false);
     } catch (e) {
       // AbortError = el usuario canceló la hoja nativa; no es error.
-      if (!(e instanceof Error && e.name === "AbortError")) setError("No se pudo generar la imagen. Intenta de nuevo.");
+      if (e instanceof Error && e.name === "AbortError") return;
+      setError("Se cortó la conexión. Reintenta.");
     } finally {
       setBusy(null);
     }
