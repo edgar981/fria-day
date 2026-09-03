@@ -838,3 +838,22 @@ describe("I-2 · límite de fotos por salida", () => {
     expect(canAddSessionPhoto(7)).toBe(false);
   });
 });
+
+import { MAX_COMMENT_LENGTH, isValidCommentBody, canDeleteComment } from "./domain";
+
+describe("I-3 · comentarios", () => {
+  it("cuerpo válido: no vacío tras recortar, hasta el límite", () => {
+    expect(MAX_COMMENT_LENGTH).toBe(280);
+    expect(isValidCommentBody("hola")).toBe(true);
+    expect(isValidCommentBody("")).toBe(false);
+    expect(isValidCommentBody("   ")).toBe(false);
+    expect(isValidCommentBody("a".repeat(280))).toBe(true);
+    expect(isValidCommentBody("a".repeat(281))).toBe(false);
+    expect(isValidCommentBody("  " + "a".repeat(280) + "  ")).toBe(true); // recorta antes de medir
+  });
+  it("borrar: solo el autor o el dueño de la salida", () => {
+    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "u1" })).toBe(true); // autor
+    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "own" })).toBe(true); // dueño
+    expect(canDeleteComment({ authorId: "u1", sessionOwnerId: "own", viewerId: "u2" })).toBe(false); // ni uno ni otro
+  });
+});

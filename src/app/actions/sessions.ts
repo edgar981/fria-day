@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay } from "@/lib/format";
 import { sessionSchema, checkInSchema } from "@/lib/validation";
-import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction, canAddSessionPhoto, MAX_SESSION_PHOTOS } from "@/lib/domain";
+import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction, canAddSessionPhoto, MAX_SESSION_PHOTOS, isValidCommentBody, canDeleteComment, MAX_COMMENT_LENGTH } from "@/lib/domain";
 import { deleteBlobQuietly, deleteBlobsQuietly, isOurBlobUrl } from "@/lib/blob";
 import { loadCircle } from "@/lib/queries";
 
@@ -297,6 +297,54 @@ export async function removeSessionPhoto(photoId: string): Promise<Result> {
   await deleteBlobQuietly(p.url);
   revalidatePath("/");
   revalidatePath(`/sessions/${p.sessionId}`);
+  return { ok: true };
+}
+
+/**
+ * Comenta una salida (Pasada I-3). Puede comentar quien puede VERLA (dueño o círculo),
+ * igual que reaccionar. Lista plana, sin editar. Devuelve id + createdAt para que el
+ * cliente reconcilie el comentario optimista con la fila real.
+ */
+export async function addComment(
+  sessionId: string,
+  body: string,
+): Promise<Result<{ id: string; createdAt: string }>> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+  const text = body.trim();
+  if (!isValidCommentBody(text))
+    return { ok: false, error: `El comentario va de 1 a ${MAX_COMMENT_LENGTH} caracteres` };
+
+  const session = await prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true } });
+  if (!session) return { ok: false, error: "No existe la salida" };
+  const circle = await loadCircle(userId);
+  if (!circle.has(session.userId)) return { ok: false, error: "No puedes ver esa salida" };
+
+  const c = await prisma.sessionComment.create({
+    data: { sessionId, userId, body: text },
+    select: { id: true, createdAt: true },
+  });
+  revalidatePath("/");
+  revalidatePath(`/sessions/${sessionId}`);
+  return { ok: true, id: c.id, createdAt: c.createdAt.toISOString() };
+}
+
+/** Borra un comentario (I-3). Solo su autor o el dueño de la salida. */
+export async function deleteComment(commentId: string): Promise<Result> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+
+  const c = await prisma.sessionComment.findUnique({
+    where: { id: commentId },
+    select: { userId: true, sessionId: true, session: { select: { userId: true } } },
+  });
+  if (!c) return { ok: false, error: "No existe el comentario" };
+  if (!canDeleteComment({ authorId: c.userId, sessionOwnerId: c.session.userId, viewerId: userId }))
+    return { ok: false, error: "No puedes borrar este comentario" };
+
+  await prisma.sessionComment.delete({ where: { id: commentId } });
+  revalidatePath("/");
+  revalidatePath(`/sessions/${c.sessionId}`);
   return { ok: true };
 }
 

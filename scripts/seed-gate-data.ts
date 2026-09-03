@@ -113,7 +113,8 @@ const CATALOG: CatalogItem[] = [
 // ausente → createdAt default (now) → span ~0, la duración se OMITE.
 type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null; at?: [number, number] };
 type React = { by: string; emoji: string }; // by = key de USERS o de EXTRA_USERS
-type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[] };
+type Comment = { by: UserKey; body: string }; // I-3: comentarios de gate
+type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[]; comments?: Comment[] };
 
 // Reacciones repartidas para ejercitar los estados del pie de brindis y las reglas del
 // racimo (I-1.5), VIENDO EL FEED COMO ANA:
@@ -142,6 +143,14 @@ const SESSIONS: SessionSpec[] = [
       { by: "eli", emoji: "😂" }, { by: "hugo", emoji: "😂" }, // 😂 x2
       { by: "fabio", emoji: "❤️" }, { by: "iris", emoji: "❤️" }, // ❤️ x2
       { by: "ana", emoji: "🫡" }, // Ana: el 5º emoji, MENOS usado → fuera del racimo, avatar visible
+    ],
+    // I-3: 4 comentarios (autores mezclados). Como la salida es de Ana, ella puede
+    // borrar el suyo Y los ajenos (dueña); Beto/Caro solo el propio.
+    comments: [
+      { by: "beto", body: "Qué noche, la Club estaba bien helada." },
+      { by: "caro", body: "El mojito de ese lugar es otro nivel." },
+      { by: "ana", body: "¿Repetimos el finde?" },
+      { by: "beto", body: "De una." },
     ],
   },
   {
@@ -223,6 +232,7 @@ async function main() {
     console.log(`  Catálogo asegurado: ${CATALOG.length} bebidas (${CATALOG.filter((c) => c.kind === "COCTEL").length} cócteles)`);
     console.log(`  Salidas: ${SESSIONS.length} en varias fechas, con etiquetas cruzadas (círculo completo)`);
     console.log(`  Reacciones: ${SESSIONS.reduce((n, s) => n + s.reactions.length, 0)} (pie de brindis: estados 0 / 1 / pocos / +N)`);
+    console.log(`  Comentarios: ${SESSIONS.reduce((n, s) => n + (s.comments?.length ?? 0), 0)} (I-3, en "Bar de la 85")`);
     console.log(`  Usuarios solo-display (avatares de brindis, sin login): ${EXTRA_USERS.length}`);
     console.log(`  "Yo también": Ana está etiquetada HOY (salida de Beto) y no tiene salida propia hoy.`);
     console.log(`  Fotos: 3 en "Bar de la 85" (I-2) ${process.env.BLOB_PREV_READ_WRITE_TOKEN ? "" : "(se omitirían: falta BLOB_PREV_READ_WRITE_TOKEN)"}`);
@@ -272,6 +282,18 @@ async function main() {
         data: s.reactions.map((r) => ({ sessionId: session.id, userId: uid[r.by], emoji: r.emoji })),
       });
     }
+    if (s.comments?.length) {
+      // createdAt escalonado (1 min entre cada uno) para un orden estable ascendente.
+      const now = Date.now();
+      await prisma.sessionComment.createMany({
+        data: s.comments.map((c, i) => ({
+          sessionId: session.id,
+          userId: uid[c.by],
+          body: c.body,
+          createdAt: new Date(now - (s.comments!.length - i) * 60_000),
+        })),
+      });
+    }
     if (s.owner === "ana" && s.place === "Bar de la 85") photoSessionId = session.id;
   }
 
@@ -302,8 +324,9 @@ async function main() {
     }),
   );
   const totalR = await prisma.sessionReaction.count({ where: { userId: { in: Object.values(uid) } } });
+  const totalC = await prisma.sessionComment.count({ where: { userId: { in: Object.values(uid) } } });
   console.log("✓ Seed de gate aplicado.");
-  console.log(`  ${counts.join(" · ")} · reacciones: ${totalR}`);
+  console.log(`  ${counts.join(" · ")} · reacciones: ${totalR} · comentarios: ${totalC}`);
   console.log(
     photosUploaded > 0
       ? `  Fotos: ${photosUploaded} subidas a "Bar de la 85" (carrusel + visor)`

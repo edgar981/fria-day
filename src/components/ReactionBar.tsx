@@ -55,20 +55,36 @@ function RingAvatar({ reactor, viewerId, overlap }: { reactor: Reactor; viewerId
  * quita; hold (~400ms) abre las seis. Optimista + serializado como en N.2 (pinta al
  * instante; la cola ordena las escrituras; el refresh trae la verdad al drenar). El
  * arrastre desde el botón hace scroll (no hold); la tarjeta es <Link> y no navega.
- * Comentar (I-3) y Compartir (share-card) van OCULTOS: la fila queda lista para ellos.
+ * La fila de acciones lleva Brindar + Compartir (share-card) + Comentar (I-3).
  */
 export function ReactionBar({
   sessionId,
   reactors,
   mine,
   viewer,
+  commentCount,
 }: {
   sessionId: string;
   reactors: Reactor[];
   mine: string | null;
   viewer: Viewer;
+  commentCount?: number; // feed: muestra "💬 N"; detalle: se omite (la lista ya tiene el conteo)
 }) {
   const router = useRouter();
+
+  // Comentar (I-3): en el detalle enfoca el campo (existe en el DOM); en el feed navega
+  // al detalle con el campo enfocado (?comment=1). Un solo botón que se adapta al contexto.
+  function onComment(e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+    const el = typeof document !== "undefined" ? document.getElementById("fd-comment-input") : null;
+    if (el) {
+      (el as HTMLTextAreaElement).focus();
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      router.push(`/sessions/${sessionId}?comment=1`);
+    }
+  }
   const [myEmoji, setMyEmoji] = useState<string | null>(mine);
   const [anim, setAnim] = useState<{ emoji: string; nonce: number } | null>(null);
   const [selector, setSelector] = useState<{ x: number; y: number } | null>(null);
@@ -261,6 +277,27 @@ export function ReactionBar({
           {reacted ? "Brindaste" : "Brindar"}
         </button>
         <ShareButton sessionId={sessionId} />
+        <button
+          type="button"
+          onClick={onComment}
+          aria-label="Comentar"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: 34,
+            padding: "0 14px",
+            borderRadius: 999,
+            cursor: "pointer",
+            border: "1px solid var(--color-borde)",
+            background: "var(--color-barra-alta)",
+            color: "var(--color-tenue)",
+            font: "700 13.5px var(--font-sans)",
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1 }}>💬</span>
+          {commentCount && commentCount > 0 ? commentCount : "Comentar"}
+        </button>
       </div>
 
       {/* Selector (hold): en portal para escapar el overflow:hidden de la tarjeta. */}

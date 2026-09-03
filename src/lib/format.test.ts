@@ -69,3 +69,16 @@ describe("S.3 · nombre de archivo legible del share-card", () => {
     expect(shareFileName("Andrés Carne de Res", d)).toBe("friaday-andres-carne-de-res-26-ago.png");
   });
 });
+
+import { relativeTime } from "./format";
+
+describe("I-3 · relativeTime (tiempo del comentario)", () => {
+  const base = new Date("2026-09-03T18:00:00Z").getTime();
+  it("ahora / minutos / horas, y a partir de un día cae en relativeDay", () => {
+    expect(relativeTime(new Date(base - 30_000), base)).toBe("ahora"); // 30s
+    expect(relativeTime(new Date(base - 5 * 60_000), base)).toBe("hace 5 min");
+    expect(relativeTime(new Date(base - 3 * 3_600_000), base)).toBe("hace 3 h");
+    const older = relativeTime(new Date(base - 50 * 3_600_000), base); // >24h
+    expect(older).not.toMatch(/min|h$|^ahora$/);
+  });
+});

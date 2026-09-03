@@ -10,6 +10,7 @@ import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { TaggedCheckInList } from "@/components/TaggedCheckInList";
 import { SessionPhotos } from "@/components/SessionPhotos";
+import { SessionComments } from "@/components/SessionComments";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { ReactionBar } from "@/components/ReactionBar";
 import { formatDay, formatBreakdownText } from "@/lib/format";
@@ -26,10 +27,13 @@ function companions(names: string[]): string | null {
 
 export default async function SessionDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ comment?: string }>;
 }) {
   const { id } = await params;
+  const { comment } = await searchParams;
   const viewer = await requireUser();
   const s = await getSessionDetail(id, viewer.id);
   if (!s) notFound();
@@ -162,6 +166,15 @@ export default async function SessionDetailPage({
             <div className="card" style={{ padding: 14, font: "400 15px/1.55 var(--font-sans)", color: "#D6C7AE" }}>{s.notes}</div>
           </section>
         )}
+
+        {/* Comentarios (I-3): lista plana + campo al final. Optimista. ?comment=1 enfoca. */}
+        <SessionComments
+          sessionId={s.id}
+          comments={s.comments}
+          viewer={{ id: viewer.id, displayName: viewer.displayName, avatar: viewer.avatar ?? null }}
+          sessionOwnerId={s.userId}
+          autoFocus={comment === "1"}
+        />
 
       </main>
     </div>

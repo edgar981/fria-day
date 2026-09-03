@@ -71,6 +71,8 @@ export async function getFeed(userId: string) {
       },
       // I-2: fotos de la salida, en orden de subida. La tarjeta usa la primera.
       photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+      // I-3: la tarjeta muestra el CONTEO ("💬 4"), no los comentarios (el feed no crece sin freno).
+      _count: { select: { comments: true } },
     },
   });
 
@@ -85,6 +87,7 @@ export async function getFeed(userId: string) {
       mine: groupReactions(s.reactions, userId).mine,
       reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
     },
+    commentsCount: s._count.comments, // I-3
   }));
 }
 
@@ -111,6 +114,11 @@ export async function getSessionDetail(id: string, viewerId: string) {
       }, // Pasada R / I-1.2
       // I-2: fotos de la salida, en orden de subida (carrusel del detalle + share-card).
       photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+      // I-3: lista PLANA de comentarios con autor, más viejos primero.
+      comments: {
+        select: { id: true, body: true, createdAt: true, user: { select: { id: true, displayName: true, avatar: true } } },
+        orderBy: { createdAt: "asc" },
+      },
     },
   });
   if (!session) return null;

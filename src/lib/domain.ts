@@ -697,3 +697,22 @@ export const MAX_SESSION_PHOTOS = 6;
 export function canAddSessionPhoto(current: number): boolean {
   return current < MAX_SESSION_PHOTOS;
 }
+
+// ----------------------------------------------------------------------------
+// Pasada I-3 — comentarios.
+// ----------------------------------------------------------------------------
+
+/** Límite de un comentario. ~280: suficiente para un comentario real, corto para no
+ *  inflar el feed ni el detalle. Se mide sobre el texto ya recortado. */
+export const MAX_COMMENT_LENGTH = 280;
+
+/** Comentario válido: no vacío tras recortar y dentro del límite. */
+export function isValidCommentBody(body: string): boolean {
+  const t = body.trim();
+  return t.length > 0 && t.length <= MAX_COMMENT_LENGTH;
+}
+
+/** Permiso para borrar un comentario (I-3): su autor, o el dueño de la salida. */
+export function canDeleteComment(args: { authorId: string; sessionOwnerId: string; viewerId: string }): boolean {
+  return args.viewerId === args.authorId || args.viewerId === args.sessionOwnerId;
+}

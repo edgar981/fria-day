@@ -90,6 +90,21 @@ export function formatDay(date: Date): string {
   return dayFmt.format(date);
 }
 
+/**
+ * Tiempo relativo compacto para comentarios (I-3): "ahora" / "hace N min" / "hace N h",
+ * y a partir de un día cae en relativeDay ("ayer" / "hace N días" / la fecha). `nowMs`
+ * inyectable para tests. El "cuándo" de un comentario suele ser del mismo día, así que
+ * relativeDay solo ("hoy") no informaba.
+ */
+export function relativeTime(date: Date, nowMs: number = Date.now()): string {
+  const min = Math.floor((nowMs - date.getTime()) / 60000);
+  if (min < 1) return "ahora";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  return relativeDay(date);
+}
+
 /** "hoy" / "ayer" / "hace N días" o la fecha, comparando por día UTC. */
 export function relativeDay(date: Date): string {
   const dayMs = 24 * 60 * 60 * 1000;

@@ -52,6 +52,7 @@ model User {
   usedInvitation     Invitation?  @relation("InvitationUsedBy")
   taggedIn           SessionTag[] @relation("SessionTagTaggedUser")
   reactions          SessionReaction[]
+  comments           SessionComment[]
 
   @@map("user")
 }
@@ -188,10 +189,27 @@ model Session {
   tags      SessionTag[]
   reactions SessionReaction[]
   photos    SessionPhoto[]
+  comments  SessionComment[]
 
   @@index([userId])
   @@index([date])
   @@map("session")
+}
+
+// Comentarios en salidas (Pasada I-3). Lista PLANA (sin hilos): con 8-10 personas los
+// hilos son burocracia. Sin editar. Borra el propio autor o el dueño de la salida.
+// Puede comentar quien puede VER la salida (dueño o círculo) — igual que reaccionar.
+model SessionComment {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("session_comment")
 }
 
 // Fotos de la salida (Pasada I-2). La foto pasó de ser del check-in a ser de la
