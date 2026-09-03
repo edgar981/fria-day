@@ -329,6 +329,29 @@ export async function addComment(
   return { ok: true, id: c.id, createdAt: c.createdAt.toISOString() };
 }
 
+/**
+ * Carga los comentarios de una salida bajo demanda (I-3.1): la hoja de comentar del
+ * feed no los trae en el payload del feed (que solo lleva el conteo). Misma regla de
+ * visibilidad que comentar (dueño o círculo).
+ */
+export async function loadSessionComments(
+  sessionId: string,
+): Promise<Result<{ comments: { id: string; body: string; createdAt: string; user: { id: string; displayName: string; avatar: string | null } }[] }>> {
+  const userId = await requireUserId();
+  if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
+  const session = await prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true } });
+  if (!session) return { ok: false, error: "No existe la salida" };
+  const circle = await loadCircle(userId);
+  if (!circle.has(session.userId)) return { ok: false, error: "No puedes ver esa salida" };
+
+  const rows = await prisma.sessionComment.findMany({
+    where: { sessionId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, body: true, createdAt: true, user: { select: { id: true, displayName: true, avatar: true } } },
+  });
+  return { ok: true, comments: rows.map((c) => ({ id: c.id, body: c.body, createdAt: c.createdAt.toISOString(), user: c.user })) };
+}
+
 /** Borra un comentario (I-3). Solo su autor o el dueño de la salida. */
 export async function deleteComment(commentId: string): Promise<Result> {
   const userId = await requireUserId();

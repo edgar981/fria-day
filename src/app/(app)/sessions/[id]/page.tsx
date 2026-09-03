@@ -110,6 +110,7 @@ export default async function SessionDetailPage({
           reactors={s.reactions.reactors}
           mine={s.reactions.mine}
           viewer={{ id: viewer.id, displayName: viewer.displayName, avatar: viewer.avatar ?? null }}
+          sessionOwnerId={s.userId}
         />
 
         {/* Fotos de la salida (I-2): carrusel + pantalla completa. El dueño sube y borra;

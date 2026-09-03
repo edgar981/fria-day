@@ -31,18 +31,32 @@ export function SessionComments({
   viewer,
   sessionOwnerId,
   autoFocus,
+  initialText,
+  onDraftChange,
 }: {
   sessionId: string;
   comments: { id: string; body: string; createdAt: string | Date; user: UserRef }[];
   viewer: UserRef;
   sessionOwnerId: string;
   autoFocus?: boolean;
+  // I-3.1: para conservar el borrador cuando esto vive en una hoja que se cierra y
+  // reabre (feed). El padre (que sobrevive al cierre) guarda el texto y lo re-inyecta.
+  initialText?: string;
+  onDraftChange?: (text: string) => void;
 }) {
   const router = useRouter();
   const map = (cs: typeof comments): Item[] => cs.map((c) => ({ id: c.id, body: c.body, createdAt: toISO(c.createdAt), user: c.user }));
   const [items, setItems] = useState<Item[]>(() => map(comments));
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText ?? "");
   const [error, setError] = useState<string | null>(null);
+
+  // Sincroniza el borrador hacia el padre (hoja del feed). En el detalle no se pasa
+  // onDraftChange → no-op. No re-inyecta text (initialText solo siembra el estado
+  // inicial), así que no hay bucle.
+  useEffect(() => {
+    onDraftChange?.(text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text]);
 
   const pending = useRef(0);
   const chain = useRef<Promise<unknown>>(Promise.resolve());

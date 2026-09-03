@@ -83,17 +83,20 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
         aria-label="Compartir"
         onClick={openSheet}
         style={{
+          // Acción 1a: flex:1, transparente, sin borde (misma fila que Brindar/Comentar).
+          flex: 1,
+          minWidth: 0,
+          height: 40,
           display: "inline-flex",
           alignItems: "center",
+          justifyContent: "center",
           gap: 6,
-          height: 34,
-          padding: "0 14px 0 11px",
-          borderRadius: 999,
+          background: "transparent",
+          border: "none",
+          borderRadius: 12,
           cursor: "pointer",
-          border: "1px solid var(--color-borde)",
-          background: "var(--color-barra-alta)",
-          color: "var(--color-tenue)",
-          font: "700 13.5px var(--font-sans)",
+          font: "600 13.5px var(--font-sans)",
+          color: "var(--color-tenue-2)",
         }}
       >
         <Icon name="share" size={17} />

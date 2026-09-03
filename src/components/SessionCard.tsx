@@ -245,7 +245,7 @@ export function SessionCard({
 
         {/* Pie de brindis (I-1.2): total + emojis + avatares + botón Brindar. Los botones
             cortan la navegación de la tarjeta-Link. */}
-        <ReactionBar sessionId={session.id} reactors={session.reactions.reactors} mine={session.reactions.mine} viewer={viewer} commentCount={session.commentsCount} />
+        <ReactionBar sessionId={session.id} reactors={session.reactions.reactors} mine={session.reactions.mine} viewer={viewer} commentCount={session.commentsCount} sessionOwnerId={session.userId} feed />
       </div>
     </Link>
   );

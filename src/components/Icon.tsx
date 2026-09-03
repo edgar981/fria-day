@@ -9,7 +9,8 @@ export type IconName =
   | "lock"
   | "user"
   | "users"
-  | "share";
+  | "share"
+  | "comment";
 
 // "user"/"users" (Pasada N: Perfil e Invitar) se dibujan INLINE, no en el sprite:
 // Sprite.tsx está marcado "No editar a mano" (se regenera desde Claude Design) y
@@ -36,6 +37,16 @@ const INLINE: Partial<Record<IconName, React.ReactNode>> = {
       <path d="M8 7l4-3.5L16 7" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M6 11H5.5A1.5 1.5 0 0 0 4 12.5v6A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-6A1.5 1.5 0 0 0 18.5 11H18" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
     </>
+  ),
+  // I-3.1: burbuja de comentario del tablero 1a (trazo 1.9, redondeado).
+  comment: (
+    <path
+      d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v6A2.5 2.5 0 0 1 17 15H10l-4 3.5V15H7a2.5 2.5 0 0 1-2.5-2.5z"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinejoin="round"
+    />
   ),
 };
 

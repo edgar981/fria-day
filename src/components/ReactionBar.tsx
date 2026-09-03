@@ -6,7 +6,30 @@ import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS, rankClusterEmojis, reactionPile } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
+import { Icon } from "@/components/Icon";
 import { ShareButton } from "@/components/ShareButton";
+import { CommentSheet } from "@/components/CommentSheet";
+
+// Estilo base de las 3 acciones (diseño 1a): una fila, cada una flex:1, transparente,
+// borde superior como separador. Brindar en tenue; Comentar/Compartir más apagados.
+const actionBtn: React.CSSProperties = {
+  flex: 1,
+  minWidth: 0,
+  height: 40,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  background: "transparent",
+  border: "none",
+  borderRadius: 12,
+  cursor: "pointer",
+  font: "600 13.5px var(--font-sans)",
+  color: "var(--color-tenue-2)",
+  WebkitTouchCallout: "none",
+  WebkitUserSelect: "none",
+  userSelect: "none",
+};
 
 type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
 type Viewer = { id: string; displayName: string; avatar: string | null };
@@ -63,26 +86,34 @@ export function ReactionBar({
   mine,
   viewer,
   commentCount,
+  sessionOwnerId,
+  feed,
 }: {
   sessionId: string;
   reactors: Reactor[];
   mine: string | null;
   viewer: Viewer;
-  commentCount?: number; // feed: muestra "💬 N"; detalle: se omite (la lista ya tiene el conteo)
+  commentCount?: number; // feed: muestra el conteo; detalle: se omite (la lista ya lo tiene)
+  sessionOwnerId: string; // para la hoja de comentarios (permiso de borrado)
+  feed?: boolean; // en el feed, Comentar abre una hoja; en el detalle, enfoca el campo
 }) {
   const router = useRouter();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [draft, setDraft] = useState(""); // borrador de la hoja del feed (se conserva al cerrar)
 
-  // Comentar (I-3): en el detalle enfoca el campo (existe en el DOM); en el feed navega
-  // al detalle con el campo enfocado (?comment=1). Un solo botón que se adapta al contexto.
+  // Comentar (I-3.1): en el feed abre una hoja inferior (comentar sin salir del feed);
+  // en el detalle enfoca el campo en línea que ya existe abajo.
   function onComment(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    if (feed) {
+      setSheetOpen(true);
+      return;
+    }
     const el = typeof document !== "undefined" ? document.getElementById("fd-comment-input") : null;
     if (el) {
       (el as HTMLTextAreaElement).focus();
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-    } else {
-      router.push(`/sessions/${sessionId}?comment=1`);
     }
   }
   const [myEmoji, setMyEmoji] = useState<string | null>(mine);
@@ -235,8 +266,9 @@ export function ReactionBar({
         </div>
       )}
 
-      {/* --- Barra de acciones. Compartir activo (Pasada S). Comentar → I-3 (oculto). --- */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      {/* --- Barra de acciones 1a: UNA línea, tres acciones iguales (Brindar · Comentar
+          · Compartir), separadas del pie por un borde superior. --- */}
+      <div style={{ display: "flex", gap: 4, borderTop: "1px solid #241A12", paddingTop: 8 }}>
         <button
           ref={btnRef}
           type="button"
@@ -249,56 +281,42 @@ export function ReactionBar({
           onClick={onClick}
           onContextMenu={(e) => e.preventDefault()}
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 7,
-            height: 34,
-            padding: "0 14px 0 11px",
-            borderRadius: 999,
-            cursor: "pointer",
-            border: `1px solid ${reacted ? "var(--color-ambar)" : "var(--color-borde)"}`,
-            background: reacted ? "rgba(242,160,22,.14)" : "var(--color-barra-alta)",
-            color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
-            font: "700 13.5px var(--font-sans)",
-            WebkitTouchCallout: "none",
-            WebkitUserSelect: "none",
-            userSelect: "none",
+            ...actionBtn,
             touchAction: "pan-y",
+            color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
+            fontWeight: reacted ? 700 : 600,
+            background: reacted ? "rgba(242,160,22,.12)" : "transparent",
           }}
         >
           <span
             key={anim ? `a${anim.nonce}` : "s"}
             className={anim ? `fd-react fd-react-${ANIM_KEY[anim.emoji]}` : "fd-react"}
             onAnimationEnd={() => setAnim(null)}
-            style={{ fontSize: 17, lineHeight: 1 }}
+            style={{ fontSize: 15, lineHeight: 1 }}
           >
             {showEmoji}
           </span>
           {reacted ? "Brindaste" : "Brindar"}
         </button>
-        <ShareButton sessionId={sessionId} />
-        <button
-          type="button"
-          onClick={onComment}
-          aria-label="Comentar"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            height: 34,
-            padding: "0 14px",
-            borderRadius: 999,
-            cursor: "pointer",
-            border: "1px solid var(--color-borde)",
-            background: "var(--color-barra-alta)",
-            color: "var(--color-tenue)",
-            font: "700 13.5px var(--font-sans)",
-          }}
-        >
-          <span style={{ fontSize: 15, lineHeight: 1 }}>💬</span>
+        <button type="button" onClick={onComment} aria-label="Comentar" style={actionBtn}>
+          <Icon name="comment" size={17} />
           {commentCount && commentCount > 0 ? commentCount : "Comentar"}
         </button>
+        <ShareButton sessionId={sessionId} />
       </div>
+
+      {/* Hoja de comentarios del feed (I-3.1): comentar sin salir del feed. */}
+      {feed && (
+        <CommentSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          sessionId={sessionId}
+          sessionOwnerId={sessionOwnerId}
+          viewer={viewer}
+          draft={draft}
+          onDraftChange={setDraft}
+        />
+      )}
 
       {/* Selector (hold): en portal para escapar el overflow:hidden de la tarjeta. */}
       {mounted && selector &&
