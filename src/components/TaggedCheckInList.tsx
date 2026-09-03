@@ -15,7 +15,6 @@ export interface TaggedCheckIn {
   rating: number | null;
   beerName: string;
   brewery: string | null;
-  photoUrl: string | null;
 }
 
 /**
@@ -67,10 +66,6 @@ export function TaggedCheckInList({
           <div key={c.id} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, overflow: "hidden" }}>
             <FoamStrip size="sm" />
             <div style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 11 }}>
-              {c.photoUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={c.photoUrl} alt="Foto de la bebida" width={46} height={46} loading="lazy" style={{ width: 46, height: 46, borderRadius: 14, objectFit: "cover", flex: "none", border: "1px solid var(--color-borde)" }} />
-              )}
               <span style={{ minWidth: 36, height: 34, padding: "0 9px", borderRadius: 11, background: "#2E2217", color: "var(--color-ambar)", font: "700 16px var(--font-sans)", display: "flex", alignItems: "center", justifyContent: "center", flex: "none" }}>{c.quantity}×</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ font: "600 16px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>

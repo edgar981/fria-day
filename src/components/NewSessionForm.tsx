@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BeerSheet, type SheetDraft } from "@/components/BeerSheet";
-import { PhotoField } from "@/components/PhotoField";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { createSession } from "@/app/actions/sessions";
@@ -18,7 +17,6 @@ interface LocalCheckIn {
   format: BeerFormat;
   rating: number; // 0 = sin calificar
   quantity: number;
-  photoUrl: string | null; // ya subida al blob (o null)
 }
 interface LocalTag {
   key: string;
@@ -127,19 +125,19 @@ export function NewSessionForm() {
   }
   // Consolida en la lista local: misma cerveza+formato suma cantidad; el rating
   // existente no se sobrescribe (punto A.2-5). Feedback inmediato en pantalla.
-  function addLocalCheckIn(beer: BeerOption, format: BeerFormat, rating: number, photoUrl: string | null) {
+  function addLocalCheckIn(beer: BeerOption, format: BeerFormat, rating: number) {
     setCheckIns((cur) => {
       const idx = cur.findIndex((c) => c.beer.id === beer.id && c.format === format);
-      if (idx === -1) return [...cur, { key: newKey(), beer, format, rating, quantity: 1, photoUrl }];
+      if (idx === -1) return [...cur, { key: newKey(), beer, format, rating, quantity: 1 }];
       const copy = [...cur];
       const ex = copy[idx];
-      // Consolida: primer rating y primera foto ganan (igual criterio que el servidor).
-      copy[idx] = { ...ex, quantity: ex.quantity + 1, rating: ex.rating >= 1 ? ex.rating : rating, photoUrl: ex.photoUrl ?? photoUrl };
+      // Consolida: el primer rating gana (igual criterio que el servidor).
+      copy[idx] = { ...ex, quantity: ex.quantity + 1, rating: ex.rating >= 1 ? ex.rating : rating };
       return copy;
     });
   }
   function addFromSheet(d: SheetDraft) {
-    addLocalCheckIn(d.beer, d.format, d.rating, d.photoUrl);
+    addLocalCheckIn(d.beer, d.format, d.rating);
   }
   function quickAdd(b: BeerOption) {
     let lastFormat: BeerFormat = "BOTELLA";
@@ -147,10 +145,7 @@ export function NewSessionForm() {
       const v = window.localStorage.getItem("fd:lastFormat");
       if (v === "BOTELLA" || v === "LATA" || v === "JARRA" || v === "PINTA") lastFormat = v;
     } catch {}
-    addLocalCheckIn(b, lastFormat, 0, null);
-  }
-  function setRowPhoto(key: string, photoUrl: string | null) {
-    setCheckIns((cur) => cur.map((x) => (x.key === key ? { ...x, photoUrl } : x)));
+    addLocalCheckIn(b, lastFormat, 0);
   }
 
   async function submit() {
@@ -167,7 +162,7 @@ export function NewSessionForm() {
         placeName: place,
         notes: "",
         tags: tags.map((t) => (t.kind === "user" ? { taggedUserId: t.userId } : { freeText: t.text })),
-        checkIns: checkIns.map((c) => ({ beerId: c.beer.id, quantity: c.quantity, format: c.format, rating: c.rating >= 1 ? c.rating : null, photoUrl: c.photoUrl ?? "" })),
+        checkIns: checkIns.map((c) => ({ beerId: c.beer.id, quantity: c.quantity, format: c.format, rating: c.rating >= 1 ? c.rating : null })),
       });
       if (!res.ok) {
         setError(res.error);
@@ -307,7 +302,6 @@ export function NewSessionForm() {
           <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
             {checkIns.map((c) => (
               <div key={c.key} style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 18, padding: "10px 13px", display: "flex", alignItems: "center", gap: 11 }}>
-                <PhotoField value={c.photoUrl} onChange={(url) => setRowPhoto(c.key, url)} size={46} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beer.name}</div>
                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 6 }}>

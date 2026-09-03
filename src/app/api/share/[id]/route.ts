@@ -99,7 +99,8 @@ export async function GET(
 
   const rated = checkIns.filter((c) => c.rating != null);
   const bestCi = rated.length ? rated.reduce((a, b) => ((b.rating ?? 0) > (a.rating ?? 0) ? b : a)) : null;
-  const photoUrl = checkIns.find((c) => isOurBlobUrl(c.photoUrl))?.photoUrl ?? null;
+  // I-2: la foto es de la salida (primera de SessionPhoto), ya no del check-in.
+  const photoUrl = session.photos.find((p) => isOurBlobUrl(p.url))?.url ?? null;
 
   const data: ShareData = {
     place: session.placeName,

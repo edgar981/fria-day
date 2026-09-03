@@ -187,10 +187,28 @@ model Session {
   checkIns  CheckIn[]
   tags      SessionTag[]
   reactions SessionReaction[]
+  photos    SessionPhoto[]
 
   @@index([userId])
   @@index([date])
   @@map("session")
+}
+
+// Fotos de la salida (Pasada I-2). La foto pasó de ser del check-in a ser de la
+// NOCHE: es la foto del plan, no de la bebida. Orden = orden de subida (`order`);
+// reordenar no va en v1. Máximo 6 por salida (validado en la app). Al borrar la
+// salida, la cascada limpia las filas — pero los blobs se borran ANTES en la acción
+// (deleteBlobsQuietly con estas URLs), porque la cascada no toca Vercel Blob.
+model SessionPhoto {
+  id        String   @id @default(cuid())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("session_photo")
 }
 
 // Reacciones a salidas (Pasada R). Una por (salida, usuario): tocar de nuevo la

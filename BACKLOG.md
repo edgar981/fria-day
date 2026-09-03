@@ -187,16 +187,33 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   propios (SVG/Lottie) para esas dos.
 - **Nota:** el resto (❤️ 🔥 😂 🤤) con CSS probablemente basta; revisar caso por caso.
 
-## Fotos: cómo se ven y para qué sirven — pendiente de DISEÑO
+## Fotos: cómo se ven y para qué sirven — RESUELTO en Pasada I-2
 
-- **Qué:** definir el modelo completo de fotos. Hoy se suben a 1200px pero en el **detalle**
-  se ven como thumbnail de ~46px (nadie puede mirar una foto), y la **tarjeta del feed**
-  las muestra mejor que el detalle — al revés de lo esperado. Falta decidir: si hay **"tap
-  para ampliar"**, si una salida puede tener **varias fotos**, si la foto es de la **bebida**
-  o de la **noche**.
-- **Punto de partida del replanteo:** hoy subir existe, **mirar** no.
-- **Sin disparador de tiempo:** depende de que Edgar lo defina, no del uso. (El original a
-  1200px ya se guarda, así que "tap para ampliar" no requeriría re-subir nada.)
+- **Resuelto:** la foto pasó a ser de la **noche** (tabla `SessionPhoto`, hasta 6 por
+  salida), se sube desde el **detalle propio**, y **mirar** existe: carrusel deslizable +
+  pantalla completa. La miniatura de 46px de las filas de bebida desapareció. La tarjeta
+  del feed muestra la primera foto con indicador "1/N".
+
+## Limpieza de `CheckIn.photoUrl` (columna sin uso tras I-2)
+
+- **Qué:** I-2 migró cada `CheckIn.photoUrl` a `SessionPhoto` pero **NO borró la columna**
+  (para no perder datos si algo salía mal). Queda sin lectura ni escritura en la app.
+- **Disparador:** una vez I-2 esté en prod y estable, una migración que `DROP COLUMN
+  "photoUrl"` de `check_in`. Antes de dropear, confirmar que ninguna fila tiene un
+  `photoUrl` que **no** haya quedado en `SessionPhoto` (la migración copió todos los no
+  nulos, pero verificar por si acaso).
+- **Nota:** hasta entonces, `deleteSession` y `clean-orphan-blobs` siguen incluyendo esos
+  URLs legados en el set de referencias (mismo blob que la fila de `SessionPhoto`).
+
+## Share-card v2: tira de 2–3 fotos (Pasada S.2 · §5, habilitado por I-2)
+
+- **Qué:** el diseño v2 previó que con varias fotos la zona de foto del share-card se
+  convierta en una **tira** (la primera grande, 1–2 más en columna) en vez de una sola.
+- **Estado:** hoy el share-card usa **una** foto (`session.photos[0]`). Con `SessionPhoto`
+  ya existiendo, pasar 2–3 y componer la tira es **bajo esfuerzo, no trivial**: un layout
+  flex nuevo en `card.tsx` (fila: foto grande + columna de miniaturas) y ajustar el alto.
+- **Disparador:** cuando el share-card de una noche con varias fotos se sienta pobre
+  mostrando solo una. Decisión estética de Edgar.
 
 ## Nombres de etiquetados en la share-card: ¿opcional? (Pasada S)
 

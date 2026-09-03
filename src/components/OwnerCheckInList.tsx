@@ -2,10 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { deleteCheckIn, addCheckIn, updateCheckIn, setCheckInPhoto, removeCheckInPhoto, bumpCheckInQuantity } from "@/app/actions/sessions";
+import { deleteCheckIn, addCheckIn, updateCheckIn, bumpCheckInQuantity } from "@/app/actions/sessions";
 import { FORMAT_LABEL, joinMeta } from "@/lib/format";
 import { FoamStrip } from "@/components/FoamStrip";
-import { PhotoField } from "@/components/PhotoField";
 import type { BeerFormat } from "@/lib/domain";
 
 export interface OwnerCheckIn {
@@ -16,7 +15,6 @@ export interface OwnerCheckIn {
   beerId: string;
   beerName: string;
   brewery: string | null;
-  photoUrl: string | null;
 }
 
 // Item A.1-1: editar el rating tocando el medidor de vasos.
@@ -140,14 +138,6 @@ export function OwnerCheckInList({
     });
   }
 
-  // Foto en el detalle: adjuntar/reemplazar/quitar (solo el dueño). setCheckInPhoto
-  // borra el archivo anterior al reemplazar; removeCheckInPhoto lo borra al quitar.
-  async function onRowPhoto(id: string, url: string | null) {
-    if (url) await setCheckInPhoto(id, url);
-    else await removeCheckInPhoto(id);
-    router.refresh();
-  }
-
   const visible = checkIns.filter((c) => !removed.has(c.id));
 
   return (
@@ -158,7 +148,6 @@ export function OwnerCheckInList({
             <FoamStrip size="sm" />
             <div style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 11 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <PhotoField value={c.photoUrl} onChange={(url) => onRowPhoto(c.id, url)} size={46} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ font: "600 15.5px/1.2 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.beerName}</div>
                   <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue)" }}>{joinMeta(c.brewery, FORMAT_LABEL[c.format])}</div>

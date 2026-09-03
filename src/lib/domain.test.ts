@@ -826,3 +826,15 @@ describe("S.2 · salida #N del dueño", () => {
     expect(outingNumber(sessions, "nope")).toBe(0);
   });
 });
+
+import { canAddSessionPhoto, MAX_SESSION_PHOTOS } from "./domain";
+
+describe("I-2 · límite de fotos por salida", () => {
+  it(`cabe hasta ${MAX_SESSION_PHOTOS}; la ${MAX_SESSION_PHOTOS + 1}ª se rechaza`, () => {
+    expect(MAX_SESSION_PHOTOS).toBe(6);
+    expect(canAddSessionPhoto(0)).toBe(true);
+    expect(canAddSessionPhoto(5)).toBe(true);
+    expect(canAddSessionPhoto(6)).toBe(false);
+    expect(canAddSessionPhoto(7)).toBe(false);
+  });
+});

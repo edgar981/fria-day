@@ -5,7 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay } from "@/lib/format";
 import { sessionSchema, checkInSchema } from "@/lib/validation";
-import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction } from "@/lib/domain";
+import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction, canAddSessionPhoto, MAX_SESSION_PHOTOS } from "@/lib/domain";
 import { deleteBlobQuietly, deleteBlobsQuietly, isOurBlobUrl } from "@/lib/blob";
 import { loadCircle } from "@/lib/queries";
 
@@ -54,9 +54,8 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
   }
   const data = parsed.data;
 
-  // Consolidación (A.2-5): misma cerveza+formato = una fila. La foto NO va por el
-  // dominio (lo dejamos puro): consolidamos aquí el photoUrl con "el primero gana",
-  // igual criterio que el rating (Pasada F). Solo aceptamos URLs de nuestro blob.
+  // Consolidación (A.2-5): misma cerveza+formato = una fila. Desde I-2 la foto ya no
+  // va en el check-in: es de la salida (se sube desde el detalle, tabla SessionPhoto).
   const consolidated = consolidateNewCheckIns(
     data.checkIns.map((c) => ({
       beerId: c.beerId,
@@ -65,14 +64,6 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
       rating: c.rating ?? null,
     })),
   );
-  const photoByKey = new Map<string, string>();
-  for (const c of data.checkIns) {
-    const url = c.photoUrl && c.photoUrl.trim() ? c.photoUrl.trim() : null;
-    if (url && isOurBlobUrl(url)) {
-      const k = `${c.beerId}|${c.format}`;
-      if (!photoByKey.has(k)) photoByKey.set(k, url);
-    }
-  }
 
   try {
     const session = await prisma.session.create({
@@ -82,12 +73,7 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
         placeName: data.placeName ? data.placeName : null,
         notes: data.notes ? data.notes : null,
         tags: { create: buildTags(data.tags, userId) },
-        checkIns: {
-          create: consolidated.map((c) => ({
-            ...c,
-            photoUrl: photoByKey.get(`${c.beerId}|${c.format}`) ?? null,
-          })),
-        },
+        checkIns: { create: consolidated },
       },
       select: { id: true },
     });
@@ -135,16 +121,21 @@ export async function deleteSession(id: string): Promise<Result> {
   if (!(await assertOwner(id, userId)))
     return { ok: false, error: "No es tu salida" };
 
-  // Recoge las fotos ANTES de borrar (la cascada elimina los check-ins). Blob vive
-  // fuera de Postgres: hay que borrar los archivos aparte (Pasada F, huérfanos).
-  const photos = await prisma.checkIn.findMany({
-    where: { sessionId: id, photoUrl: { not: null } },
-    select: { photoUrl: true },
-  });
+  // Recoge las fotos ANTES de borrar (la cascada elimina filas, NO toca Vercel Blob).
+  // Fuente de verdad: SessionPhoto (I-2). Se incluyen también los CheckIn.photoUrl
+  // legados (misma URL tras la migración; el Set evita del() duplicados).
+  const [sessionPhotos, legacy] = await Promise.all([
+    prisma.sessionPhoto.findMany({ where: { sessionId: id }, select: { url: true } }),
+    prisma.checkIn.findMany({ where: { sessionId: id, photoUrl: { not: null } }, select: { photoUrl: true } }),
+  ]);
+  const urls = new Set<string>([
+    ...sessionPhotos.map((p) => p.url),
+    ...legacy.map((p) => p.photoUrl as string),
+  ]);
 
-  await prisma.session.delete({ where: { id } }); // cascada a check-ins y tags
+  await prisma.session.delete({ where: { id } }); // cascada a check-ins, tags y fotos
   // Best-effort: un fallo aquí no revierte el borrado de la salida.
-  await deleteBlobsQuietly(photos.map((p) => p.photoUrl));
+  await deleteBlobsQuietly([...urls]);
   revalidatePath("/");
   return { ok: true };
 }
@@ -216,14 +207,14 @@ export async function deleteCheckIn(checkInId: string): Promise<Result> {
 
   const ci = await prisma.checkIn.findUnique({
     where: { id: checkInId },
-    select: { sessionId: true, photoUrl: true, session: { select: { userId: true } } },
+    select: { sessionId: true, session: { select: { userId: true } } },
   });
   if (!ci || ci.session.userId !== userId)
     return { ok: false, error: "No es tu salida" };
 
+  // I-2: la foto ya NO es del check-in (es de la salida), así que borrar una bebida no
+  // borra ningún blob. Las fotos se gestionan con add/removeSessionPhoto.
   await prisma.checkIn.delete({ where: { id: checkInId } });
-  // Borra la foto asociada (best-effort; no revierte el borrado del check-in).
-  await deleteBlobQuietly(ci.photoUrl);
   revalidatePath("/");
   revalidatePath(`/sessions/${ci.sessionId}`);
   revalidatePath(`/sessions/${ci.sessionId}/edit`);
@@ -257,54 +248,55 @@ export async function updateCheckIn(input: {
 }
 
 /**
- * Adjunta o REEMPLAZA la foto de un check-in (Pasada F). Solo el dueño de la salida.
- * La subida ya ocurrió (cliente → blob); aquí solo se guarda la URL, DESPUÉS de que
- * la subida terminó (así nunca queda una referencia rota). Al reemplazar, se borra
- * el archivo anterior (best-effort). Solo se aceptan URLs de nuestro almacén.
+ * Agrega una foto A LA SALIDA (Pasada I-2). Solo el dueño. La subida ya ocurrió
+ * (cliente → blob); aquí se guarda la URL DESPUÉS de subir (nunca una referencia rota).
+ * Tope de MAX_SESSION_PHOTOS: la que sobra se rechaza con mensaje y su blob recién
+ * subido se borra (best-effort) para no dejar huérfano. `order` = orden de subida.
  */
-export async function setCheckInPhoto(
-  checkInId: string,
-  photoUrl: string,
-): Promise<Result> {
+export async function addSessionPhoto(
+  sessionId: string,
+  url: string,
+): Promise<Result<{ id: string }>> {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
-  if (!isOurBlobUrl(photoUrl)) return { ok: false, error: "URL de foto inválida" };
+  if (!isOurBlobUrl(url)) return { ok: false, error: "URL de foto inválida" };
+  if (!(await assertOwner(sessionId, userId))) return { ok: false, error: "No es tu salida" };
 
-  const ci = await prisma.checkIn.findUnique({
-    where: { id: checkInId },
-    select: { sessionId: true, photoUrl: true, session: { select: { userId: true } } },
+  const agg = await prisma.sessionPhoto.aggregate({
+    where: { sessionId },
+    _count: true,
+    _max: { order: true },
   });
-  if (!ci || ci.session.userId !== userId)
-    return { ok: false, error: "No es tu salida" };
+  if (!canAddSessionPhoto(agg._count)) {
+    await deleteBlobQuietly(url); // el blob ya subido no se usará
+    return { ok: false, error: `Máximo ${MAX_SESSION_PHOTOS} fotos por salida` };
+  }
 
-  await prisma.checkIn.update({ where: { id: checkInId }, data: { photoUrl } });
-  // Reemplazo: borra el archivo anterior si había otro distinto.
-  if (ci.photoUrl && ci.photoUrl !== photoUrl) await deleteBlobQuietly(ci.photoUrl);
+  const created = await prisma.sessionPhoto.create({
+    data: { sessionId, url, order: (agg._max.order ?? -1) + 1 },
+    select: { id: true },
+  });
   revalidatePath("/");
-  revalidatePath(`/sessions/${ci.sessionId}`);
-  revalidatePath(`/sessions/${ci.sessionId}/edit`);
-  return { ok: true };
+  revalidatePath(`/sessions/${sessionId}`);
+  return { ok: true, id: created.id };
 }
 
-/** Quita la foto de un check-in y borra el archivo (best-effort). Solo el dueño. */
-export async function removeCheckInPhoto(checkInId: string): Promise<Result> {
+/** Quita una foto de la salida y borra el archivo (best-effort). Solo el dueño. */
+export async function removeSessionPhoto(photoId: string): Promise<Result> {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
 
-  const ci = await prisma.checkIn.findUnique({
-    where: { id: checkInId },
-    select: { sessionId: true, photoUrl: true, session: { select: { userId: true } } },
+  const p = await prisma.sessionPhoto.findUnique({
+    where: { id: photoId },
+    select: { url: true, sessionId: true, session: { select: { userId: true } } },
   });
-  if (!ci || ci.session.userId !== userId)
+  if (!p || p.session.userId !== userId)
     return { ok: false, error: "No es tu salida" };
 
-  if (ci.photoUrl) {
-    await prisma.checkIn.update({ where: { id: checkInId }, data: { photoUrl: null } });
-    await deleteBlobQuietly(ci.photoUrl);
-  }
+  await prisma.sessionPhoto.delete({ where: { id: photoId } });
+  await deleteBlobQuietly(p.url);
   revalidatePath("/");
-  revalidatePath(`/sessions/${ci.sessionId}`);
-  revalidatePath(`/sessions/${ci.sessionId}/edit`);
+  revalidatePath(`/sessions/${p.sessionId}`);
   return { ok: true };
 }
 

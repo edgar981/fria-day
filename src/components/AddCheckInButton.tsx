@@ -4,14 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { BeerSheet, type SheetDraft } from "@/components/BeerSheet";
 import { Icon } from "@/components/Icon";
-import { addCheckIn, setCheckInPhoto } from "@/app/actions/sessions";
+import { addCheckIn } from "@/app/actions/sessions";
 
 export function AddCheckInButton({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
   async function onAdd(d: SheetDraft) {
-    // El check-in se guarda PRIMERO; la foto se adjunta después (nunca la bloquea).
     const res = await addCheckIn({
       sessionId,
       beerId: d.beer.id,
@@ -19,10 +18,7 @@ export function AddCheckInButton({ sessionId }: { sessionId: string }) {
       format: d.format,
       rating: d.rating >= 1 ? d.rating : null,
     });
-    if (res.ok) {
-      if (d.photoUrl) await setCheckInPhoto(res.checkInId, d.photoUrl);
-      router.refresh();
-    }
+    if (res.ok) router.refresh();
   }
 
   return (

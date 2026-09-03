@@ -38,7 +38,7 @@ export const checkInSchema = z.object({
   rating: z
     .union([z.null(), z.coerce.number().int().min(1, "Rating 1–5").max(5, "Rating 1–5")])
     .optional(),
-  photoUrl: z.string().trim().url().optional().or(z.literal("")),
+  // I-2: la foto ya no es del check-in (pasó a la salida, tabla SessionPhoto).
 });
 
 const tagSchema = z

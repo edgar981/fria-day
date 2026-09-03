@@ -35,12 +35,17 @@ async function main() {
     process.exit(1);
   }
 
-  // URLs referenciadas hoy en la base.
-  const rows = await prisma.checkIn.findMany({
-    where: { photoUrl: { not: null } },
-    select: { photoUrl: true },
-  });
-  const referenced = new Set(rows.map((r) => r.photoUrl as string));
+  // URLs referenciadas hoy en la base. Desde I-2 la foto es de la salida (SessionPhoto);
+  // se conservan también los CheckIn.photoUrl legados (columna sin uso, aún referencia
+  // blobs migrados) para no barrer archivos que siguen apuntados.
+  const [photoRows, legacyRows] = await Promise.all([
+    prisma.sessionPhoto.findMany({ select: { url: true } }),
+    prisma.checkIn.findMany({ where: { photoUrl: { not: null } }, select: { photoUrl: true } }),
+  ]);
+  const referenced = new Set<string>([
+    ...photoRows.map((r) => r.url),
+    ...legacyRows.map((r) => r.photoUrl as string),
+  ]);
 
   // Todos los blobs del store (paginado).
   const orphans: { url: string; size: number; pathname: string; uploadedAt: Date }[] = [];

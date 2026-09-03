@@ -685,3 +685,15 @@ export function outingNumber(
   }
   return n;
 }
+
+// ----------------------------------------------------------------------------
+// Pasada I-2 — fotos de la salida.
+// ----------------------------------------------------------------------------
+
+/** Máximo de fotos por salida. La foto es de la NOCHE, no de la bebida. */
+export const MAX_SESSION_PHOTOS = 6;
+
+/** ¿Cabe otra foto? Falso al llegar al tope (rechaza la 7ª con mensaje claro). */
+export function canAddSessionPhoto(current: number): boolean {
+  return current < MAX_SESSION_PHOTOS;
+}

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { searchBeersAction, createBeer } from "@/app/actions/beers";
 import { FormatPicker } from "@/components/FormatPicker";
 import { RatingInput } from "@/components/RatingInput";
-import { PhotoField } from "@/components/PhotoField";
 import { Icon } from "@/components/Icon";
 import { BEER_FORMATS, FORMATS_BY_KIND, type BeerFormat, type DrinkKind } from "@/lib/domain";
 import { joinMeta } from "@/lib/format";
@@ -24,7 +23,6 @@ export interface SheetDraft {
   beer: BeerOption;
   format: BeerFormat;
   rating: number; // 0 = sin calificar
-  photoUrl: string | null; // ya subida al blob (o null); la foto no bloquea el add
 }
 
 const FoamIcon = () => (
@@ -53,7 +51,6 @@ export function BeerSheet({
   const [style, setStyle] = useState("");
   const [format, setFormat] = useState<BeerFormat>("BOTELLA");
   const [rating, setRating] = useState(0);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -135,7 +132,6 @@ export function BeerSheet({
     setBrewery("");
     setStyle("");
     setRating(0);
-    setPhotoUrl(null);
     setError(null);
   }
   // Cerrar sin agregar CONSERVA el borrador (item A.1-7b): al reabrir sigue lo
@@ -178,7 +174,7 @@ export function BeerSheet({
       if (currentKind === "CERVEZA") window.localStorage.setItem(LAST_FORMAT_KEY, format);
     } catch {}
     setBusy(true);
-    await onAdd({ beer, format, rating, photoUrl });
+    await onAdd({ beer, format, rating });
     setBusy(false);
     reset(); // add exitoso: sí limpiamos para el próximo
     onClose();
@@ -341,12 +337,6 @@ export function BeerSheet({
         <div>
           <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>Rating</span>
           <RatingInput value={rating} onChange={setRating} />
-        </div>
-        <div>
-          <span className="eyebrow" style={{ display: "block", marginBottom: 8 }}>
-            Foto <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", fontSize: 12, color: "var(--color-tenue-2)" }}>· opcional</span>
-          </span>
-          <PhotoField value={photoUrl} onChange={setPhotoUrl} size={60} />
         </div>
 
         {error && <p style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}

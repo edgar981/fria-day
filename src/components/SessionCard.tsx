@@ -135,9 +135,11 @@ export function SessionCard({
   // Desglose por formato para la fila de métricas. Solo se pinta con más de un
   // formato: con uno, "5 bebidas · 5 botellas" es redundante (misma regla que el detalle).
   const bd = formatBreakdown(checkIns.map((c) => ({ format: c.format, quantity: c.quantity })));
-  // Foto de la salida en la tarjeta (Pasada N, revierte F): la primera bebida CON foto.
-  // La mayoría de salidas no tienen foto → la tarjeta se ve bien igual (sin este bloque).
-  const heroPhoto = checkIns.find((c) => c.photoUrl)?.photoUrl ?? null;
+  // Foto de la salida en la tarjeta (I-2): la PRIMERA foto de la salida. SIN carrusel en
+  // el feed — la tarjeta es un Link y el gesto horizontal pelearía con el scroll y el
+  // hold de reacciones. Si hay más, un indicador discreto "1/N".
+  const photos = session.photos;
+  const heroPhoto = photos[0]?.url ?? null;
   // Distintivo verde SOLO cuando hay etiqueta real (Pasada C). Las salidas del
   // círculo sin etiqueta aparecen sin distintivo alguno (C.1: se quitó "Del parche").
   const tagged = !isOwner && viewerTagged;
@@ -197,7 +199,7 @@ export function SessionCard({
             hasta acercarse; se sirve el original del Blob (ya comprimido en el cliente
             a ≤1200px), sin next/image ni cuota de optimización. */}
         {heroPhoto && (
-          <div style={{ borderRadius: 16, overflow: "hidden", border: "1px solid var(--color-borde)", background: "var(--color-barra-alta)", aspectRatio: "4 / 3" }}>
+          <div style={{ position: "relative", borderRadius: 16, overflow: "hidden", border: "1px solid var(--color-borde)", background: "var(--color-barra-alta)", aspectRatio: "4 / 3" }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={heroPhoto}
@@ -206,6 +208,11 @@ export function SessionCard({
               decoding="async"
               style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
             />
+            {photos.length > 1 && (
+              <span style={{ position: "absolute", top: 8, right: 8, background: "rgba(10,7,4,.66)", color: "var(--color-espuma)", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "3px 9px", letterSpacing: ".02em" }}>
+                1/{photos.length}
+              </span>
+            )}
           </div>
         )}
 

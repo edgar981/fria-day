@@ -9,6 +9,7 @@ import { Tally } from "@/components/Tally";
 import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { OwnerCheckInList } from "@/components/OwnerCheckInList";
 import { TaggedCheckInList } from "@/components/TaggedCheckInList";
+import { SessionPhotos } from "@/components/SessionPhotos";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
 import { ReactionBar } from "@/components/ReactionBar";
 import { formatDay, formatBreakdownText } from "@/lib/format";
@@ -107,6 +108,10 @@ export default async function SessionDetailPage({
           viewer={{ id: viewer.id, displayName: viewer.displayName, avatar: viewer.avatar ?? null }}
         />
 
+        {/* Fotos de la salida (I-2): carrusel + pantalla completa. El dueño sube y borra;
+            el círculo las ve. Se oculta entero si no hay fotos y no eres el dueño. */}
+        <SessionPhotos sessionId={s.id} photos={s.photos} isOwner={isOwner} />
+
         {isOwner && (
           <>
             <AddCheckInButton sessionId={s.id} />
@@ -132,7 +137,6 @@ export default async function SessionDetailPage({
                 beerId: c.beerId,
                 beerName: c.beer.name,
                 brewery: c.beer.brewery,
-                photoUrl: c.photoUrl,
               }))}
             />
           ) : (
@@ -147,7 +151,6 @@ export default async function SessionDetailPage({
                 rating: c.rating,
                 beerName: c.beer.name,
                 brewery: c.beer.brewery,
-                photoUrl: c.photoUrl,
               }))}
             />
           )}

@@ -69,6 +69,8 @@ export async function getFeed(userId: string) {
         select: { emoji: true, userId: true, user: { select: { displayName: true, avatar: true } } },
         orderBy: { createdAt: "asc" },
       },
+      // I-2: fotos de la salida, en orden de subida. La tarjeta usa la primera.
+      photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
     },
   });
 
@@ -107,6 +109,8 @@ export async function getSessionDetail(id: string, viewerId: string) {
         select: { emoji: true, userId: true, user: { select: { displayName: true, avatar: true } } },
         orderBy: { createdAt: "asc" },
       }, // Pasada R / I-1.2
+      // I-2: fotos de la salida, en orden de subida (carrusel del detalle + share-card).
+      photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
     },
   });
   if (!session) return null;

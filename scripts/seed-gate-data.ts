@@ -18,11 +18,61 @@
  * Estos usuarios y salidas son SEPARADOS de las cuentas que usa la verificación de Code
  * (beto@friaday.test, etc.): limpiar los datos de una pasada no borra este seed.
  */
+import zlib from "node:zlib";
+import { put } from "@vercel/blob";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { normalizeKey, type BeerFormat, type DrinkKind } from "@/lib/domain";
 
 const APPLY = process.argv.includes("--apply");
+
+// --- PNG sólido de dos bandas (sin dependencias): fotos placeholder para el gate de
+// I-2. Suficiente para ejercitar carrusel/indicador/pantalla completa; se suben como
+// PNG real (no SVG) para que el share-card de satori también las rasterice. ---
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff;
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+}
+function pngChunk(type: string, data: Buffer): Buffer {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length, 0);
+  const typeBuf = Buffer.from(type, "ascii");
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])), 0);
+  return Buffer.concat([len, typeBuf, data, crc]);
+}
+function solidPng(w: number, h: number, body: [number, number, number], band: [number, number, number]): Buffer {
+  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w, 0);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr[8] = 8; // bit depth
+  ihdr[9] = 2; // color type: truecolor RGB
+  const bandH = Math.floor(h * 0.32);
+  const raw = Buffer.alloc(h * (1 + w * 3));
+  for (let y = 0; y < h; y++) {
+    const off = y * (1 + w * 3);
+    raw[off] = 0; // filtro None
+    const [r, g, b] = y < bandH ? band : body;
+    for (let x = 0; x < w; x++) {
+      const p = off + 1 + x * 3;
+      raw[p] = r;
+      raw[p + 1] = g;
+      raw[p + 2] = b;
+    }
+  }
+  return Buffer.concat([sig, pngChunk("IHDR", ihdr), pngChunk("IDAT", zlib.deflateSync(raw)), pngChunk("IEND", Buffer.alloc(0))]);
+}
 
 // Credenciales de gate — DOCUMENTADAS (no ***REDACTED***). Se reportan en cada pasada.
 const USERS = [
@@ -175,6 +225,7 @@ async function main() {
     console.log(`  Reacciones: ${SESSIONS.reduce((n, s) => n + s.reactions.length, 0)} (pie de brindis: estados 0 / 1 / pocos / +N)`);
     console.log(`  Usuarios solo-display (avatares de brindis, sin login): ${EXTRA_USERS.length}`);
     console.log(`  "Yo también": Ana está etiquetada HOY (salida de Beto) y no tiene salida propia hoy.`);
+    console.log(`  Fotos: 3 en "Bar de la 85" (I-2) ${process.env.BLOB_PREV_READ_WRITE_TOKEN ? "" : "(se omitirían: falta BLOB_PREV_READ_WRITE_TOKEN)"}`);
     console.log("\nCorre con --apply para escribir. Idempotente: no duplica.");
     return prisma.$disconnect();
   }
@@ -195,6 +246,7 @@ async function main() {
   // tags y reacciones) y las recrea. Converge al mismo estado en cada corrida.
   await prisma.session.deleteMany({ where: { userId: { in: Object.values(uid) } } });
 
+  let photoSessionId: string | null = null;
   for (const s of SESSIONS) {
     const session = await prisma.session.create({
       data: {
@@ -220,6 +272,26 @@ async function main() {
         data: s.reactions.map((r) => ({ sessionId: session.id, userId: uid[r.by], emoji: r.emoji })),
       });
     }
+    if (s.owner === "ana" && s.place === "Bar de la 85") photoSessionId = session.id;
+  }
+
+  // Fotos de la salida (I-2): al menos una salida con 3 fotos para gatear el carrusel,
+  // el indicador "1/N" y el visor. Se suben al store de dev/preview con pathname estable
+  // (allowOverwrite) → idempotente, sin acumular huérfanos al re-correr el seed.
+  const blobToken = process.env.BLOB_PREV_READ_WRITE_TOKEN;
+  let photosUploaded = 0;
+  if (photoSessionId && blobToken) {
+    const shots: [string, Buffer][] = [
+      ["gate/bar85-1.png", solidPng(1000, 750, [58, 40, 18], [194, 98, 10])], // ámbar
+      ["gate/bar85-2.png", solidPng(1000, 750, [30, 22, 14], [122, 74, 30])], // tostado
+      ["gate/bar85-3.png", solidPng(1000, 750, [34, 46, 32], [111, 199, 156])], // verde botella
+    ];
+    let order = 0;
+    for (const [pathname, buf] of shots) {
+      const { url } = await put(pathname, buf, { access: "public", token: blobToken, addRandomSuffix: false, allowOverwrite: true, contentType: "image/png" });
+      await prisma.sessionPhoto.create({ data: { sessionId: photoSessionId, url, order: order++ } });
+      photosUploaded++;
+    }
   }
 
   // Reporte del estado final.
@@ -232,6 +304,11 @@ async function main() {
   const totalR = await prisma.sessionReaction.count({ where: { userId: { in: Object.values(uid) } } });
   console.log("✓ Seed de gate aplicado.");
   console.log(`  ${counts.join(" · ")} · reacciones: ${totalR}`);
+  console.log(
+    photosUploaded > 0
+      ? `  Fotos: ${photosUploaded} subidas a "Bar de la 85" (carrusel + visor)`
+      : "  Fotos: OMITIDAS (sin BLOB_PREV_READ_WRITE_TOKEN en el entorno)",
+  );
   console.log("  Credenciales:");
   for (const u of USERS) console.log(`    ${u.displayName}: ${u.email} / ${u.password}`);
   await prisma.$disconnect();
