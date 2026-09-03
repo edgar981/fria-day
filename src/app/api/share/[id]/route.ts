@@ -1,9 +1,18 @@
 import { ImageResponse } from "next/og";
+import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
 import { getSessionDetail, loadCircle } from "@/lib/queries";
 import { isOurBlobUrl } from "@/lib/blob";
-import { FORMAT_LABEL, formatDay, joinMeta } from "@/lib/format";
+import {
+  drinkingSpanMinutes,
+  DURATION_MIN_MINUTES,
+  formatDurationLabel,
+  firstTimeDrink,
+  outingNumber,
+} from "@/lib/domain";
+import { FORMAT_LABEL, formatAbv, formatDayLong, formatTimeWindow, joinMeta } from "@/lib/format";
 import { renderShareCard, type ShareData } from "./card";
+import { avatarImg } from "./avatars";
 import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
 // Node runtime (no edge): usamos Prisma + auth por cookie. ImageResponse (next/og)
@@ -32,34 +41,84 @@ export async function GET(
   const circle = await loadCircle(viewer.id);
   if (!circle.has(session.userId)) return new Response("No puedes ver esa salida", { status: 403 });
 
-  // Métricas — todo de datos que ya existen (nada de perfil/leaderboard/rachas).
-  const checkIns = session.checkIns;
-  const total = checkIns.reduce((n, c) => n + c.quantity, 0);
-  const distinct = new Set(checkIns.map((c) => c.beerId)).size;
+  const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
+  const single = checkIns.length === 1;
+
+  // Duración: ventana real de la noche (min→max de createdAt). Se OMITE si abarca menos
+  // de ~1h — típico del registro retroactivo (todo cargado de una) — sin dejar hueco.
+  const times = checkIns.map((c) => c.createdAt);
+  const span = drinkingSpanMinutes(times);
+  let duration: ShareData["duration"] = null;
+  if (span >= DURATION_MIN_MINUTES) {
+    const ms = times.map((t) => t.getTime());
+    duration = {
+      value: formatDurationLabel(span),
+      window: formatTimeWindow(new Date(Math.min(...ms)), new Date(Math.max(...ms))),
+    };
+  }
+
+  // "Primera vez" — acotada al DUEÑO (S.2 §4): beerIds que el dueño ya había registrado
+  // en una salida estrictamente anterior. Consulta barata (solo las bebidas de ESTA
+  // salida, indexada por beerId). La versión "nadie del parche" exigiría el historial de
+  // todo el círculo; se descartó por costo, no por diseño.
+  const beerIds = [...new Set(checkIns.map((c) => c.beerId))];
+  const ownerPrior = await prisma.checkIn.findMany({
+    where: { beerId: { in: beerIds }, session: { userId: session.userId } },
+    select: { beerId: true, session: { select: { date: true, createdAt: true } } },
+  });
+  const thisKey = session.date.getTime();
+  const thisCreated = session.createdAt.getTime();
+  const seenBefore = new Set(
+    ownerPrior
+      .filter((r) => {
+        const k = r.session.date.getTime();
+        return k < thisKey || (k === thisKey && r.session.createdAt.getTime() < thisCreated);
+      })
+      .map((r) => r.beerId),
+  );
+  const firstTime = firstTimeDrink(
+    checkIns.map((c) => ({ beerId: c.beerId, name: c.beer.name })),
+    seenBefore,
+  );
+
+  // Salida #N del dueño: su puesto entre TODAS sus salidas (date, createdAt) asc.
+  const ownerSessions = await prisma.session.findMany({
+    where: { userId: session.userId },
+    select: { id: true, date: true, createdAt: true },
+  });
+  const outing = outingNumber(ownerSessions, id);
+
+  // El parche: dueño primero + etiquetados (usuario o texto libre → avatar anónimo),
+  // cortado a 3 caras. Los nombres (sin el dueño) van en la línea "con …".
+  const avatars = [session.user.avatar, ...session.tags.map((t) => t.taggedUser?.avatar ?? null)]
+    .slice(0, 3)
+    .map(avatarImg);
   const companions = session.tags
     .map((t) => t.taggedUser?.displayName ?? t.freeText ?? "")
     .filter((s): s is string => !!s);
-  const parche = 1 + session.tags.length; // dueño + etiquetados
+
   const rated = checkIns.filter((c) => c.rating != null);
   const bestCi = rated.length ? rated.reduce((a, b) => ((b.rating ?? 0) > (a.rating ?? 0) ? b : a)) : null;
   const photoUrl = checkIns.find((c) => isOurBlobUrl(c.photoUrl))?.photoUrl ?? null;
 
   const data: ShareData = {
     place: session.placeName,
-    dateLabel: formatDay(session.date),
+    dateLabel: formatDayLong(session.date),
     ownerName: session.user.displayName,
+    avatars,
     companions,
-    parche,
-    total,
-    distinct,
+    total: checkIns.reduce((n, c) => n + c.quantity, 0),
+    duration,
+    outing,
+    firstTime,
     best: bestCi ? { name: bestCi.beer.name, rating: bestCi.rating as number } : null,
     drinks: checkIns.map((c) => ({
       name: c.beer.name,
-      meta: joinMeta(c.beer.brewery, FORMAT_LABEL[c.format]),
+      meta: joinMeta(c.beer.brewery, c.beer.style, formatAbv(c.beer.abv), FORMAT_LABEL[c.format]),
       rating: c.rating,
     })),
     photoUrl,
-    single: checkIns.length === 1,
+    single,
   };
 
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en

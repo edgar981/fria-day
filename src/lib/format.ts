@@ -152,3 +152,47 @@ export function formatAbv(abv: unknown): string | null {
   if (Number.isNaN(n)) return null;
   return `${n.toFixed(1)}%`;
 }
+
+// ---- Share-card v2 (Pasada S.2) ----
+
+const wdLongFmt = new Intl.DateTimeFormat("es-CO", { weekday: "long", timeZone: "UTC" });
+const monthLongFmt = new Intl.DateTimeFormat("es-CO", { month: "long", timeZone: "UTC" });
+
+/**
+ * Fecha larga para la share-card: "Viernes 28 de agosto" (sin año, día de calendario
+ * en UTC como el resto de fechas de sesión). La v1 usaba formatDay ("vie., 28 ago.").
+ */
+export function formatDayLong(date: Date): string {
+  const wd = wdLongFmt.format(date);
+  return `${wd.charAt(0).toUpperCase()}${wd.slice(1)} ${date.getUTCDate()} de ${monthLongFmt.format(date)}`;
+}
+
+// La ventana horaria de la noche se lee en hora de Colombia (UTC-5, sin horario de
+// verano): así "8:30 pm – 1:15 am" refleja la noche real aunque el server corra en UTC.
+const clockFmt = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit",
+  hour12: true,
+  timeZone: "America/Bogota",
+});
+function clockLabel(d: Date): string {
+  const parts = clockFmt.formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("hour")}:${get("minute")} ${get("dayPeriod").toLowerCase()}`;
+}
+
+/** "8:30 pm – 1:15 am": la ventana real de la salida (min→max de createdAt). */
+export function formatTimeWindow(start: Date, end: Date): string {
+  return `${clockLabel(start)} – ${clockLabel(end)}`;
+}
+
+/**
+ * El parche en la share-card: hasta 3 nombres tal cual ("Caro, Edgar y Vale"); con
+ * más, dos nombres y el resto resumido ("Vale, Edgar y 2 más"). Sin el dueño (va como
+ * primer avatar). Vacío = salida en solitario (no se dibuja la línea "con …").
+ */
+export function companionsLabel(names: string[]): string {
+  if (names.length === 0) return "";
+  if (names.length <= 3) return naturalList(names);
+  return `${names.slice(0, 2).join(", ")} y ${names.length - 2} más`;
+}

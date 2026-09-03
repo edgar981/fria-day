@@ -724,3 +724,105 @@ describe("I-1.5 — racimo (más usados) y pila (propio primero)", () => {
     expect(pile.extra).toBe(0);
   });
 });
+
+// ----------------------------------------------------------------------------
+// Pasada S.2 — los cuatro cálculos de la share-card v2.
+// ----------------------------------------------------------------------------
+import {
+  drinkingSpanMinutes,
+  formatDurationLabel,
+  DURATION_MIN_MINUTES,
+  recorrido,
+  firstTimeDrink,
+  outingNumber,
+} from "./domain";
+
+describe("S.2 · duración (ventana de createdAt)", () => {
+  const at = (iso: string) => new Date(iso);
+
+  it("span = min→max en minutos; <2 timestamps → 0", () => {
+    expect(drinkingSpanMinutes([])).toBe(0);
+    expect(drinkingSpanMinutes([at("2026-08-28T20:00:00Z")])).toBe(0);
+    // 8:30pm → 1:15am (día siguiente) = 4h 45m = 285 min, sin importar el orden.
+    const span = drinkingSpanMinutes([
+      at("2026-08-29T06:15:00Z"), // 1:15am Bogotá
+      at("2026-08-29T01:30:00Z"), // 8:30pm Bogotá
+    ]);
+    expect(span).toBe(285);
+  });
+
+  it("formato preciso, NUNCA 'casi 5 horas' (§2)", () => {
+    expect(formatDurationLabel(285)).toBe("4h 45m");
+    expect(formatDurationLabel(100)).toBe("1h 40m");
+    expect(formatDurationLabel(58)).toBe("58m");
+    expect(formatDurationLabel(120)).toBe("2h");
+  });
+
+  it("registro retroactivo (span ~0) cae bajo el umbral → se omite", () => {
+    const retro = drinkingSpanMinutes([at("2026-08-28T20:00:00Z"), at("2026-08-28T20:02:00Z")]);
+    expect(retro).toBeLessThan(DURATION_MIN_MINUTES);
+    expect(285).toBeGreaterThanOrEqual(DURATION_MIN_MINUTES);
+  });
+});
+
+describe("S.2 · recorrido (orden de registro)", () => {
+  it("conserva el orden y las repeticiones", () => {
+    const { names, extra } = recorrido(["Poker", "Águila", "Club Colombia", "Poker"]);
+    expect(names).toEqual(["Poker", "Águila", "Club Colombia", "Poker"]);
+    expect(extra).toBe(0);
+  });
+
+  it("corta a 5 nombres; el resto va a 'extra'", () => {
+    const { names, extra } = recorrido(["a", "b", "c", "d", "e", "f", "g"]);
+    expect(names).toEqual(["a", "b", "c", "d", "e"]);
+    expect(extra).toBe(2);
+  });
+});
+
+describe("S.2 · primera vez (acotada al dueño)", () => {
+  const ordered = [
+    { beerId: "club", name: "Club Colombia" },
+    { beerId: "bbc", name: "BBC Cajicá" },
+    { beerId: "mojito", name: "Mojito" },
+  ];
+
+  it("primer nombre del recorrido que el dueño no había registrado antes", () => {
+    // El dueño ya conocía Club; BBC es nueva → 'BBC Cajicá'.
+    expect(firstTimeDrink(ordered, new Set(["club"]))).toBe("BBC Cajicá");
+  });
+
+  it("respeta el orden de registro cuando hay varias nuevas", () => {
+    expect(firstTimeDrink(ordered, new Set())).toBe("Club Colombia");
+  });
+
+  it("null si ninguna es primera vez", () => {
+    expect(firstTimeDrink(ordered, new Set(["club", "bbc", "mojito"]))).toBeNull();
+  });
+});
+
+describe("S.2 · salida #N del dueño", () => {
+  const d = (s: string) => new Date(s);
+  const sessions = [
+    { id: "s1", date: d("2026-08-10T00:00:00Z"), createdAt: d("2026-08-10T02:00:00Z") },
+    { id: "s2", date: d("2026-08-20T00:00:00Z"), createdAt: d("2026-08-20T02:00:00Z") },
+    { id: "s3", date: d("2026-08-28T00:00:00Z"), createdAt: d("2026-08-28T02:00:00Z") },
+  ];
+
+  it("puesto por (date, createdAt) asc; la 1a es #1", () => {
+    expect(outingNumber(sessions, "s1")).toBe(1);
+    expect(outingNumber(sessions, "s3")).toBe(3);
+  });
+
+  it("desempata por createdAt cuando la fecha coincide", () => {
+    const same = [
+      { id: "a", date: d("2026-08-28T00:00:00Z"), createdAt: d("2026-08-28T01:00:00Z") },
+      { id: "b", date: d("2026-08-28T00:00:00Z"), createdAt: d("2026-08-28T05:00:00Z") },
+    ];
+    expect(outingNumber(same, "a")).toBe(1);
+    expect(outingNumber(same, "b")).toBe(2);
+  });
+
+  it("0 si la salida no está en la lista", () => {
+    expect(outingNumber(sessions, "nope")).toBe(0);
+  });
+});

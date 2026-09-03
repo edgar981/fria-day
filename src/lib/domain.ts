@@ -606,3 +606,82 @@ export function circleOf(userId: string, edges: CircleTagEdge[]): Set<string> {
   }
   return circle;
 }
+
+// ----------------------------------------------------------------------------
+// Pasada S.2 — share-card v2 (el registro de una noche).
+//
+// Cuatro cálculos derivados de datos que YA existen (createdAt de los check-ins,
+// salidas del dueño). Todos puros: la consulta la arma queries/route; aquí solo la
+// aritmética, para poder testearla sin DB.
+// ----------------------------------------------------------------------------
+
+/**
+ * Minutos entre el primer y el último check-in (la "ventana en movimiento" de la
+ * noche). 0 si hay menos de dos timestamps. Con registro retroctivo (todo cargado
+ * de una) el span queda ~0 → la duración se omite (ver DURATION_MIN_MINUTES).
+ */
+export function drinkingSpanMinutes(times: Date[]): number {
+  if (times.length < 2) return 0;
+  const ms = times.map((t) => t.getTime());
+  return Math.round((Math.max(...ms) - Math.min(...ms)) / 60000);
+}
+
+/** La duración solo se muestra si la salida abarca al menos ~1 hora (S.2 §1). */
+export const DURATION_MIN_MINUTES = 60;
+
+/**
+ * "4h 45m" · "2h" · "58m". SIEMPRE el formato preciso, nunca "casi 5 horas"
+ * (S.2 §2): el dato habla solo, como el tiempo en movimiento de Strava.
+ */
+export function formatDurationLabel(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}m`;
+  if (m === 0) return `${h}h`;
+  return `${h}h ${m}m`;
+}
+
+/**
+ * El recorrido: los nombres en orden de registro (createdAt asc, tal como llegan de
+ * queries), CONSERVANDO repeticiones — es una secuencia, no un conteo. Se corta a
+ * `max` nombres; el resto se resume con `extra` ("+N más").
+ */
+export function recorrido(names: string[], max = 5): { names: string[]; extra: number } {
+  return { names: names.slice(0, max), extra: Math.max(0, names.length - max) };
+}
+
+/**
+ * "Primera vez" (S.2 §4, acotado al dueño): el primer nombre del recorrido cuya
+ * bebida el dueño NO había registrado en una salida anterior. `seenBefore` = los
+ * beerId con al menos un check-in del dueño en una salida estrictamente anterior
+ * (lo arma route con una consulta). null si ninguna es primera vez.
+ */
+export function firstTimeDrink(
+  ordered: { beerId: string; name: string }[],
+  seenBefore: Iterable<string>,
+): string | null {
+  const seen = seenBefore instanceof Set ? seenBefore : new Set(seenBefore);
+  for (const d of ordered) if (!seen.has(d.beerId)) return d.name;
+  return null;
+}
+
+/**
+ * Salida #N del dueño: el puesto de esta salida entre TODAS las suyas, ordenadas por
+ * (date, createdAt) asc. Siempre ≥ 1 (esta salida existe). 0 solo si `id` no está.
+ */
+export function outingNumber(
+  sessions: { id: string; date: Date; createdAt: Date }[],
+  id: string,
+): number {
+  const target = sessions.find((s) => s.id === id);
+  if (!target) return 0;
+  const tk = target.date.getTime();
+  const tc = target.createdAt.getTime();
+  let n = 1;
+  for (const s of sessions) {
+    if (s.id === id) continue;
+    const k = s.date.getTime();
+    if (k < tk || (k === tk && s.createdAt.getTime() < tc)) n++;
+  }
+  return n;
+}

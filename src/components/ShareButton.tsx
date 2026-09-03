@@ -9,8 +9,9 @@ import { Icon } from "@/components/Icon";
  * y abre la hoja nativa (`navigator.share` con el archivo); si no existe, descarga la
  * imagen. La app es privada, así que se comparte una IMAGEN, no un link.
  *
- * Formato (Pasada S · punto 5): 4:5 por defecto ("Publicación") + "Historia" (1080×1920)
- * como segunda opción, en una hoja pequeña. Solo puede compartir quien ve la salida
+ * Formato (S.2 §3): "Historia" (1080×1920) primero y por defecto — Instagram close
+ * friends es el destino más probable — y "Publicación" (4:5) como segunda opción, en
+ * una hoja pequeña. Solo puede compartir quien ve la salida
  * (lo valida también la ruta /api/share/[id]). Dentro de la tarjeta-Link del feed, los
  * botones cortan la navegación.
  */
@@ -125,11 +126,11 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
                 Se genera una imagen para mandar por donde quieras.
               </p>
               {error && <p role="alert" style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
-              <button type="button" className="btn btn-primary" style={{ width: "100%" }} disabled={!!busy} onClick={() => share("post")}>
-                {busy === "post" ? "Generando…" : "Publicación (4:5)"}
+              <button type="button" className="btn btn-primary" style={{ width: "100%" }} disabled={!!busy} onClick={() => share("story")}>
+                {busy === "story" ? "Generando…" : "Historia"}
               </button>
-              <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} disabled={!!busy} onClick={() => share("story")}>
-                {busy === "story" ? "Generando…" : "Para historia"}
+              <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} disabled={!!busy} onClick={() => share("post")}>
+                {busy === "post" ? "Generando…" : "Publicación"}
               </button>
             </div>
           </div>,

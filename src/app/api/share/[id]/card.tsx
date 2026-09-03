@@ -1,41 +1,50 @@
 /* eslint-disable @next/next/no-img-element */
-import type { ReactElement } from "react";
+import type { ReactElement, ReactNode } from "react";
+import { recorrido } from "@/lib/domain";
+import { companionsLabel } from "@/lib/format";
+import type { AvatarImg } from "./avatars";
 
 /**
- * Plantilla de la share-card (Pasada S), una sola parametrizada con 4 estados
- * (1i sin foto · 1j con foto · 1k una bebida = héroe · 1l story). Se renderiza con
- * satori (next/og): SOLO flex, sin grid, sin emoji, festón con divs circulares,
- * fuentes embebidas. Celebra la noche, el parche y la variedad — NUNCA la cantidad
- * de alcohol como logro (restricción no negociable de la Pasada S).
+ * Plantilla de la share-card v2 (Pasada S.2): el REGISTRO de una noche, no un
+ * inventario. El cuerpo es el RECORRIDO (bebidas en orden de registro); la duración,
+ * el total y la salida #N son métricas entre iguales; el highlight es máximo uno
+ * (primera vez → mejor de la noche → ninguno). Cinco estados 4:5 + story, un solo
+ * parámetro `format`.
+ *
+ * Se renderiza con satori (next/og): SOLO flex, sin grid, sin emoji, festón con divs
+ * circulares, avatares inlineados como data-URI (`<use href>` no resuelve), fuentes
+ * embebidas. NUNCA la cantidad de alcohol como logro (restricción de la Pasada S).
  */
 
 export interface ShareData {
   place: string | null;
-  dateLabel: string;
+  dateLabel: string; // "Viernes 28 de agosto"
   ownerName: string;
-  companions: string[];
-  parche: number; // dueño + etiquetados
+  avatars: AvatarImg[]; // el parche: dueño primero, cortado a 3
+  companions: string[]; // nombres SIN el dueño
   total: number; // bebidas (suma de cantidades)
-  distinct: number; // bebidas distintas
-  best: { name: string; rating: number } | null; // mejor calificada (o null si ninguna)
-  drinks: { name: string; meta: string; rating: number | null }[];
+  duration: { value: string; window: string } | null; // null = retroactiva (sin ventana)
+  outing: number; // salida #N del dueño
+  firstTime: string | null; // "primera vez" (o null)
+  best: { name: string; rating: number } | null; // mejor calificada (o null)
+  drinks: { name: string; meta: string; rating: number | null }[]; // orden de registro
   photoUrl: string | null;
-  single: boolean;
+  single: boolean; // una sola fila de check-in → manda el héroe de bebida
 }
 
 const C = {
   noche: "#120e0a",
-  barra: "#1c1611",
-  barraAlta: "#271e16",
-  borde: "#33261c",
-  ambar: "#f2a016",
   marca: "#c4620a",
   espuma: "#fbf0d5",
   crema: "#f7efdd",
   tenue: "#a08d72",
-  tenue2: "#95815f",
-  tinta: "#241609",
+  ambar: "#f2a016",
+  barraAlta: "#271e16",
+  borde: "#33261c",
+  heroMeta: "#C9A874",
+  glassOff: "rgba(251,240,213,0.16)",
 };
+const HERO_GRAD = "linear-gradient(180deg,#4A3413,#2A1E0E)";
 const DISP = "Syne";
 const SANS = "Outfit";
 
@@ -44,7 +53,7 @@ function foam(width: number): ReactElement {
   const r = 18;
   const n = Math.ceil(width / (r * 2)) + 1;
   return (
-    <div style={{ display: "flex", height: r, overflow: "hidden" }}>
+    <div style={{ display: "flex", height: r, overflow: "hidden", flex: "none" }}>
       {Array.from({ length: n }).map((_, i) => (
         <div key={i} style={{ width: r * 2, height: r * 2, borderRadius: r, background: C.espuma, marginTop: -r, marginLeft: i === 0 ? 0 : -2, flexShrink: 0 }} />
       ))}
@@ -53,114 +62,195 @@ function foam(width: number): ReactElement {
 }
 
 // Medidor de vasos (rating) con barras, como el componente Glasses del feed.
-function glasses(rating: number, big = false): ReactElement {
-  const w = big ? 14 : 11;
-  const h = big ? 30 : 22;
+function glasses(rating: number): ReactElement {
   return (
-    <div style={{ display: "flex" }}>
+    <div style={{ display: "flex", flex: "none" }}>
       {[1, 2, 3, 4, 5].map((n) => (
-        <div key={n} style={{ width: w, height: h, borderRadius: 3, marginLeft: n === 1 ? 0 : 5, background: n <= rating ? C.ambar : "rgba(251,240,213,0.16)" }} />
+        <div key={n} style={{ width: 14, height: 30, borderRadius: 3, marginLeft: n === 1 ? 0 : 5, background: n <= rating ? C.ambar : C.glassOff }} />
       ))}
     </div>
   );
 }
 
-function stat(value: number, label: string): ReactElement {
+// Pila de avatares del parche: campo de color + símbolo inlineado, superpuestos.
+function avatarStack(avatars: AvatarImg[], size: number, radius: number, overlap: number): ReactElement {
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 72, color: C.ambar, lineHeight: 1 }}>{String(value)}</div>
-      <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 26, color: C.tenue, marginTop: 6 }}>{label}</div>
+    <div style={{ display: "flex", flex: "none" }}>
+      {avatars.map((a, i) => (
+        <div key={i} style={{ display: "flex", width: size, height: size, borderRadius: radius, background: a.bg, marginLeft: i === 0 ? 0 : -overlap, overflow: "hidden", flexShrink: 0 }}>
+          <img src={a.uri} width={size} height={size} alt="" style={{ width: size, height: size }} />
+        </div>
+      ))}
     </div>
   );
 }
 
-/** Cuerpo 4:5 de la tarjeta (1080 de ancho). */
-function cardBody(d: ShareData): ReactElement {
-  const companions = d.companions.length
-    ? d.companions.length <= 2
-      ? d.companions.join(" y ")
-      : `${d.companions.slice(0, 2).join(", ")} y ${d.companions.length - 2} más`
-    : null;
-  const showBest = d.best != null && !d.single; // en single, la bebida ya es el héroe
+// Flecha del recorrido: barra + triángulo (dos divs; satori no garantiza el glifo →).
+function arrow(small: boolean, key: string): ReactElement {
+  const mx = small ? 20 : 24;
+  return (
+    <div key={key} style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: mx, marginRight: mx }}>
+      <div style={{ width: small ? 26 : 30, height: small ? 5 : 6, borderRadius: 3, background: C.ambar }} />
+      <div style={{ width: 0, height: 0, borderLeft: `${small ? 13 : 15}px solid ${C.ambar}`, borderTop: `${small ? 8 : 10}px solid transparent`, borderBottom: `${small ? 8 : 10}px solid transparent` }} />
+    </div>
+  );
+}
+
+function eyebrow(text: string, color = C.tenue, size = 18): ReactElement {
+  return <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: size, lineHeight: 1, letterSpacing: 3, color }}>{text}</div>;
+}
+
+// El recorrido: nombres en orden de registro con flechas, cortado a 5 + "+N más".
+function recorridoBlock(names: string[], size: number, line: number, small: boolean, marginTop: number): ReactElement {
+  const { names: shown, extra } = recorrido(names);
+  const nodes: ReactNode[] = [];
+  shown.forEach((n, i) => {
+    if (i > 0) nodes.push(arrow(small, `a${i}`));
+    nodes.push(
+      <div key={`n${i}`} style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: size, lineHeight: line, letterSpacing: -2, color: C.crema, flex: "none" }}>{n}</div>,
+    );
+  });
+  if (extra > 0) {
+    nodes.push(
+      <div key="extra" style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: small ? 20 : 24, fontFamily: DISP, fontWeight: 800, fontSize: Math.round(size * 0.6), color: C.ambar }}>{`+${extra} más`}</div>,
+    );
+  }
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center", marginTop }}>
+      {eyebrow("EL RECORRIDO")}
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", marginTop: small ? 20 : 26 }}>{nodes}</div>
+    </div>
+  );
+}
+
+// Banda de highlight (máximo una): primera vez → mejor de la noche.
+function highlightBand(
+  h: { kind: "first"; name: string } | { kind: "best"; name: string; rating: number },
+  compact: boolean,
+): ReactElement {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: h.kind === "best" ? "space-between" : "flex-start", marginTop: compact ? 26 : 34, background: C.barraAlta, border: `1px solid ${C.borde}`, borderRadius: 20, padding: compact ? "20px 26px" : "24px 30px", flex: "none" }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {eyebrow(h.kind === "first" ? "PRIMERA VEZ" : "LA MEJOR DE LA NOCHE")}
+        <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: h.kind === "best" ? 34 : 40, color: C.espuma, marginTop: 10 }}>{h.name}</div>
+      </div>
+      {h.kind === "best" && glasses(h.rating)}
+    </div>
+  );
+}
+
+function metric(value: string, label: string, amber: boolean, big: boolean): ReactElement {
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: big ? 50 : 46, lineHeight: 1, letterSpacing: -1, color: amber ? C.ambar : C.crema }}>{value}</div>
+      <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: big ? 26 : 24, color: C.tenue, marginTop: 12 }}>{label}</div>
+    </div>
+  );
+}
+
+/** Cuerpo de la tarjeta (1080 de ancho), común a 4:5 y story. */
+function cardBody(d: ShareData, story: boolean): ReactElement {
+  const single = d.single;
+  const heroRating = single ? d.drinks[0]?.rating ?? null : null;
+  const poor = single && heroRating == null; // 3e: héroe grande con eyebrow, parche debajo
+  const companions = companionsLabel(d.companions);
+
+  // Highlight: solo multi-bebida (en single, el héroe ES el highlight). Máximo uno.
+  const highlight = single
+    ? null
+    : d.firstTime
+      ? ({ kind: "first", name: d.firstTime } as const)
+      : d.best
+        ? ({ kind: "best", name: d.best.name, rating: d.best.rating } as const)
+        : null;
+
+  const recSize = story ? 68 : d.photoUrl ? 52 : highlight ? 68 : 72;
+  const recLine = story ? 1.3 : d.photoUrl ? 1.16 : 1.14;
+  const smallArrow = !!d.photoUrl && !story;
+
+  const parche = (size: number, radius: number, overlap: number, mt: number) => (
+    <div style={{ display: "flex", alignItems: "center", marginTop: mt, flex: "none" }}>
+      {avatarStack(d.avatars, size, radius, overlap)}
+      {companions ? <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: size >= 72 ? 32 : 30, color: C.tenue, marginLeft: size >= 72 ? 24 : 22 }}>{`con ${companions}`}</div> : null}
+    </div>
+  );
+
+  // Métricas: duración (condicional) · total · salida #N — mismo peso.
+  const cols: ReactNode[] = [];
+  if (d.duration) cols.push(metric(d.duration.value, d.duration.window, false, story));
+  cols.push(metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", false, story));
+  cols.push(metric(`#${d.outing}`, "salida del parche", true, story));
 
   return (
-    <div style={{ width: 1080, height: 1350, display: "flex", flexDirection: "column", background: C.noche, padding: 64, position: "relative" }}>
+    <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: C.noche, padding: story ? "200px 64px 240px" : 64 }}>
       {/* Marca */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 40, letterSpacing: -1, color: C.espuma }}>FriaDay</div>
-        <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 20, letterSpacing: 3, color: C.marca }}>SOLO POR INVITACIÓN</div>
+        <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 40, lineHeight: 1, letterSpacing: -1, color: C.espuma }}>FriaDay</div>
+        {eyebrow("PRIVADO · POR INVITACIÓN", C.marca, 20)}
       </div>
 
-      {/* Título: lugar + fecha + compañía */}
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 40 }}>
-        <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 84, lineHeight: 1.02, letterSpacing: -2, color: C.crema }}>
+      {/* Título: lugar + fecha */}
+      <div style={{ display: "flex", flexDirection: "column", marginTop: poor ? 52 : 44 }}>
+        <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: poor ? 92 : 84, lineHeight: 1.02, letterSpacing: -2, color: C.crema }}>
           {d.place || `Salida de ${d.ownerName}`}
         </div>
-        <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 30, color: C.tenue, marginTop: 16 }}>
-          {d.dateLabel}{companions ? `  ·  con ${companions}` : ""}
-        </div>
+        <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: poor ? 32 : 30, color: C.tenue, marginTop: 16 }}>{d.dateLabel}</div>
       </div>
 
-      {/* Contenido central: foto (1j) / héroe de bebida (1k) / lista (1i) */}
-      <div style={{ display: "flex", flexDirection: "column", marginTop: 36, flexGrow: 1 }}>
-        {d.photoUrl ? (
-          <div style={{ display: "flex", flexDirection: "column", borderRadius: 28, overflow: "hidden", flexGrow: 1, border: `1px solid ${C.borde}` }}>
+      {/* Parche arriba (salvo el caso pobre, que lo baja tras el héroe) */}
+      {!poor && parche(64, 20, 18, d.photoUrl ? 28 : 30)}
+
+      {/* Cuerpo: foto + recorrido (3a) · héroe de bebida (3c/3e) · recorrido (3b/3d) */}
+      {d.photoUrl && !single ? (
+        // Un solo hijo con columna explícita: satori NO aplana los Fragments (los
+        // acomodaría en fila y se saldrían del lienzo).
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+          <div style={{ display: "flex", flexDirection: "column", borderRadius: 28, overflow: "hidden", border: `1px solid ${C.borde}`, marginTop: 30, flex: "none" }}>
             {foam(952)}
-            <img src={d.photoUrl} width={952} height={640} style={{ width: 952, height: 640, objectFit: "cover", flexGrow: 1 }} alt="" />
+            <img src={d.photoUrl} width={952} height={story ? 620 : 330} alt="" style={{ width: 952, height: story ? 620 : 330, objectFit: "cover" }} />
           </div>
-        ) : d.single ? (
-          <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flexGrow: 1, background: "linear-gradient(180deg,#4A3413,#2A1E0E)", borderRadius: 28, padding: 48 }}>
-            {foam(856)}
-            <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 68, lineHeight: 1.05, color: C.espuma, marginTop: 24 }}>{d.drinks[0].name}</div>
-            <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 28, color: "#C9A874", marginTop: 12 }}>{d.drinks[0].meta}</div>
-            {d.drinks[0].rating != null && <div style={{ display: "flex", marginTop: 28 }}>{glasses(d.drinks[0].rating, true)}</div>}
+          {recorridoBlock(d.drinks.map((dr) => dr.name), recSize, recLine, smallArrow, 30)}
+        </div>
+      ) : single ? (
+        poor ? (
+          <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", flexGrow: 1, background: HERO_GRAD, borderRadius: 28, overflow: "hidden", marginTop: 40 }}>
+            {foam(952)}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flexGrow: 1, padding: 56 }}>
+              {eyebrow("LA DE ESA NOCHE", C.heroMeta, 20)}
+              <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 128, lineHeight: 1, letterSpacing: -4, color: C.espuma, marginTop: 22 }}>{d.drinks[0]?.name}</div>
+              {d.drinks[0]?.meta ? <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 32, color: C.heroMeta, marginTop: 22 }}>{d.drinks[0].meta}</div> : null}
+            </div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", background: C.barra, borderRadius: 28, border: `1px solid ${C.borde}`, padding: 36, flexGrow: 1 }}>
-            {d.drinks.slice(0, 4).map((dr, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: i === 0 ? 0 : 22, marginTop: i === 0 ? 0 : 22, borderTop: i === 0 ? "0px solid transparent" : `1px solid ${C.borde}` }}>
-                <div style={{ display: "flex", flexDirection: "column", flexShrink: 1 }}>
-                  <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 34, color: C.crema }}>{dr.name}</div>
-                  <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 24, color: C.tenue, marginTop: 4 }}>{dr.meta}</div>
-                </div>
-                {dr.rating != null ? glasses(dr.rating) : <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 22, color: C.tenue2 }}>sin calificar</div>}
-              </div>
-            ))}
-            {d.drinks.length > 4 && (
-              <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 26, color: C.ambar, marginTop: 22 }}>{`+${d.drinks.length - 4} más`}</div>
-            )}
+          <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, background: HERO_GRAD, borderRadius: 28, overflow: "hidden", marginTop: 34 }}>
+            {foam(952)}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", flexGrow: 1, padding: 48 }}>
+              <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 96, lineHeight: 1.02, letterSpacing: -3, color: C.espuma }}>{d.drinks[0]?.name}</div>
+              {d.drinks[0]?.meta ? <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 28, color: C.heroMeta, marginTop: 20 }}>{d.drinks[0].meta}</div> : null}
+              {heroRating != null ? <div style={{ display: "flex", marginTop: 32 }}>{glasses(heroRating)}</div> : null}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* Mejor de la noche (si hay rating y no es single) */}
-      {showBest && d.best && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 28, background: C.barraAlta, borderRadius: 20, padding: "22px 28px", border: `1px solid ${C.borde}` }}>
-          <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 18, letterSpacing: 3, color: C.tenue }}>LA MEJOR DE LA NOCHE</div>
-            <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 40, color: C.espuma, marginTop: 8 }}>{d.best.name}</div>
-          </div>
-          {glasses(d.best.rating, true)}
-        </div>
+        )
+      ) : (
+        recorridoBlock(d.drinks.map((dr) => dr.name), recSize, recLine, smallArrow, 40)
       )}
 
-      {/* Métricas: el total comparte protagonismo (variedad + parche) */}
-      <div style={{ display: "flex", alignItems: "flex-end", marginTop: 32 }}>
-        <div style={{ display: "flex", marginRight: 72 }}>{stat(d.total, d.total === 1 ? "bebida" : "bebidas")}</div>
-        <div style={{ display: "flex", marginRight: 72 }}>{stat(d.distinct, d.distinct === 1 ? "distinta" : "distintas")}</div>
-        <div style={{ display: "flex" }}>{stat(d.parche, "en el parche")}</div>
+      {/* Parche debajo del héroe (caso pobre) */}
+      {poor && parche(72, 22, 20, 40)}
+
+      {/* Highlight (máximo uno; en foto va compacto) */}
+      {highlight && highlightBand(highlight, !!d.photoUrl)}
+
+      {/* Métricas */}
+      <div style={{ display: "flex", alignItems: "flex-end", marginTop: story ? 40 : 32, flex: "none" }}>
+        {cols.map((c, i) => (
+          <div key={i} style={{ display: "flex", marginRight: i < cols.length - 1 ? (story ? 56 : 52) : 0 }}>{c}</div>
+        ))}
       </div>
     </div>
   );
 }
 
 export function renderShareCard(d: ShareData, format: "post" | "story"): ReactElement {
-  if (format === "story") {
-    return (
-      <div style={{ width: 1080, height: 1920, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: C.noche }}>
-        {cardBody(d)}
-      </div>
-    );
-  }
-  return cardBody(d);
+  return cardBody(d, format === "story");
 }

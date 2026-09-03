@@ -24,3 +24,33 @@ describe("todayInputValue — zona horaria (Bogotá UTC−5)", () => {
     expect(todayInputValue()).toBe("2026-08-27");
   });
 });
+
+import { formatDayLong, formatTimeWindow, companionsLabel } from "./format";
+
+describe("S.2 · fecha larga de la share-card", () => {
+  it("'Viernes 28 de agosto' (día de calendario UTC, sin año)", () => {
+    // 2026-08-28 es viernes.
+    expect(formatDayLong(new Date("2026-08-28T00:00:00.000Z"))).toBe("Viernes 28 de agosto");
+  });
+});
+
+describe("S.2 · ventana horaria (hora de Colombia)", () => {
+  it("'8:30 pm – 1:15 am' desde los createdAt reales", () => {
+    const start = new Date("2026-08-29T01:30:00Z"); // 8:30 pm Bogotá
+    const end = new Date("2026-08-29T06:15:00Z"); // 1:15 am Bogotá
+    expect(formatTimeWindow(start, end)).toBe("8:30 pm – 1:15 am");
+  });
+});
+
+describe("S.2 · el parche (línea 'con …')", () => {
+  it("hasta 3 nombres: lista natural completa", () => {
+    expect(companionsLabel(["Caro", "Edgar", "Vale"])).toBe("Caro, Edgar y Vale");
+    expect(companionsLabel(["Caro"])).toBe("Caro");
+  });
+  it("más de 3: dos nombres y el resto resumido", () => {
+    expect(companionsLabel(["Vale", "Edgar", "Ana", "Beto"])).toBe("Vale, Edgar y 2 más");
+  });
+  it("solo: vacío", () => {
+    expect(companionsLabel([])).toBe("");
+  });
+});
