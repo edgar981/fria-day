@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { upload } from "@vercel/blob/client";
 import { compressImage, ImageError } from "@/lib/image";
@@ -34,9 +34,47 @@ export function SessionPhotos({
   const [error, setError] = useState<string | null>(null);
   const [removing, setRemoving] = useState<Set<string>>(new Set());
   const [full, setFull] = useState<number | null>(null); // índice abierto a pantalla completa
+  // I-2.1: borrar = deshacer, no diálogo. La foto se oculta al instante y el borrado
+  // REAL (fila + blob) se DIFIERE hasta que expire la ventana (10s). Así deshacer
+  // restaura sin re-subir nada, y no hay huérfanos: fila y blob se van juntos al
+  // expirar, o no se van. `pending` = la foto en ventana de deshacer (una a la vez).
+  const [pending, setPending] = useState<string | null>(null);
+  const pendingRef = useRef<string | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const shown = photos.filter((p) => !removing.has(p.id));
   const atLimit = shown.length >= MAX_SESSION_PHOTOS;
+
+  function setPendingBoth(id: string | null) {
+    pendingRef.current = id;
+    setPending(id);
+  }
+
+  // Ejecuta el borrado real (fila + blob) al expirar la ventana.
+  function commit(id: string) {
+    void removeSessionPhoto(id).then((res) => {
+      if (!res.ok) {
+        setRemoving((s) => {
+          const n = new Set(s);
+          n.delete(id);
+          return n;
+        });
+        setError(res.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  // Al desmontar (cerrar/recargar la pestaña): si queda una pendiente, cométela ya —
+  // no dejar la foto en un limbo (oculta pero no borrada). En navegación SPA el timer
+  // sigue vivo, así que el borrado se confirma igual a los 10s.
+  useEffect(() => {
+    return () => {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      if (pendingRef.current) void removeSessionPhoto(pendingRef.current);
+    };
+  }, []);
 
   async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -61,20 +99,35 @@ export function SessionPhotos({
     }
   }
 
-  async function remove(id: string) {
-    setRemoving((s) => new Set(s).add(id));
+  function remove(id: string) {
     if (full != null) setFull(null);
-    const res = await removeSessionPhoto(id);
-    if (!res.ok) {
-      setRemoving((s) => {
-        const n = new Set(s);
-        n.delete(id);
-        return n;
-      });
-      setError(res.error);
-    } else {
-      router.refresh();
+    // Una sola ranura de deshacer: si había otra pendiente, cométela ya.
+    if (pendingRef.current && pendingRef.current !== id) {
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      commit(pendingRef.current);
     }
+    setError(null);
+    setRemoving((s) => new Set(s).add(id)); // oculta al instante (optimista)
+    setPendingBoth(id);
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    // 10s (más que los 8 del check-in: una foto no se puede rehacer si ya no estás ahí).
+    undoTimer.current = setTimeout(() => {
+      setPendingBoth(null);
+      commit(id);
+    }, 10000);
+  }
+
+  function undo() {
+    const id = pendingRef.current;
+    if (!id) return;
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    setPendingBoth(null);
+    // Restaura en su posición: nunca se borró nada, solo estaba oculta.
+    setRemoving((s) => {
+      const n = new Set(s);
+      n.delete(id);
+      return n;
+    });
   }
 
   if (shown.length === 0 && !isOwner) return null;
@@ -146,6 +199,17 @@ export function SessionPhotos({
       )}
 
       {error && <p role="alert" style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: "9px 0 0" }}>{error}</p>}
+
+      {/* Aviso deshacer (I-2.1): mismo patrón que quitar un check-in, pero 10s (una foto
+          no se puede rehacer). El blob no se toca hasta que este aviso expire. */}
+      {pending && (
+        <div style={{ position: "fixed", left: 0, right: 0, bottom: "calc(env(safe-area-inset-bottom,0px) + 18px)", display: "flex", justifyContent: "center", zIndex: 95, pointerEvents: "none" }}>
+          <div style={{ pointerEvents: "auto", display: "flex", alignItems: "center", gap: 14, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "12px 16px", boxShadow: "0 12px 30px rgba(0,0,0,.5)", maxWidth: 360 }}>
+            <span style={{ font: "500 14px var(--font-sans)", color: "var(--color-crema)" }}>Foto eliminada</span>
+            <button type="button" onClick={undo} style={{ font: "700 14px var(--font-sans)", color: "var(--color-ambar)", background: "none", border: "none", cursor: "pointer" }}>Deshacer</button>
+          </div>
+        </div>
+      )}
 
       {full != null && shown[full] && (
         <Fullscreen

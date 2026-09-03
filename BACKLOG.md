@@ -194,6 +194,15 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   pantalla completa. La miniatura de 46px de las filas de bebida desapareció. La tarjeta
   del feed muestra la primera foto con indicador "1/N".
 
+## Rediseño de la pantalla de detalle de salida — pendiente de DISEÑO
+
+- **Qué:** la pantalla de detalle creció y hoy es la más densa de la app: header con
+  dueño y fecha, chips de compañía, carrusel de fotos, lista de bebidas con stepper y
+  rating editable, total con desglose, notas, reacciones con nombres, y las acciones del
+  dueño. Empezó como una lista simple.
+- **Disparador:** una sesión de diseño **después de cerrar I-3 (comentarios)**, que le
+  agrega otra sección más. Sin disparador de tiempo: depende de que Edgar la agende.
+
 ## Limpieza de `CheckIn.photoUrl` (columna sin uso tras I-2)
 
 - **Qué:** I-2 migró cada `CheckIn.photoUrl` a `SessionPhoto` pero **NO borró la columna**
