@@ -42,7 +42,11 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
         return;
       }
       const blob = await res.blob();
-      const file = new File([blob], `friaday-${sessionId}.png`, { type: "image/png" });
+      // Nombre legible que pone la ruta en Content-Disposition (S.3 §2): es lo que ve
+      // quien recibe el archivo. Si faltara, un respaldo con el id.
+      const cd = res.headers.get("content-disposition");
+      const name = cd?.match(/filename="?([^";]+)"?/i)?.[1] ?? `friaday-${sessionId}.png`;
+      const file = new File([blob], name, { type: "image/png" });
       const canShareFiles = typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] });
       if (canShareFiles) {
         await navigator.share({ files: [file] });

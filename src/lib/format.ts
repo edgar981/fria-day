@@ -196,3 +196,26 @@ export function companionsLabel(names: string[]): string {
   if (names.length <= 3) return naturalList(names);
   return `${names.slice(0, 2).join(", ")} y ${names.length - 2} más`;
 }
+
+// Slug ASCII: sin acentos, minúsculas, separadores → "-", sin guiones colgantes.
+function slugify(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
+const monthShortFmt = new Intl.DateTimeFormat("es-CO", { month: "short", timeZone: "UTC" });
+
+/**
+ * Nombre de archivo legible del share-card (S.3 §2): lo primero que ve quien recibe la
+ * imagen. "friaday-bar-de-la-85-26-ago.png" (lugar + fecha) o "friaday-26-ago.png" sin
+ * lugar. Día UTC (como el resto de fechas de sesión).
+ */
+export function shareFileName(place: string | null | undefined, date: Date): string {
+  const dateSlug = `${date.getUTCDate()}-${slugify(monthShortFmt.format(date))}`;
+  const placeSlug = place ? slugify(place) : "";
+  return `friaday-${[placeSlug, dateSlug].filter(Boolean).join("-")}.png`;
+}

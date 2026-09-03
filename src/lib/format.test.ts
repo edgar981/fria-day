@@ -54,3 +54,18 @@ describe("S.2 · el parche (línea 'con …')", () => {
     expect(companionsLabel([])).toBe("");
   });
 });
+
+import { shareFileName } from "./format";
+
+describe("S.3 · nombre de archivo legible del share-card", () => {
+  const d = new Date("2026-08-26T00:00:00.000Z");
+  it("lugar + fecha en slug", () => {
+    expect(shareFileName("Bar de la 85", d)).toBe("friaday-bar-de-la-85-26-ago.png");
+  });
+  it("sin lugar → solo fecha", () => {
+    expect(shareFileName(null, d)).toBe("friaday-26-ago.png");
+  });
+  it("acentos y símbolos se normalizan", () => {
+    expect(shareFileName("Andrés Carne de Res", d)).toBe("friaday-andres-carne-de-res-26-ago.png");
+  });
+});

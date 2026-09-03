@@ -58,7 +58,10 @@ const CATALOG: CatalogItem[] = [
   { name: "Margarita", brewery: null, style: null, abv: null, kind: "COCTEL" },
 ];
 
-type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null };
+// `at` (S.3 §1): hora Bogotá del check-in [hora, minuto], hora ≥ 24 = pasada la
+// medianoche. Presente → se fija createdAt para que el span dé una duración real;
+// ausente → createdAt default (now) → span ~0, la duración se OMITE.
+type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null; at?: [number, number] };
 type React = { by: string; emoji: string }; // by = key de USERS o de EXTRA_USERS
 type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[] };
 
@@ -75,10 +78,13 @@ type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserK
 const SESSIONS: SessionSpec[] = [
   {
     owner: "ana", daysAgo: 7, place: "Bar de la 85", tags: ["beto", "caro"],
+    // Check-ins repartidos en la noche (S.3 §1): 8:30pm → 11:00pm → 1:15am → duración
+    // "4h 45m" (ventana 8:30 pm – 1:15 am). La única salida con duración real; el resto
+    // se cargan en lote (span ~0) → ejercitan el caso "duración omitida sin hueco".
     drinks: [
-      { beer: "Club Colombia Dorada", fmt: "BOTELLA", qty: 3, rating: 5 }, // qty > 1 (stepper)
-      { beer: "Corona Extra", fmt: "LATA", qty: 1, rating: 4 },
-      { beer: "Mojito", fmt: "COPA", qty: 1, rating: 5 }, // cóctel con rating
+      { beer: "Club Colombia Dorada", fmt: "BOTELLA", qty: 3, rating: 5, at: [20, 30] }, // qty > 1 (stepper)
+      { beer: "Corona Extra", fmt: "LATA", qty: 1, rating: 4, at: [23, 0] },
+      { beer: "Mojito", fmt: "COPA", qty: 1, rating: 5, at: [25, 15] }, // cóctel con rating; 1:15am
     ],
     reactions: [
       { by: "beto", emoji: "🍻" }, { by: "gabo", emoji: "🍻" }, // 🍻 x2
@@ -196,7 +202,16 @@ async function main() {
         date: dayUTC(s.daysAgo),
         placeName: s.place,
         tags: { create: s.tags.map((t) => ({ taggedUserId: uid[t] })) },
-        checkIns: { create: s.drinks.map((d) => ({ beerId: beerId[d.beer], format: d.fmt, quantity: d.qty, rating: d.rating })) },
+        checkIns: {
+          create: s.drinks.map((d) => ({
+            beerId: beerId[d.beer],
+            format: d.fmt,
+            quantity: d.qty,
+            rating: d.rating,
+            // Bogotá = UTC−5: UTC = medianoche del día + (hora + 5) — 'at' vacío deja el default.
+            createdAt: d.at ? new Date(dayUTC(s.daysAgo).getTime() + ((d.at[0] + 5) * 60 + d.at[1]) * 60_000) : undefined,
+          })),
+        },
       },
       select: { id: true },
     });

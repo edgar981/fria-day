@@ -10,7 +10,7 @@ import {
   firstTimeDrink,
   outingNumber,
 } from "@/lib/domain";
-import { FORMAT_LABEL, formatAbv, formatDayLong, formatTimeWindow, joinMeta } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, formatDayLong, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
 import { renderShareCard, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
 import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
@@ -124,7 +124,7 @@ export async function GET(
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
   // 500). Embebidas funciona igual en local, preview y prod.
-  return new ImageResponse(renderShareCard(data, format), {
+  const img = new ImageResponse(renderShareCard(data, format), {
     ...DIM[format],
     fonts: [
       { name: "Syne", data: SYNE_800, weight: 800, style: "normal" },
@@ -132,4 +132,11 @@ export async function GET(
       { name: "Outfit", data: OUTFIT_700, weight: 700, style: "normal" },
     ],
   });
+
+  // Nombre de archivo legible (S.3 §2). Se envuelve la respuesta para conservar el
+  // Content-Type/Cache-Control que pone ImageResponse y solo AÑADIR Content-Disposition;
+  // el cliente lo lee para nombrar el File que comparte/descarga.
+  const headers = new Headers(img.headers);
+  headers.set("Content-Disposition", `inline; filename="${shareFileName(session.placeName, session.date)}"`);
+  return new Response(img.body, { status: img.status, statusText: img.statusText, headers });
 }
