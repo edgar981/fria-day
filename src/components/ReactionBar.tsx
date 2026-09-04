@@ -87,6 +87,7 @@ export function ReactionBar({
   viewer,
   commentCount,
   feed,
+  social,
 }: {
   sessionId: string;
   reactors: Reactor[];
@@ -94,6 +95,10 @@ export function ReactionBar({
   viewer: Viewer;
   commentCount?: number; // feed: muestra el conteo; detalle: se omite (la lista ya lo tiene)
   feed?: boolean; // en el feed, Comentar abre una hoja; en el detalle, enfoca el campo
+  // DS · zona "El brindis" del detalle: racimo + avatares + nombres + Brindar EN LÍNEA
+  // (píldora), sin la barra de Comentar/Compartir (los comentarios son su propia lista y
+  // Compartir vive en el header). Misma lógica de gestos/optimista; solo cambia el layout.
+  social?: boolean;
 }) {
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -222,94 +227,100 @@ export function ReactionBar({
           ? `Tú y ${total - 1} más`
           : `${lead.name} y ${total - 1} más`;
 
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-      {/* --- Display 1a: racimo de emojis (en círculos) + avatares + texto (sin tally) --- */}
-      {total === 0 ? (
-        <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
-      ) : (
-        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
-          {/* Racimo: hasta 4 emojis MÁS USADOS, cada uno en un círculo superpuesto (1a).
-              SOLO display (no son blancos de toque; el único interactivo es Brindar). */}
-          <span style={{ display: "inline-flex", alignItems: "center" }}>
-            {clusterEmojis.map((e, i) => (
-              <span
-                key={e}
-                style={{
-                  marginLeft: i ? -6 : 0,
-                  width: 26,
-                  height: 26,
-                  borderRadius: 999,
-                  background: "var(--color-barra-alta)",
-                  boxShadow: "0 0 0 2px var(--color-barra)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  position: "relative",
-                  zIndex: 10 - i, // el más usado, encima
-                }}
-              >
-                <ReactionGlyph emoji={e} size={18} />
-              </span>
-            ))}
-          </span>
-          {/* Avatares: el propio SIEMPRE primero (anillo ámbar) + los más recientes (I-1.5). */}
-          <span style={{ display: "inline-flex", alignItems: "center" }}>
-            {pile.visible.map((r, i) => (
-              <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
-            ))}
-          </span>
-          <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-crema)" }}>{displayText}</span>
-        </div>
-      )}
-
-      {/* --- Barra de acciones 1a: UNA línea, tres acciones iguales (Brindar · Comentar
-          · Compartir), separadas del pie por un borde superior. --- */}
-      <div style={{ display: "flex", gap: 4, borderTop: "1px solid #241A12", paddingTop: 8 }}>
-        <button
-          ref={btnRef}
-          type="button"
-          aria-label={reacted ? `Brindaste ${showEmoji}. Tocar para quitar; mantener para elegir otra` : "Brindar; mantener para elegir"}
-          aria-pressed={reacted}
-          onTouchStart={onTouchStart}
-          onTouchMove={onTouchMove}
-          onTouchEnd={onTouchEnd}
-          onTouchCancel={onTouchCancel}
-          onClick={onClick}
-          onContextMenu={(e) => e.preventDefault()}
+  // Racimo (feed: en círculos; social/detalle: glifos en fila, sin círculos — tablero 1a).
+  const clusterCircles = (
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
+      {clusterEmojis.map((e, i) => (
+        <span
+          key={e}
           style={{
-            ...actionBtn,
-            touchAction: "pan-y",
-            color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
-            fontWeight: reacted ? 700 : 600,
-            background: reacted ? "rgba(242,160,22,.12)" : "transparent",
+            marginLeft: i ? -6 : 0,
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            background: "var(--color-barra-alta)",
+            boxShadow: "0 0 0 2px var(--color-barra)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            position: "relative",
+            zIndex: 10 - i, // el más usado, encima
           }}
         >
-          <ReactionGlyph emoji={showEmoji} size={20} animate={pulse > 0} animKey={pulse} />
-          {reacted ? "Brindaste" : "Brindar"}
-        </button>
-        <button type="button" onClick={onComment} aria-label="Comentar" style={actionBtn}>
-          <Icon name="comment" size={17} />
-          {commentCount && commentCount > 0 ? commentCount : "Comentar"}
-        </button>
-        <ShareButton sessionId={sessionId} />
-      </div>
+          <ReactionGlyph emoji={e} size={18} />
+        </span>
+      ))}
+    </span>
+  );
+  const clusterPlain = (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, flex: "none" }}>
+      {clusterEmojis.map((e) => (
+        <ReactionGlyph key={e} emoji={e} size={20} />
+      ))}
+    </span>
+  );
+  // Avatares: el propio SIEMPRE primero (anillo ámbar) + los más recientes (I-1.5).
+  const avatars = (
+    <span style={{ display: "inline-flex", alignItems: "center" }}>
+      {pile.visible.map((r, i) => (
+        <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
+      ))}
+    </span>
+  );
 
-      {/* Hoja de comentarios del feed (I-3.1): comentar sin salir del feed. */}
-      {feed && (
-        <CommentSheet
-          open={sheetOpen}
-          onClose={() => setSheetOpen(false)}
-          sessionId={sessionId}
-          viewer={viewer}
-          draft={draft}
-          onDraftChange={setDraft}
-        />
-      )}
+  // El botón Brindar: MISMA lógica de gestos en ambos layouts; solo cambia el estilo.
+  // feed → acción de la barra (flex:1, transparente); social → píldora en línea (tablero).
+  const brindarBtn = (
+    <button
+      ref={btnRef}
+      type="button"
+      aria-label={reacted ? `Brindaste ${showEmoji}. Tocar para quitar; mantener para elegir otra` : "Brindar; mantener para elegir"}
+      aria-pressed={reacted}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
+      onClick={onClick}
+      onContextMenu={(e) => e.preventDefault()}
+      style={
+        social
+          ? {
+              touchAction: "pan-y",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 7,
+              flex: "none",
+              height: 40,
+              padding: "0 16px",
+              borderRadius: 13,
+              cursor: "pointer",
+              font: "700 14px var(--font-sans)",
+              border: reacted ? "none" : "1px solid #4A3A28",
+              background: reacted ? "var(--color-ambar)" : "#2E2217",
+              color: reacted ? "#241609" : "var(--color-ambar)",
+              WebkitTouchCallout: "none",
+              WebkitUserSelect: "none",
+              userSelect: "none",
+            }
+          : {
+              ...actionBtn,
+              touchAction: "pan-y",
+              color: reacted ? "var(--color-ambar)" : "var(--color-tenue)",
+              fontWeight: reacted ? 700 : 600,
+              background: reacted ? "rgba(242,160,22,.12)" : "transparent",
+            }
+      }
+    >
+      <ReactionGlyph emoji={showEmoji} size={20} animate={pulse > 0} animKey={pulse} />
+      {reacted ? "Brindaste" : "Brindar"}
+    </button>
+  );
 
-      {/* Selector (hold): en portal para escapar el overflow:hidden de la tarjeta. */}
-      {mounted && selector &&
-        createPortal(
+  // Selector (hold): en portal para escapar el overflow:hidden de la tarjeta/zona social.
+  const selectorPortal =
+    mounted && selector
+      ? createPortal(
           <div style={{ position: "fixed", inset: 0, zIndex: 90 }}>
             <div
               onClick={(e) => {
@@ -374,7 +385,69 @@ export function ReactionBar({
             </div>
           </div>,
           document.body,
+        )
+      : null;
+
+  // --- Layout SOCIAL (DS · zona "El brindis" del detalle): una fila, Brindar en línea. ---
+  if (social) {
+    return (
+      <div>
+        {total === 0 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            <span style={{ flex: 1, minWidth: 0, font: "500 13.5px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado todavía</span>
+            {brindarBtn}
+          </div>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+            {clusterPlain}
+            {avatars}
+            <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>{displayText}</span>
+            {brindarBtn}
+          </div>
         )}
+        {selectorPortal}
+      </div>
+    );
+  }
+
+  // --- Layout del feed (I-1.2 / 1a): display + barra de tres acciones. ---
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+      {/* --- Display 1a: racimo de emojis (en círculos) + avatares + texto (sin tally) --- */}
+      {total === 0 ? (
+        <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
+      ) : (
+        <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+          {clusterCircles}
+          {avatars}
+          <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-crema)" }}>{displayText}</span>
+        </div>
+      )}
+
+      {/* --- Barra de acciones 1a: UNA línea, tres acciones iguales (Brindar · Comentar
+          · Compartir), separadas del pie por un borde superior. --- */}
+      <div style={{ display: "flex", gap: 4, borderTop: "1px solid #241A12", paddingTop: 8 }}>
+        {brindarBtn}
+        <button type="button" onClick={onComment} aria-label="Comentar" style={actionBtn}>
+          <Icon name="comment" size={17} />
+          {commentCount && commentCount > 0 ? commentCount : "Comentar"}
+        </button>
+        <ShareButton sessionId={sessionId} />
+      </div>
+
+      {/* Hoja de comentarios del feed (I-3.1): comentar sin salir del feed. */}
+      {feed && (
+        <CommentSheet
+          open={sheetOpen}
+          onClose={() => setSheetOpen(false)}
+          sessionId={sessionId}
+          viewer={viewer}
+          draft={draft}
+          onDraftChange={setDraft}
+        />
+      )}
+
+      {selectorPortal}
     </div>
   );
 }

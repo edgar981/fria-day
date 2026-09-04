@@ -229,7 +229,7 @@ export function SessionPhotos({
  * abajo para cerrar (misma física de la hoja de bebida, A.4: umbral de distancia o
  * flick de velocidad). Tocar el fondo también cierra.
  */
-function Fullscreen({
+export function Fullscreen({
   photos,
   start,
   isOwner,

@@ -4,13 +4,18 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteSession } from "@/app/actions/sessions";
 
-// Disparador "Borrar" (en el header) + confirmación con conteo de check-ins.
+// Disparador "Borrar" + confirmación con conteo de check-ins. `block` (DS · modo Editar):
+// fila completa centrada "Borrar la salida"; por defecto, enlace tenue para el header.
 export function DeleteSessionButton({
   sessionId,
   checkInCount,
+  label = "Borrar",
+  block = false,
 }: {
   sessionId: string;
   checkInCount: number;
+  label?: string;
+  block?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -19,8 +24,16 @@ export function DeleteSessionButton({
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} style={{ background: "none", border: "none", color: "var(--color-alerta)", font: "600 14.5px var(--font-sans)", cursor: "pointer" }}>
-        Borrar
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={
+          block
+            ? { display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: 44, background: "transparent", border: "none", color: "var(--color-alerta)", font: "600 14px var(--font-sans)", cursor: "pointer" }
+            : { background: "none", border: "none", color: "var(--color-alerta)", font: "600 14.5px var(--font-sans)", cursor: "pointer" }
+        }
+      >
+        {label}
       </button>
       {open && (
         <div style={{ position: "fixed", inset: 0, zIndex: 60 }}>

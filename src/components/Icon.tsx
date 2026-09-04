@@ -10,7 +10,9 @@ export type IconName =
   | "user"
   | "users"
   | "share"
-  | "comment";
+  | "comment"
+  | "more"
+  | "camera";
 
 // "user"/"users" (Pasada N: Perfil e Invitar) se dibujan INLINE, no en el sprite:
 // Sprite.tsx está marcado "No editar a mano" (se regenera desde Claude Design) y
@@ -47,6 +49,28 @@ const INLINE: Partial<Record<IconName, React.ReactNode>> = {
       strokeWidth="1.9"
       strokeLinejoin="round"
     />
+  ),
+  // DS: menú del dueño (tres puntos) y cámara (invitación a subir foto). El tablero los
+  // trae como placeholders; van aquí y no en Sprite.tsx (que se regenera) — mismo criterio
+  // que share/comment. La cámara con el trazo 1.9 redondeado del sistema.
+  more: (
+    <>
+      <circle cx="5.5" cy="12" r="1.7" fill="currentColor" />
+      <circle cx="12" cy="12" r="1.7" fill="currentColor" />
+      <circle cx="18.5" cy="12" r="1.7" fill="currentColor" />
+    </>
+  ),
+  camera: (
+    <>
+      <path
+        d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.3-2h6.4L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinejoin="round"
+      />
+      <circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" strokeWidth="1.9" />
+    </>
   ),
 };
 

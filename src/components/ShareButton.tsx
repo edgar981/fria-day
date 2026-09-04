@@ -15,7 +15,17 @@ import { Icon } from "@/components/Icon";
  * (lo valida también la ruta /api/share/[id]). Dentro de la tarjeta-Link del feed, los
  * botones cortan la navegación.
  */
-export function ShareButton({ sessionId }: { sessionId: string }) {
+export function ShareButton({
+  sessionId,
+  variant = "bar",
+  onAfterOpen,
+}: {
+  sessionId: string;
+  // "bar": botón de la barra de acciones (feed). "icon": píldora del header (DS, círculo).
+  // "menuItem": fila del menú del dueño (DS). La hoja de compartir es la misma en los tres.
+  variant?: "bar" | "icon" | "menuItem";
+  onAfterOpen?: () => void; // cerrar el menú del dueño al abrir la hoja
+}) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<null | "post" | "story">(null);
   const [error, setError] = useState<string | null>(null);
@@ -74,34 +84,82 @@ export function ShareButton({ sessionId }: { sessionId: string }) {
     e.stopPropagation();
     setError(null);
     setOpen(true);
+    onAfterOpen?.();
   }
 
   return (
     <>
-      <button
-        type="button"
-        aria-label="Compartir"
-        onClick={openSheet}
-        style={{
-          // Acción 1a: flex:1, transparente, sin borde (misma fila que Brindar/Comentar).
-          flex: 1,
-          minWidth: 0,
-          height: 40,
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          background: "transparent",
-          border: "none",
-          borderRadius: 12,
-          cursor: "pointer",
-          font: "600 13.5px var(--font-sans)",
-          color: "var(--color-tenue-2)",
-        }}
-      >
-        <Icon name="share" size={17} />
-        Compartir
-      </button>
+      {variant === "icon" ? (
+        // Header del detalle (DS): píldora translúcida sobre la foto, como atrás.
+        <button
+          type="button"
+          aria-label="Compartir"
+          onClick={openSheet}
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 14,
+            background: "rgba(10,7,4,.55)",
+            backdropFilter: "blur(6px)",
+            border: "1px solid rgba(251,240,213,.16)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--color-espuma)",
+            cursor: "pointer",
+            flex: "none",
+          }}
+        >
+          <Icon name="share" size={21} />
+        </button>
+      ) : variant === "menuItem" ? (
+        // Fila del menú del dueño (DS).
+        <button
+          type="button"
+          onClick={openSheet}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 11,
+            width: "100%",
+            height: 44,
+            padding: "0 14px",
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            font: "600 14.5px var(--font-sans)",
+            color: "var(--color-crema)",
+          }}
+        >
+          <Icon name="share" size={18} color="var(--color-tenue)" />
+          Compartir
+        </button>
+      ) : (
+        <button
+          type="button"
+          aria-label="Compartir"
+          onClick={openSheet}
+          style={{
+            // Acción 1a: flex:1, transparente, sin borde (misma fila que Brindar/Comentar).
+            flex: 1,
+            minWidth: 0,
+            height: 40,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 6,
+            background: "transparent",
+            border: "none",
+            borderRadius: 12,
+            cursor: "pointer",
+            font: "600 13.5px var(--font-sans)",
+            color: "var(--color-tenue-2)",
+          }}
+        >
+          <Icon name="share" size={17} />
+          Compartir
+        </button>
+      )}
 
       {mounted && open &&
         createPortal(

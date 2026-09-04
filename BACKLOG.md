@@ -224,14 +224,27 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
 - **Nota:** la lógica ya existió (canDeleteComment con `sessionOwnerId`); reintroducirla
   es volver a pasar el dueño de la salida al permiso y a la hoja/lista de comentarios.
 
-## Rediseño de la pantalla de detalle de salida — pendiente de DISEÑO
+## Rediseño de la pantalla de detalle de salida — RESUELTO en Pasada DS
 
-- **Qué:** la pantalla de detalle creció y hoy es la más densa de la app: header con
-  dueño y fecha, chips de compañía, carrusel de fotos, lista de bebidas con stepper y
-  rating editable, total con desglose, notas, reacciones con nombres, y las acciones del
-  dueño. Empezó como una lista simple.
-- **Disparador:** una sesión de diseño **después de cerrar I-3 (comentarios)**, que le
-  agrega otra sección más. Sin disparador de tiempo: depende de que Edgar la agende.
+- **Resuelto:** el detalle se rehízo según el tablero "Detalle de salida" (estados 1a–1e):
+  foto como titular que absorbe el header, resumen de dos cifras (bebidas · distintas) en
+  vez del bloque ámbar, un solo interruptor "Editar" que cambia de piel el MISMO scroll
+  (sin navegar), fila de bebidas en tres datos (rating solo si existe), y zona social con
+  fondo propio tras la costura de espuma. Solo presentación (`domain.ts` intacto).
+- **Divergencias/pendientes que dejó DS (visuales o de datos, fuera de "solo presentación"):**
+  1. **Modo Editar · fotos y campos** reutilizan `SessionPhotos` (carrusel+subir+borrar) y
+     `SessionHeaderEditor`/`SessionTagsEditor` (formulario "Guardar detalles" / "Compañía").
+     Cubren la función completa, pero **no** son la tira compacta "Subir foto / Gestionar N"
+     ni las filas "Cambiar" del tablero. Disparador: si la piel de Editar se siente
+     inconsistente con la de Lectura en uso real.
+  2. **Constancia "✓ En tu salida" y contador "N tuya, ya sumada" (1e)** son **locales a la
+     sesión** (se reinician al recargar). Persistirlos necesita una consulta nueva: cuántas
+     de las bebidas etiquetadas ya están en la salida propia del viewer ese día. Disparador:
+     cuando alguien note que al volver a la salida el "ya sumada" desapareció.
+  3. **CTA de foto en lectura ("Ponle una foto")** entra al modo Editar (donde se gestionan
+     las fotos) en vez de abrir el selector de archivo directo.
+  4. La **ruta `/sessions/[id]/edit`** quedó **sin enlaces** (el modo Editar in-page la
+     reemplaza) pero sigue viva por URL directa. Se puede retirar en una limpieza.
 
 ## Limpieza de `CheckIn.photoUrl` (columna sin uso tras I-2)
 
