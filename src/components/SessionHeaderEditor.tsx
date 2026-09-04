@@ -8,8 +8,12 @@ const labelStyle: React.CSSProperties = { display: "block", font: "500 13px var(
 
 export function SessionHeaderEditor({
   session,
+  bare = false,
 }: {
   session: { id: string; date: string; placeName: string; notes: string };
+  // DS.2: dentro del colapsable de Editar, sin tarjeta ni eyebrow propios (los pone el
+  // colapsable). Suelto (como hoy) fuera de él.
+  bare?: boolean;
 }) {
   const router = useRouter();
   const [date, setDate] = useState(session.date);
@@ -34,8 +38,11 @@ export function SessionHeaderEditor({
   }
 
   return (
-    <section className="card" style={{ padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="eyebrow">Detalles</div>
+    <section
+      className={bare ? undefined : "card"}
+      style={bare ? { display: "flex", flexDirection: "column", gap: 14 } : { padding: 16, display: "flex", flexDirection: "column", gap: 14 }}
+    >
+      {!bare && <div className="eyebrow">Detalles</div>}
       <div>
         <label style={labelStyle} htmlFor="e-date">Fecha</label>
         <input id="e-date" type="date" className="field" value={date} onChange={(e) => { setDate(e.target.value); setSaved(false); }} />

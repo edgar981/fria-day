@@ -14,6 +14,7 @@ import { SessionHeaderEditor } from "@/components/SessionHeaderEditor";
 import { SessionTagsEditor, type EditorTag } from "@/components/SessionTagsEditor";
 import { AddCheckInButton } from "@/components/AddCheckInButton";
 import { DeleteSessionButton } from "@/components/DeleteSessionButton";
+import { CollapsibleField } from "@/components/CollapsibleField";
 import { ReactionBar } from "@/components/ReactionBar";
 import { SessionComments } from "@/components/SessionComments";
 import { ShareButton } from "@/components/ShareButton";
@@ -52,6 +53,7 @@ export function SessionDetail(props: {
   placeName: string | null;
   notes: string | null;
   dateLabel: string;
+  dateShort: string;
   dateInput: string;
   compSummary: string | null;
   taggedByName: string | null;
@@ -67,12 +69,24 @@ export function SessionDetail(props: {
   autoFocusComment: boolean;
 }) {
   const {
-    sessionId, isOwner, isTagged, ownerName, ownerAvatar, viewer, placeName, notes, dateLabel, dateInput,
+    sessionId, isOwner, isTagged, ownerName, ownerAvatar, viewer, placeName, notes, dateLabel, dateShort, dateInput,
     compSummary, taggedByName, checkIns, photos, tags, reactions, comments, total, distinct, breakdownText, initialMineIds, autoFocusComment,
   } = props;
 
   const [mode, setMode] = useState<"read" | "edit">("read");
   const [menuOpen, setMenuOpen] = useState(false);
+  // DS.2: Detalles y Compañía arrancan COLAPSADAS cada vez que se entra a Editar.
+  const [detOpen, setDetOpen] = useState(false);
+  const [compOpen, setCompOpen] = useState(false);
+  function enterEdit() {
+    setDetOpen(false);
+    setCompOpen(false);
+    setMenuOpen(false);
+    setMode("edit");
+  }
+  // Resúmenes de la fila colapsada (DS.2): valor actual, no solo el título.
+  const detSummary = [placeName, dateShort].filter(Boolean).join(" · ");
+  const compRowSummary = compSummary ?? "nadie etiquetado";
   // DS.1: la constancia sale de los datos (initialMineIds del servidor). El contador
   // arranca con lo persistido; TaggedCheckInList lo actualiza al tocar/deshacer.
   const [taggedMine, setTaggedMine] = useState(initialMineIds.length);
@@ -102,9 +116,15 @@ export function SessionDetail(props: {
               la tira compacta del tablero, pero cubre la función completa). */}
           <SessionPhotos sessionId={sessionId} photos={photos} isOwner />
 
-          {/* Fecha / lugar / notas + compañía (editores existentes). */}
-          <SessionHeaderEditor session={{ id: sessionId, date: dateInput, placeName: placeName ?? "", notes: notes ?? "" }} />
-          <SessionTagsEditor sessionId={sessionId} tags={tags} />
+          {/* Fecha / lugar / notas + compañía: colapsadas por defecto, con el valor a la
+              vista (DS.2). La lista de bebidas es lo que se edita seguido; esto una vez o
+              nunca. */}
+          <CollapsibleField title="Detalles" summary={detSummary} open={detOpen} onToggle={() => setDetOpen((o) => !o)}>
+            <SessionHeaderEditor bare session={{ id: sessionId, date: dateInput, placeName: placeName ?? "", notes: notes ?? "" }} />
+          </CollapsibleField>
+          <CollapsibleField title="Compañía" summary={compRowSummary} open={compOpen} onToggle={() => setCompOpen((o) => !o)}>
+            <SessionTagsEditor bare sessionId={sessionId} tags={tags} />
+          </CollapsibleField>
 
           <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -202,7 +222,7 @@ export function SessionDetail(props: {
             <div style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-espuma)" }}>Ponle una foto</div>
             <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 2 }}>Una sola alcanza para acordarse</div>
           </div>
-          <button type="button" onClick={() => setMode("edit")} style={{ height: 38, display: "flex", alignItems: "center", padding: "0 14px", borderRadius: 12, background: "#2e2217", border: "none", font: "600 13px var(--font-sans)", color: "var(--color-ambar)", flex: "none", cursor: "pointer" }}>
+          <button type="button" onClick={enterEdit} style={{ height: 38, display: "flex", alignItems: "center", padding: "0 14px", borderRadius: 12, background: "#2e2217", border: "none", font: "600 13px var(--font-sans)", color: "var(--color-ambar)", flex: "none", cursor: "pointer" }}>
             Subir
           </button>
         </div>
@@ -255,7 +275,7 @@ export function SessionDetail(props: {
       <div style={{ padding: "0 18px 8px", display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
         <span style={EYEBROW}>{isTagged ? `Las bebidas de ${ownerName}` : "Las bebidas"}</span>
         {isOwner && (
-          <button type="button" onClick={() => setMode("edit")} style={{ height: 34, display: "flex", alignItems: "center", padding: "0 13px", border: "1px solid var(--color-borde)", borderRadius: 11, font: "600 13px var(--font-sans)", color: "var(--color-ambar)", background: "var(--color-barra)", cursor: "pointer" }}>
+          <button type="button" onClick={enterEdit} style={{ height: 34, display: "flex", alignItems: "center", padding: "0 13px", border: "1px solid var(--color-borde)", borderRadius: 11, font: "600 13px var(--font-sans)", color: "var(--color-ambar)", background: "var(--color-barra)", cursor: "pointer" }}>
             Editar
           </button>
         )}
@@ -316,7 +336,7 @@ export function SessionDetail(props: {
             <ShareButton sessionId={sessionId} variant="menuItem" onAfterOpen={() => setMenuOpen(false)} />
             <button
               type="button"
-              onClick={() => { setMenuOpen(false); setMode("edit"); }}
+              onClick={enterEdit}
               style={{ display: "flex", alignItems: "center", gap: 11, width: "100%", height: 44, padding: "0 14px", background: "transparent", border: "none", cursor: "pointer", font: "600 14.5px var(--font-sans)", color: "var(--color-crema)" }}
             >
               <Icon name="plus" size={18} color="var(--color-tenue)" />

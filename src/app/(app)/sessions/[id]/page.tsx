@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
 import { getSessionDetail, loadCircle, viewerDrinkKeysOnDate } from "@/lib/queries";
 import { SessionDetail } from "@/components/SessionDetail";
-import { formatDayLong, formatBreakdownText, toDateInputValue } from "@/lib/format";
+import { formatDayLong, formatDayShort, formatBreakdownText, toDateInputValue } from "@/lib/format";
 import { sessionTotalUnits, formatBreakdown, checkInMatchKey } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
@@ -58,6 +58,7 @@ export default async function SessionDetailPage({
       placeName={s.placeName ?? null}
       notes={s.notes ?? null}
       dateLabel={formatDayLong(s.date)}
+      dateShort={formatDayShort(s.date)}
       dateInput={toDateInputValue(s.date)}
       compSummary={compSummary}
       taggedByName={isTagged ? s.user.displayName : null}

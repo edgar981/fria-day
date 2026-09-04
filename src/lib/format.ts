@@ -224,6 +224,12 @@ function slugify(value: string): string {
 
 const monthShortFmt = new Intl.DateTimeFormat("es-CO", { month: "short", timeZone: "UTC" });
 
+/** "28 ago": día + mes corto, sin año ni día de semana (DS.2, resumen de Detalles
+ *  colapsado). Día UTC como el resto de fechas de sesión; sin el punto de "ago.". */
+export function formatDayShort(date: Date): string {
+  return `${date.getUTCDate()} ${monthShortFmt.format(date).replace(/\.$/, "")}`;
+}
+
 /**
  * Nombre de archivo legible del share-card (S.3 §2): lo primero que ve quien recibe la
  * imagen. "friaday-bar-de-la-85-26-ago.png" (lugar + fecha) o "friaday-26-ago.png" sin

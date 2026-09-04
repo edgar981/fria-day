@@ -15,9 +15,12 @@ export interface EditorTag {
 export function SessionTagsEditor({
   sessionId,
   tags,
+  bare = false,
 }: {
   sessionId: string;
   tags: EditorTag[];
+  // DS.2: dentro del colapsable de Editar, sin el título propio (lo pone el colapsable).
+  bare?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -34,7 +37,7 @@ export function SessionTagsEditor({
 
   return (
     <section style={{ display: "grid", gap: "0.6rem", opacity: pending ? 0.7 : 1 }}>
-      <h2 style={{ fontWeight: 700 }}>Compañía</h2>
+      {!bare && <h2 style={{ fontWeight: 700 }}>Compañía</h2>}
       <TagPicker
         tags={display}
         excludeUserIds={excludeUserIds}
