@@ -144,6 +144,7 @@ export function CommentSheet({
               autoFocus
               initialText={draft}
               onDraftChange={onDraftChange}
+              heading={false}
             />
           )}
         </div>

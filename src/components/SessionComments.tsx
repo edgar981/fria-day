@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addComment, deleteComment } from "@/app/actions/sessions";
 import { MAX_COMMENT_LENGTH, isValidCommentBody, canDeleteComment } from "@/lib/domain";
@@ -32,6 +32,7 @@ export function SessionComments({
   autoFocus,
   initialText,
   onDraftChange,
+  heading = true,
 }: {
   sessionId: string;
   comments: { id: string; body: string; createdAt: string | Date; user: UserRef }[];
@@ -41,6 +42,10 @@ export function SessionComments({
   // reabre (feed). El padre (que sobrevive al cierre) guarda el texto y lo re-inyecta.
   initialText?: string;
   onDraftChange?: (text: string) => void;
+  // Encabezado propio (eyebrow "Comentarios · N"). En el detalle es el título de la
+  // sección (como "Las bebidas"/"Notas"). En la hoja del feed va false: la hoja ya
+  // trae su título en Syne y este duplicaría el rótulo (ajuste de comentarios §2).
+  heading?: boolean;
 }) {
   const router = useRouter();
   const map = (cs: typeof comments): Item[] => cs.map((c) => ({ id: c.id, body: c.body, createdAt: toISO(c.createdAt), user: c.user }));
@@ -74,6 +79,25 @@ export function SessionComments({
       inputRef.current?.scrollIntoView({ block: "center" });
     }
   }, [autoFocus]);
+
+  // El campo arranca en UNA línea y crece hasta TRES; a partir de ahí, scroll interno
+  // (ajuste de comentarios §1). Arrancar compacto invita a escribir corto; poder crecer
+  // no castiga a quien escribe largo y quiere releer lo que puso.
+  const resize = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    const cs = getComputedStyle(el);
+    const lh = parseFloat(cs.lineHeight) || 22;
+    const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+    const bord = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+    const max = lh * 3 + padY + bord; // tope: 3 líneas (border-box)
+    const content = el.scrollHeight + bord; // scrollHeight no incluye borde
+    el.style.height = Math.min(content, max) + "px";
+    el.style.overflowY = content > max + 0.5 ? "auto" : "hidden";
+  }, []);
+  // Re-mide en cada cambio de texto (crece al teclear, encoge al enviar/borrar).
+  useEffect(() => { resize(); }, [text, resize]);
 
   const len = text.trim().length;
   const over = text.length > MAX_COMMENT_LENGTH;
@@ -137,7 +161,9 @@ export function SessionComments({
 
   return (
     <section>
-      <div className="eyebrow" style={{ marginBottom: 11 }}>Comentarios{items.length > 0 ? ` · ${items.length}` : ""}</div>
+      {heading && (
+        <div className="eyebrow" style={{ marginBottom: 11 }}>Comentarios{items.length > 0 ? ` · ${items.length}` : ""}</div>
+      )}
 
       {/* Lista vacía: no se muestra nada; el campo de abajo basta. */}
       {items.length > 0 && (
@@ -179,9 +205,9 @@ export function SessionComments({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Suéltalo..."
-          rows={2}
+          rows={1}
           className="field"
-          style={{ resize: "none", height: "auto", minHeight: 44, lineHeight: 1.4, padding: "10px 13px" }}
+          style={{ resize: "none", height: "auto", lineHeight: 1.4, padding: "10px 13px", overflowY: "hidden" }}
         />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <span style={{ font: "500 12px var(--font-sans)", color: over ? "var(--color-alerta)" : "var(--color-tenue-2)" }}>
