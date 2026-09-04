@@ -11,6 +11,7 @@ import {
   isValidTag,
   planCheckInAdd,
   consolidateNewCheckIns,
+  checkInMatchKey,
   dayKeyUTC,
   registrationStreak,
   sessionRegistration,
@@ -237,6 +238,25 @@ describe("validaciones", () => {
     expect(isValidTag({ taggedUserId: "u1", freeText: "x" })).toBe(false);
     expect(isValidTag({})).toBe(false);
     expect(isValidTag({ freeText: "   " })).toBe(false);
+  });
+});
+
+describe("checkInMatchKey — 'la misma bebida' (DS.1: constancia de Yo también)", () => {
+  it("misma beerId + mismo format → misma clave", () => {
+    expect(checkInMatchKey({ beerId: "b1", format: "BOTELLA" })).toBe(checkInMatchKey({ beerId: "b1", format: "BOTELLA" }));
+  });
+  it("mismo beerId, formato distinto → clave distinta", () => {
+    expect(checkInMatchKey({ beerId: "b1", format: "BOTELLA" })).not.toBe(checkInMatchKey({ beerId: "b1", format: "JARRA" }));
+  });
+  it("beerId distinto, mismo formato → clave distinta", () => {
+    expect(checkInMatchKey({ beerId: "b1", format: "BOTELLA" })).not.toBe(checkInMatchKey({ beerId: "b2", format: "BOTELLA" }));
+  });
+  it("coincide con el emparejamiento de planCheckInAdd (misma fuente de verdad)", () => {
+    const existing: ExistingCheckIn = { id: "x", beerId: "b1", format: "BOTELLA", quantity: 1, rating: null };
+    const incoming = { beerId: "b1", format: "BOTELLA" as const, quantity: 1, rating: null };
+    const mergesInPlan = planCheckInAdd([existing], incoming).action === "merge";
+    const sameKey = checkInMatchKey(existing) === checkInMatchKey(incoming);
+    expect(sameKey).toBe(mergesInPlan); // ambos dicen "es la misma bebida"
   });
 });
 

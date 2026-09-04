@@ -14,6 +14,7 @@ import {
   formatBreakdown,
   leaderboardSessions,
   groupReactions,
+  checkInMatchKey,
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
@@ -137,6 +138,23 @@ export async function getSessionDetail(id: string, viewerId: string) {
 export type SessionDetail = NonNullable<
   Awaited<ReturnType<typeof getSessionDetail>>
 >;
+
+/**
+ * Constancia PERSISTENTE de "Yo también" (DS.1): las bebidas (beerId+format) que el viewer
+ * YA tiene en su salida de esa fecha. Es la MISMA salida objetivo que usa `yoTambien` al
+ * escribir (findFirst por (userId, date) asc), y la MISMA clave de emparejamiento
+ * (`checkInMatchKey`). Así el "✓ En tu salida" refleja los datos y sobrevive a la recarga;
+ * sin esto, re-tocar tras recargar duplicaba la cantidad por consolidación (A.2).
+ */
+export async function viewerDrinkKeysOnDate(viewerId: string, date: Date): Promise<Set<string>> {
+  const target = await prisma.session.findFirst({
+    where: { userId: viewerId, date },
+    orderBy: { createdAt: "asc" },
+    select: { checkIns: { select: { beerId: true, format: true } } },
+  });
+  if (!target) return new Set();
+  return new Set(target.checkIns.map((c) => checkInMatchKey(c)));
+}
 
 /** Catálogo con ranking del grupo (promedio + nº de ratings). */
 export async function getBeersWithRanking(search?: string) {

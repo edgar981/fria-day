@@ -63,16 +63,19 @@ export function SessionDetail(props: {
   total: number;
   distinct: number;
   breakdownText: string | null;
+  initialMineIds: string[];
   autoFocusComment: boolean;
 }) {
   const {
     sessionId, isOwner, isTagged, ownerName, ownerAvatar, viewer, placeName, notes, dateLabel, dateInput,
-    compSummary, taggedByName, checkIns, photos, tags, reactions, comments, total, distinct, breakdownText, autoFocusComment,
+    compSummary, taggedByName, checkIns, photos, tags, reactions, comments, total, distinct, breakdownText, initialMineIds, autoFocusComment,
   } = props;
 
   const [mode, setMode] = useState<"read" | "edit">("read");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [taggedMine, setTaggedMine] = useState(0); // constancia local de "Yo también" (1e)
+  // DS.1: la constancia sale de los datos (initialMineIds del servidor). El contador
+  // arranca con lo persistido; TaggedCheckInList lo actualiza al tocar/deshacer.
+  const [taggedMine, setTaggedMine] = useState(initialMineIds.length);
 
   const hasPhoto = photos.length > 0;
   const title = placeName || (isOwner ? "Tu salida" : `Salida de ${ownerName}`);
@@ -265,6 +268,7 @@ export function SessionDetail(props: {
         ) : isTagged ? (
           <TaggedCheckInList
             canYoTambien
+            initialAddedIds={initialMineIds}
             onAddedCountChange={setTaggedMine}
             checkIns={checkIns.map((c) => ({ id: c.id, quantity: c.quantity, format: c.format, rating: c.rating, beerName: c.beerName, brewery: c.brewery }))}
           />

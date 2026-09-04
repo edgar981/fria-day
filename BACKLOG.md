@@ -237,14 +237,13 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
      Cubren la función completa, pero **no** son la tira compacta "Subir foto / Gestionar N"
      ni las filas "Cambiar" del tablero. Disparador: si la piel de Editar se siente
      inconsistente con la de Lectura en uso real.
-  2. **Constancia "✓ En tu salida" y contador "N tuya, ya sumada" (1e)** son **locales a la
-     sesión** (se reinician al recargar). Persistirlos necesita una consulta nueva: cuántas
-     de las bebidas etiquetadas ya están en la salida propia del viewer ese día. Disparador:
-     cuando alguien note que al volver a la salida el "ya sumada" desapareció.
+  2. ~~Constancia de 1e local~~ **RESUELTO en DS.1**: la constancia "✓ En tu salida" y el
+     contador salen de los datos (`viewerDrinkKeysOnDate`, misma clave y salida objetivo que
+     `yoTambien`), persisten a la recarga y re-tocar ya no duplica.
   3. **CTA de foto en lectura ("Ponle una foto")** entra al modo Editar (donde se gestionan
      las fotos) en vez de abrir el selector de archivo directo.
-  4. La **ruta `/sessions/[id]/edit`** quedó **sin enlaces** (el modo Editar in-page la
-     reemplaza) pero sigue viva por URL directa. Se puede retirar en una limpieza.
+  4. ~~Ruta `/sessions/[id]/edit` sin enlaces~~ **RESUELTO en DS.1**: se eliminó (el modo
+     Editar in-page la reemplaza); se quitaron sus `revalidatePath` muertos.
 
 ## Limpieza de `CheckIn.photoUrl` (columna sin uso tras I-2)
 

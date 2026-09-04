@@ -197,7 +197,6 @@ export async function addCheckIn(
   }
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
-  revalidatePath(`/sessions/${sessionId}/edit`);
   return { ok: true, checkInId };
 }
 
@@ -217,7 +216,6 @@ export async function deleteCheckIn(checkInId: string): Promise<Result> {
   await prisma.checkIn.delete({ where: { id: checkInId } });
   revalidatePath("/");
   revalidatePath(`/sessions/${ci.sessionId}`);
-  revalidatePath(`/sessions/${ci.sessionId}/edit`);
   return { ok: true };
 }
 
@@ -391,7 +389,6 @@ export async function addTag(input: {
   }
   revalidatePath("/");
   revalidatePath(`/sessions/${input.sessionId}`);
-  revalidatePath(`/sessions/${input.sessionId}/edit`);
   return { ok: true };
 }
 
@@ -409,7 +406,6 @@ export async function removeTag(tagId: string): Promise<Result> {
   await prisma.sessionTag.delete({ where: { id: tagId } });
   revalidatePath("/");
   revalidatePath(`/sessions/${tag.sessionId}`);
-  revalidatePath(`/sessions/${tag.sessionId}/edit`);
   return { ok: true };
 }
 

@@ -362,13 +362,22 @@ export type CheckInAddPlan =
  * Decide si un check-in nuevo se fusiona con uno existente (misma beerId Y
  * mismo format) o se crea aparte.
  */
+/**
+ * Clave de emparejamiento de check-ins: misma `beerId` + mismo `format` = la misma fila.
+ * ÚNICA definición de "la misma bebida" — la usan la consolidación (planCheckInAdd,
+ * consolidateNewCheckIns) y la constancia de "Yo también" (DS.1: saber si el viewer ya
+ * tiene esa bebida en su salida de la fecha). Reutilizar, no re-escribir la igualdad.
+ */
+export function checkInMatchKey(c: { beerId: string; format: BeerFormat }): string {
+  return `${c.beerId}|${c.format}`;
+}
+
 export function planCheckInAdd(
   existing: ExistingCheckIn[],
   incoming: CheckInAddInput,
 ): CheckInAddPlan {
-  const match = existing.find(
-    (c) => c.beerId === incoming.beerId && c.format === incoming.format,
-  );
+  const key = checkInMatchKey(incoming);
+  const match = existing.find((c) => checkInMatchKey(c) === key);
   if (!match) {
     return { action: "create", quantity: incoming.quantity, rating: incoming.rating };
   }
@@ -386,7 +395,8 @@ export function consolidateNewCheckIns(
 ): CheckInAddInput[] {
   const out: CheckInAddInput[] = [];
   for (const it of items) {
-    const match = out.find((c) => c.beerId === it.beerId && c.format === it.format);
+    const key = checkInMatchKey(it);
+    const match = out.find((c) => checkInMatchKey(c) === key);
     if (!match) {
       out.push({ ...it });
     } else {

@@ -24,23 +24,29 @@ export interface TaggedCheckIn {
  *
  * Tras usarlo, la fila deja CONSTANCIA ("✓ En tu salida") en vez de que el botón se quede
  * igual — el título "Las bebidas de X", el contador y estos botones ya dicen la regla; no
- * hace falta el banner que la explicaba (se quitó, Pasada T). La constancia es de esta
- * sesión (se revierte al Deshacer); no persiste entre recargas sin una consulta nueva
- * (queda anotado como pendiente de datos, fuera del alcance "solo presentación").
+ * hace falta el banner que la explicaba (se quitó, Pasada T).
+ *
+ * La constancia sale de los DATOS (DS.1): `initialAddedIds` marca las bebidas que el viewer
+ * ya tiene en su salida de esa fecha (el servidor las calcula con la misma clave de
+ * emparejamiento que `yoTambien`), así que sobrevive a la recarga y re-tocar no duplica.
+ * El estado local encima da el optimismo instantáneo del tap y el Deshacer.
  */
 export function TaggedCheckInList({
   checkIns,
   canYoTambien,
+  initialAddedIds = [],
   onAddedCountChange,
 }: {
   checkIns: TaggedCheckIn[];
   canYoTambien: boolean;
-  // DS · 1e: cuántas filas llevan constancia local, para el contador "N tuyas, ya sumadas".
+  // DS.1: bebidas que el viewer YA tiene en su salida de la fecha (constancia persistente).
+  initialAddedIds?: string[];
+  // DS · 1e: cuántas filas llevan constancia, para el contador "N tuyas, ya sumadas".
   onAddedCountChange?: (n: number) => void;
 }) {
   const router = useRouter();
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [added, setAdded] = useState<Set<string>>(new Set()); // filas con constancia local
+  const [added, setAdded] = useState<Set<string>>(() => new Set(initialAddedIds));
   useEffect(() => { onAddedCountChange?.(added.size); }, [added, onAddedCountChange]);
   const [error, setError] = useState<string | null>(null);
   const [undo, setUndo] = useState<{ sourceId: string; checkInId: string; sessionCreated: boolean } | null>(null);

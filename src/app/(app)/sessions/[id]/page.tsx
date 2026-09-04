@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import { requireUser } from "@/lib/session";
-import { getSessionDetail, loadCircle } from "@/lib/queries";
+import { getSessionDetail, loadCircle, viewerDrinkKeysOnDate } from "@/lib/queries";
 import { SessionDetail } from "@/components/SessionDetail";
 import { formatDayLong, formatBreakdownText, toDateInputValue } from "@/lib/format";
-import { sessionTotalUnits, formatBreakdown } from "@/lib/domain";
+import { sessionTotalUnits, formatBreakdown, checkInMatchKey } from "@/lib/domain";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +36,10 @@ export default async function SessionDetailPage({
 
   const total = sessionTotalUnits({ checkIns: s.checkIns });
   const distinct = new Set(s.checkIns.map((c) => c.beerId)).size;
+  // DS.1: constancia PERSISTENTE de "Yo también" — qué bebidas de esta salida ajena ya
+  // tiene el viewer en la suya de esta fecha (solo aplica a no-dueños).
+  const mineKeys = isOwner ? new Set<string>() : await viewerDrinkKeysOnDate(viewer.id, s.date);
+  const initialMineIds = s.checkIns.filter((c) => mineKeys.has(checkInMatchKey(c))).map((c) => c.id);
   const bd = formatBreakdown(s.checkIns.map((c) => ({ format: c.format, quantity: c.quantity })));
   const compSummary = companions(
     s.tags.map((t) =>
@@ -73,6 +77,7 @@ export default async function SessionDetailPage({
       total={total}
       distinct={distinct}
       breakdownText={bd.length > 1 ? formatBreakdownText(bd) : null}
+      initialMineIds={initialMineIds}
       autoFocusComment={comment === "1"}
     />
   );
