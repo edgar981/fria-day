@@ -38,6 +38,10 @@ type Viewer = { id: string; displayName: string; avatar: string | null };
 const DEFAULT_EMOJI = "🍻"; // el brindis por defecto del tap simple
 const HOLD_MS = 400;
 const MOVE_CANCEL = 10;
+// Ventana tras soltar en la que iOS emite el `click` sintético del gesto. El botón lo
+// ignora para no re-aplicar (línea onClick); el overlay del selector, para no cerrarse
+// solo (R-2: en PWA standalone el preventDefault del touchend NO suprime ese click).
+const SYNTH_CLICK_MS = 600;
 
 // Avatar con anillo: el del usuario en ámbar; los demás en el color de la tarjeta
 // (separa los apilados). z-index sube el del usuario para que su anillo no se tape.
@@ -197,7 +201,7 @@ export function ReactionBar({
   function onClick(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (Date.now() - gesture.current.endedAt < 600) return; // ya lo manejó el toque
+    if (Date.now() - gesture.current.endedAt < SYNTH_CLICK_MS) return; // ya lo manejó el toque
     apply(myEmoji ?? DEFAULT_EMOJI);
   }
 
@@ -308,7 +312,15 @@ export function ReactionBar({
         createPortal(
           <div style={{ position: "fixed", inset: 0, zIndex: 90 }}>
             <div
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); closeSelector(); }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // R-2: ignora el click sintético del gesto que ABRIÓ el selector (cae
+                // sobre este overlay al soltar el hold). Un descarte real entra por el
+                // touchStart de abajo, o por un click bastante posterior a `endedAt`.
+                if (Date.now() - gesture.current.endedAt < SYNTH_CLICK_MS) return;
+                closeSelector();
+              }}
               onTouchStart={(e) => { e.stopPropagation(); closeSelector(); }}
               style={{ position: "absolute", inset: 0 }}
             />

@@ -188,6 +188,25 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   renderiza). Peso <1 KB gzip, sin runtime. Habilita, además, mostrar reacciones en el
   share-card (satori no puede emoji) — no implementado aún.
 
+## Selector de reacciones con gesto continuo (hold → arrastrar → soltar)
+
+- **Qué:** cambiar el selector de brindis del patrón actual (hold abre → **soltar** →
+  tocar una) al patrón de Instagram/Facebook: hold → **arrastrar sin soltar** hasta la
+  reacción → **soltar selecciona**. Elimina la ventana entre soltar y tocar, y con ella
+  toda la clase de bug de "el evento del gesto que abrió cierra o elige por error".
+- **Estado:** en R-2 se arregló el síntoma reportado (en PWA standalone el selector se
+  cerraba al soltar) con el **Fix A**: el overlay ignora el `click` sintético del gesto que
+  lo abrió (mismo guardado `endedAt` que ya usa el botón). Barato y suficiente. El gesto
+  continuo es el arreglo estructural, pero es **más trabajo**: rastrear el dedo durante el
+  hold (el `touchmove` sigue llegando al botón por captura iOS), hit-test contra los rects
+  de las seis reacciones del portal, resaltar la que está debajo, y en `touchend` elegir esa
+  (o cerrar si se soltó afuera) — más un nuevo harness de prueba de arrastre-sobre-botones.
+  Estimado: ~medio día, riesgo medio (reescribe el manejo de gestos y sus bordes: flick
+  rápido, dedo fuera de todo, el umbral MOVE_CANCEL vs. arrastre intencional al selector).
+- **Disparador:** si el selector **vuelve a fallar por eventos** (otra variante del cierre/
+  selección accidental que el Fix A no cubra), o si Edgar quiere el gesto pulido de las apps
+  grandes. Hasta entonces, el Fix A resuelve el caso reportado.
+
 ## Fotos: cómo se ven y para qué sirven — RESUELTO en Pasada I-2
 
 - **Resuelto:** la foto pasó a ser de la **noche** (tabla `SessionPhoto`, hasta 6 por
