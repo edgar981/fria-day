@@ -664,26 +664,26 @@ describe("Pasada Y — 'Yo también'", () => {
 describe("Pasada R — reacciones", () => {
   it("agrupa por emoji, marca la del viewer y ordena por el orden del set", () => {
     const rs = [
-      { emoji: "🔥", userId: "u1" },
-      { emoji: "🍻", userId: "u2" },
-      { emoji: "🔥", userId: "u3" },
+      { emoji: "fuego", userId: "u1" },
+      { emoji: "brindis", userId: "u2" },
+      { emoji: "fuego", userId: "u3" },
     ];
     const { groups, mine } = groupReactions(rs, "u3");
-    expect(mine).toBe("🔥");
+    expect(mine).toBe("fuego");
     expect(groups).toEqual([
-      { emoji: "🍻", count: 1, mine: false }, // 🍻 antes de 🔥 (orden del set)
-      { emoji: "🔥", count: 2, mine: true },
+      { emoji: "brindis", count: 1, mine: false }, // brindis antes de fuego (orden del set)
+      { emoji: "fuego", count: 2, mine: true },
     ]);
   });
 
   it("viewer sin reacción → mine null; emojis sin reacción no aparecen", () => {
-    const { groups, mine } = groupReactions([{ emoji: "🍻", userId: "u1" }], "u2");
+    const { groups, mine } = groupReactions([{ emoji: "brindis", userId: "u1" }], "u2");
     expect(mine).toBe(null);
-    expect(groups).toEqual([{ emoji: "🍻", count: 1, mine: false }]);
+    expect(groups).toEqual([{ emoji: "brindis", count: 1, mine: false }]);
   });
 
   it("isReaction valida contra el set fijo", () => {
-    expect(isReaction("🍻")).toBe(true);
+    expect(isReaction("brindis")).toBe(true);
     expect(REACTIONS.every((e) => isReaction(e))).toBe(true);
     expect(isReaction("🍕")).toBe(false);
   });
@@ -693,44 +693,44 @@ describe("I-1.5 — racimo (más usados) y pila (propio primero)", () => {
   const r = (userId: string, emoji: string) => ({ userId, emoji });
 
   it("caso 3: 3 iguales + 1 distinta → el repetido primero", () => {
-    const cluster = rankClusterEmojis([r("a", "🔥"), r("b", "🔥"), r("c", "🔥"), r("d", "😂")]);
-    expect(cluster).toEqual(["🔥", "😂"]);
+    const cluster = rankClusterEmojis([r("a", "fuego"), r("b", "fuego"), r("c", "fuego"), r("d", "risa")]);
+    expect(cluster).toEqual(["fuego", "risa"]);
   });
 
   it("caso 4: empate en conteo → gana el más reciente (última aparición)", () => {
-    // 🍻 y 🔥 con 1 cada uno; 🔥 llegó después → va primero.
-    expect(rankClusterEmojis([r("a", "🍻"), r("b", "🔥")])).toEqual(["🔥", "🍻"]);
-    // y al revés: si 🍻 es el más reciente, 🍻 primero.
-    expect(rankClusterEmojis([r("a", "🔥"), r("b", "🍻")])).toEqual(["🍻", "🔥"]);
+    // brindis y fuego con 1 cada uno; fuego llegó después → va primero.
+    expect(rankClusterEmojis([r("a", "brindis"), r("b", "fuego")])).toEqual(["fuego", "brindis"]);
+    // y al revés: si brindis es el más reciente, brindis primero.
+    expect(rankClusterEmojis([r("a", "fuego"), r("b", "brindis")])).toEqual(["brindis", "fuego"]);
   });
 
   it("caso 1: 5 emojis distintos → el racimo muestra los 4 más usados (dropea el menos usado)", () => {
     const entries = [
-      r("a", "🍻"), r("b", "🍻"), // 🍻 x2
-      r("c", "🔥"), r("d", "🔥"), // 🔥 x2
-      r("e", "😂"), r("f", "❤️"), r("g", "🫡"), // singles, en ese orden
+      r("a", "brindis"), r("b", "brindis"), // brindis x2
+      r("c", "fuego"), r("d", "fuego"), // fuego x2
+      r("e", "risa"), r("f", "corazon"), r("g", "fiesta"), // singles, en ese orden
     ];
     const cluster = rankClusterEmojis(entries, 4);
     expect(cluster).toHaveLength(4);
-    // los dos con conteo 2 van primero (empate → más reciente: 🔥 antes que 🍻)
-    expect(cluster.slice(0, 2)).toEqual(["🔥", "🍻"]);
-    // 😂 es el single más viejo → es el que queda fuera
-    expect(cluster).not.toContain("😂");
+    // los dos con conteo 2 van primero (empate → más reciente: fuego antes que brindis)
+    expect(cluster.slice(0, 2)).toEqual(["fuego", "brindis"]);
+    // risa es el single más viejo → es el que queda fuera
+    expect(cluster).not.toContain("risa");
   });
 
   it("caso 2: viewer reacciona con el MENOS usado → su emoji no entra al racimo, pero su avatar va PRIMERO", () => {
-    // 4 emojis con 2 reacciones c/u + la del viewer (🫡, una sola, aunque sea la más nueva).
+    // 4 emojis con 2 reacciones c/u + la del viewer (fiesta, una sola, aunque sea la más nueva).
     const entries = [
-      r("o1", "🍻"), r("o2", "🍻"),
-      r("o3", "🔥"), r("o4", "🔥"),
-      r("o5", "😂"), r("o6", "😂"),
-      r("o7", "❤️"), r("o8", "❤️"),
-      r("me", "🫡"),
+      r("o1", "brindis"), r("o2", "brindis"),
+      r("o3", "fuego"), r("o4", "fuego"),
+      r("o5", "risa"), r("o6", "risa"),
+      r("o7", "corazon"), r("o8", "corazon"),
+      r("me", "fiesta"),
     ];
-    // El 🫡 del viewer (1 reacción) queda fuera del racimo: hay 4 emojis MÁS usados.
+    // El fiesta del viewer (1 reacción) queda fuera del racimo: hay 4 emojis MÁS usados.
     const cluster = rankClusterEmojis(entries, 4);
     expect(cluster).toHaveLength(4);
-    expect(cluster).not.toContain("🫡");
+    expect(cluster).not.toContain("fiesta");
     // ...pero su avatar SÍ está, y primero (anillo ámbar en la UI), con "+N" para el resto.
     const pile = reactionPile(entries, "me", 3);
     expect(pile.visible[0].userId).toBe("me");
@@ -739,7 +739,7 @@ describe("I-1.5 — racimo (más usados) y pila (propio primero)", () => {
   });
 
   it("pila sin el viewer: muestra los más recientes primero", () => {
-    const pile = reactionPile([r("a", "🍻"), r("b", "🔥"), r("c", "😂")], "me", 3);
+    const pile = reactionPile([r("a", "brindis"), r("b", "fuego"), r("c", "risa")], "me", 3);
     expect(pile.visible.map((p) => p.userId)).toEqual(["c", "b", "a"]); // c es el más reciente
     expect(pile.extra).toBe(0);
   });

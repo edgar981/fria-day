@@ -4,8 +4,11 @@ import type { ReactElement } from "react";
  * Glifos SVG propios de las seis reacciones (Pasada A-1). Reemplazan al emoji Unicode:
  * las animaciones CSS sobre el glifo nativo se veían planas. Cada glifo se dibuja con las
  * formas del sistema y sus partes (`data-p`) se animan por separado. Cuatro vienen del
- * tablero (1e–1h); ❤️ es propio; el sexto (clave 🫡 en REACTIONS/DB) se dibuja como
- * «sopla» — un matasuegras (8e), decisión de diseño: el gesto pasó de saludo a soplar.
+ * tablero (1e–1h); `corazon` es propio; `fiesta` se dibuja como «sopla» (matasuegras, 8e).
+ *
+ * Pasada RK — el glifo se indexa por la CLAVE INTERNA (`brindis`, `fuego`, …), desacoplada
+ * del dibujo: cambiar el SVG no toca datos. `LEGACY_EMOJI` resuelve valores Unicode viejos
+ * por si llegara alguno sin migrar (defensa; en la práctica ya no ocurre).
  *
  * Sirve al selector (grande, animado) y al racimo del pie (pequeño, estático). A tamaño
  * chico se omite el detalle fino (papelillos y pliegues del pito) por legibilidad (8f).
@@ -19,7 +22,7 @@ const cssvar = (dx?: string, dy?: string): React.CSSProperties => ({ ...(dx ? { 
 
 const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElement }> = {
   // 🍻 Brindis (1e): dos jarras (l/r) que se inclinan y chocan + espuma que salta (s).
-  "🍻": {
+  brindis: {
     anim: "clink",
     node: () => (
       <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
@@ -42,7 +45,7 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
     ),
   },
   // 🔥 Fuego (1f): dos lenguas (f1/f2) desfasadas + núcleo (core) + brasas (e).
-  "🔥": {
+  fuego: {
     anim: "fire",
     node: () => (
       <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
@@ -55,7 +58,7 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
     ),
   },
   // 😂 Risa (1g): cara (face) squash-stretch, ojos (eye), boca (mouth) y lágrimas (tear).
-  "😂": {
+  risa: {
     anim: "laugh",
     node: () => (
       <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
@@ -74,7 +77,7 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
     ),
   },
   // 🤤 Baba (1h): cara + hilo (strand) que se estira del labio y gota (drop) que cae.
-  "🤤": {
+  baba: {
     anim: "drool",
     node: () => (
       <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
@@ -90,7 +93,7 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
     ),
   },
   // ❤️ Corazón (propio): un path; anima escalando el glifo entero.
-  "❤️": {
+  corazon: {
     anim: "heart",
     node: () => (
       <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
@@ -100,7 +103,7 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
   },
   // 🫡 (clave) → «sopla» (8e): matasuegras. cabeza (head) + gorro (cone) + pito (tube) +
   // rollo de la punta (knob) + papelillos (s). Chico: sin papelillos ni pliegues (8f).
-  "🫡": {
+  fiesta: {
     anim: "blow",
     node: (small) => (
       <svg viewBox="-6 -6 60 60" width="100%" height="100%" aria-hidden>
@@ -125,8 +128,13 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
   },
 };
 
+// Defensa RK: si llegara un valor Unicode viejo sin migrar, se resuelve a su clave.
+const LEGACY_EMOJI: Record<string, string> = {
+  "🍻": "brindis", "🔥": "fuego", "😂": "risa", "🤤": "baba", "❤️": "corazon", "🫡": "fiesta",
+};
+
 export function ReactionGlyph({
-  emoji,
+  emoji, // clave interna de reacción (RK); acepta también el emoji viejo por compatibilidad
   size = 24,
   animate = false,
   animKey,
@@ -136,8 +144,8 @@ export function ReactionGlyph({
   animate?: boolean;
   animKey?: number; // cambia para re-disparar la animación (un run por tap)
 }) {
-  const g = GLYPHS[emoji];
-  if (!g) return <span style={{ fontSize: size * 0.82, lineHeight: 1 }}>{emoji}</span>; // fallback Unicode
+  const g = GLYPHS[emoji] ?? GLYPHS[LEGACY_EMOJI[emoji]];
+  if (!g) return <span style={{ fontSize: size * 0.82, lineHeight: 1 }}>{emoji}</span>; // fallback
   const small = size < 30; // racimo del pie: sin detalle fino
   return (
     <span
@@ -151,5 +159,5 @@ export function ReactionGlyph({
   );
 }
 
-/** Emojis con glifo propio (para saber cuándo usar el glifo vs el emoji Unicode). */
-export const GLYPH_EMOJIS = Object.keys(GLYPHS);
+/** Claves de reacción con glifo propio (RK). */
+export const GLYPH_KEYS = Object.keys(GLYPHS);

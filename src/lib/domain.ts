@@ -23,12 +23,27 @@ export const FORMATS_BY_KIND: Record<DrinkKind, BeerFormat[]> = {
 /**
  * Reacciones a salidas (Pasada R): set fijo y corto. Cambiar el set es editar SOLO
  * esta lista. El orden manda en cómo se muestran los grupos.
+ *
+ * Pasada RK — la clave es un id INTERNO ESTABLE, no el carácter Unicode. El glifo (SVG,
+ * ReactionGlyph) es presentación y puede cambiar sin tocar datos: el sexto pasó de saludo
+ * a matasuegras sin migrar de nuevo. `SessionReaction.emoji` guarda esta clave (la columna
+ * conserva el nombre `emoji` por historia; su VALOR ya no es un emoji).
  */
-export const REACTIONS = ["🍻", "🔥", "😂", "🤤", "❤️", "🫡"] as const;
+export const REACTIONS = ["brindis", "fuego", "risa", "baba", "corazon", "fiesta"] as const;
 export type Reaction = (typeof REACTIONS)[number];
 export function isReaction(v: string): v is Reaction {
   return (REACTIONS as readonly string[]).includes(v);
 }
+
+/** Nombre humano de cada reacción, para etiquetas accesibles (la clave no se lee bien). */
+export const REACTION_LABEL: Record<Reaction, string> = {
+  brindis: "brindis",
+  fuego: "fuego",
+  risa: "risa",
+  baba: "baba",
+  corazon: "corazón",
+  fiesta: "fiesta",
+};
 
 export interface ReactionInput {
   emoji: string;

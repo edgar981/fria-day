@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
-import { REACTIONS, rankClusterEmojis, reactionPile } from "@/lib/domain";
+import { REACTIONS, REACTION_LABEL, rankClusterEmojis, reactionPile, type Reaction } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { ReactionGlyph } from "@/components/ReactionGlyph";
@@ -35,7 +35,8 @@ const actionBtn: React.CSSProperties = {
 type Reactor = { userId: string; name: string; avatar: string | null; emoji: string };
 type Viewer = { id: string; displayName: string; avatar: string | null };
 
-const DEFAULT_EMOJI = "🍻"; // el brindis por defecto del tap simple
+const DEFAULT_EMOJI = "brindis"; // la reacción por defecto del tap simple (clave RK)
+const label = (key: string) => REACTION_LABEL[key as Reaction] ?? key; // nombre accesible
 const HOLD_MS = 400;
 const MOVE_CANCEL = 10;
 // Ventana tras soltar en la que iOS emite el `click` sintético del gesto. El botón lo
@@ -274,7 +275,7 @@ export function ReactionBar({
     <button
       ref={btnRef}
       type="button"
-      aria-label={reacted ? `Brindaste ${showEmoji}. Tocar para quitar; mantener para elegir otra` : "Brindar; mantener para elegir"}
+      aria-label={reacted ? `Brindaste con ${label(showEmoji)}. Tocar para quitar; mantener para elegir otra` : "Brindar; mantener para elegir"}
       aria-pressed={reacted}
       onTouchStart={onTouchStart}
       onTouchMove={onTouchMove}
@@ -359,7 +360,7 @@ export function ReactionBar({
                     key={emoji}
                     type="button"
                     role="menuitem"
-                    aria-label={`Brindar ${emoji}`}
+                    aria-label={`Brindar con ${label(emoji)}`}
                     aria-pressed={on}
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); apply(emoji); closeSelector(); }}
                     style={{

@@ -112,16 +112,16 @@ const CATALOG: CatalogItem[] = [
 // medianoche. Presente → se fija createdAt para que el span dé una duración real;
 // ausente → createdAt default (now) → span ~0, la duración se OMITE.
 type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null; at?: [number, number] };
-type React = { by: string; emoji: string }; // by = key de USERS o de EXTRA_USERS
+type React = { by: string; emoji: string }; // by = key de user; emoji = clave de reacción (RK): brindis/fuego/risa/baba/corazon/fiesta
 type Comment = { by: UserKey; body: string }; // I-3: comentarios de gate
 type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[]; comments?: Comment[] };
 
 // Reacciones repartidas para ejercitar los estados del pie de brindis y las reglas del
 // racimo (I-1.5), VIENDO EL FEED COMO ANA:
-//   · Bar de la 85 (de Ana)     → CASO DEL GATE: 4 emojis con 2 reacciones c/u (8 personas)
-//                                  + Ana con 🫡 (el MENOS usado). El racimo muestra los 4
-//                                  más usados (🍻🔥😂❤️) y 🫡 NO entra, pero el avatar de
-//                                  Ana SÍ va primero (anillo). Texto "Tú y 8 más".
+//   · Bar de la 85 (de Ana)     → CASO DEL GATE: 4 reacciones con 2 c/u (8 personas)
+//                                  + Ana con `fiesta` (la MENOS usada). El racimo muestra
+//                                  las 4 más usadas (brindis/fuego/risa/corazon) y `fiesta`
+//                                  NO entra, pero el avatar de Ana SÍ va primero (anillo).
 //   · Andrés Carne de Res       → 2 reactores (Ana + Beto) → "Tú y 1 más" (Ana con anillo)
 //   · Casa de Beto              → 1 reactor (Caro) → "Caro brindó"
 //   · Bogotá Beer Company (hoy) → 0 reactores → "Nadie ha brindado" (y sigue el caso
@@ -138,11 +138,11 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Mojito", fmt: "COPA", qty: 1, rating: 5, at: [25, 15] }, // cóctel con rating; 1:15am
     ],
     reactions: [
-      { by: "beto", emoji: "🍻" }, { by: "gabo", emoji: "🍻" }, // 🍻 x2
-      { by: "caro", emoji: "🔥" }, { by: "dani", emoji: "🔥" }, // 🔥 x2
-      { by: "eli", emoji: "😂" }, { by: "hugo", emoji: "😂" }, // 😂 x2
-      { by: "fabio", emoji: "❤️" }, { by: "iris", emoji: "❤️" }, // ❤️ x2
-      { by: "ana", emoji: "🫡" }, // Ana: el 5º emoji, MENOS usado → fuera del racimo, avatar visible
+      { by: "beto", emoji: "brindis" }, { by: "gabo", emoji: "brindis" }, // 🍻 x2
+      { by: "caro", emoji: "fuego" }, { by: "dani", emoji: "fuego" }, // 🔥 x2
+      { by: "eli", emoji: "risa" }, { by: "hugo", emoji: "risa" }, // 😂 x2
+      { by: "fabio", emoji: "corazon" }, { by: "iris", emoji: "corazon" }, // ❤️ x2
+      { by: "ana", emoji: "fiesta" }, // Ana: el 5º emoji, MENOS usado → fuera del racimo, avatar visible
     ],
     // I-3: 4 comentarios (autores mezclados). Como la salida es de Ana, ella puede
     // borrar el suyo Y los ajenos (dueña); Beto/Caro solo el propio.
@@ -159,7 +159,7 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Águila", fmt: "LATA", qty: 2, rating: null }, // qty > 1, sin rating
       { beer: "Cuba Libre", fmt: "VASO", qty: 1, rating: null }, // cóctel sin rating
     ],
-    reactions: [{ by: "caro", emoji: "❤️" }], // 1 reactor (no Ana) → "Caro brindó"
+    reactions: [{ by: "caro", emoji: "corazon" }], // 1 reactor (no Ana) → "Caro brindó"
   },
   {
     owner: "caro", daysAgo: 1, place: "Andrés Carne de Res", tags: ["ana", "beto"],
@@ -168,7 +168,7 @@ const SESSIONS: SessionSpec[] = [
       { beer: "Margarita", fmt: "COPA", qty: 2, rating: 5 }, // cóctel qty > 1
       { beer: "Corona Extra", fmt: "JARRA", qty: 1, rating: null },
     ],
-    reactions: [{ by: "ana", emoji: "🤤" }, { by: "beto", emoji: "🫡" }], // 2 → "pocos"
+    reactions: [{ by: "ana", emoji: "baba" }, { by: "beto", emoji: "fiesta" }], // 2 → "pocos"
   },
   {
     // HOY, Beto etiqueta a Ana (y Caro). Ana NO tiene salida propia hoy → "Yo también".
