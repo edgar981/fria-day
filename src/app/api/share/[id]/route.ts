@@ -34,14 +34,15 @@ export async function GET(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
+  const t0 = performance.now(); // B-1.1: tiempo desde que entra el request (elapsed_ms)
   const { id } = await ctx.params;
   const reqUrl = new URL(req.url);
   const format = reqUrl.searchParams.get("format") === "story" ? "story" : "post";
-  // B-1.1 · instrumentación: ?debug=1 mide los tramos y devuelve JSON (sin generar la
-  // imagen), para diagnosticar los ~7s en frío por partes. Se puede leer en el preview
-  // (autenticado) donde Code no llega por el SSO de Vercel. Se lee por PRESENCIA del
-  // parámetro (?debug, ?debug=1, ?debug=true) para no caer al camino de imagen en silencio
-  // si algo normaliza el valor distinto.
+  // B-1.1 · instrumentación: ?debug=1 mide los tramos (dbMain, dbExtra, photoFetch, render)
+  // + elapsed_ms y devuelve JSON en vez de la imagen, para diagnosticar los ~7s en frío por
+  // partes. Se lee en el preview (autenticado) donde Code no llega por el SSO de Vercel. Se
+  // lee por PRESENCIA del parámetro (?debug, ?debug=1, ?debug=true) para no caer al camino de
+  // imagen en silencio si algo normaliza el valor distinto.
   const debug = reqUrl.searchParams.has("debug");
   const T: Record<string, number> = {};
   let mark = performance.now();
@@ -118,30 +119,6 @@ export async function GET(
   // I-2: la foto es de la salida (primera de SessionPhoto), ya no del check-in.
   const photoUrl = session.photos.find((p) => isOurBlobUrl(p.url))?.url ?? null;
 
-  // B-1.1 · modo diagnóstico: mide el fetch de la foto remota por separado (satori lo hace
-  // en serie durante el render; aquí lo aislamos) y devuelve los tramos. El render satori
-  // ocurre al drenar el body (stream), así que se deriva client-side: total − dbMain − dbExtra.
-  if (debug) {
-    let photoBytes = 0;
-    if (photoUrl) {
-      try {
-        const r = await fetch(photoUrl, { cache: "no-store" });
-        photoBytes = (await r.arrayBuffer()).byteLength;
-      } catch {}
-    }
-    lap("photoFetch");
-    // `commit` = SHA que corre esta función desplegada (Vercel lo inyecta): confirma que el
-    // preview medido incluye ESTE commit de instrumentación (punto 2 de B-1.1).
-    return Response.json({
-      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
-      single,
-      hasPhoto: !!photoUrl,
-      photoBytes,
-      format,
-      tramos_ms: T,
-    });
-  }
-
   const data: ShareData = {
     place: session.placeName,
     dateLabel: formatDayLong(session.date),
@@ -165,14 +142,45 @@ export async function GET(
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
   // 500). Embebidas funciona igual en local, preview y prod.
-  const img = new ImageResponse(renderShareCard(data, format), {
-    ...DIM[format],
-    fonts: [
-      { name: "Syne", data: SYNE_800, weight: 800, style: "normal" },
-      { name: "Outfit", data: OUTFIT_400, weight: 400, style: "normal" },
-      { name: "Outfit", data: OUTFIT_700, weight: 700, style: "normal" },
-    ],
-  });
+  const fonts = [
+    { name: "Syne", data: SYNE_800, weight: 800 as const, style: "normal" as const },
+    { name: "Outfit", data: OUTFIT_400, weight: 400 as const, style: "normal" as const },
+    { name: "Outfit", data: OUTFIT_700, weight: 700 as const, style: "normal" as const },
+  ];
+
+  // B-1.1 · modo diagnóstico: mide los tramos y devuelve JSON (no la imagen). Aísla el fetch
+  // de la foto remota (satori lo hace en serie durante el render) y MIDE el render forzándolo
+  // (se drena el body; la foto va como data-URI para no re-bajarla → `render` queda puro).
+  // `elapsed_ms` = tiempo total desde que entró el request. `commit` confirma el build.
+  if (debug) {
+    let photoBytes = 0;
+    let dataUri: string | null = null;
+    if (photoUrl) {
+      try {
+        const r = await fetch(photoUrl, { cache: "no-store" });
+        const buf = await r.arrayBuffer();
+        photoBytes = buf.byteLength;
+        dataUri = `data:${r.headers.get("content-type") || "image/jpeg"};base64,${Buffer.from(buf).toString("base64")}`;
+      } catch {}
+    }
+    lap("photoFetch");
+    try {
+      const probe = new ImageResponse(renderShareCard({ ...data, photoUrl: dataUri ?? photoUrl }, format), { ...DIM[format], fonts });
+      await probe.arrayBuffer(); // fuerza el render de satori
+    } catch {}
+    lap("render");
+    return Response.json({
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
+      single,
+      hasPhoto: !!photoUrl,
+      photoBytes,
+      format,
+      elapsed_ms: Math.round(performance.now() - t0),
+      tramos_ms: T,
+    });
+  }
+
+  const img = new ImageResponse(renderShareCard(data, format), { ...DIM[format], fonts });
 
   // Nombre de archivo legible (S.3 §2). Se envuelve la respuesta para conservar el
   // Content-Type/Cache-Control que pone ImageResponse y solo AÑADIR Content-Disposition;
