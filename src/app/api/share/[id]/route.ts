@@ -37,6 +37,15 @@ export async function GET(
   const { id } = await ctx.params;
   const reqUrl = new URL(req.url);
   const format = reqUrl.searchParams.get("format") === "story" ? "story" : "post";
+  // B-1.1 · instrumentación: ?debug=1 mide los tramos y devuelve JSON (sin generar la
+  // imagen), para diagnosticar los ~7s en frío por partes. Se puede leer en el preview
+  // (autenticado) donde Code no llega por el SSO de Vercel. Se lee por PRESENCIA del
+  // parámetro (?debug, ?debug=1, ?debug=true) para no caer al camino de imagen en silencio
+  // si algo normaliza el valor distinto.
+  const debug = reqUrl.searchParams.has("debug");
+  const T: Record<string, number> = {};
+  let mark = performance.now();
+  const lap = (k: string) => { T[k] = Math.round(performance.now() - mark); mark = performance.now(); };
 
   // Permiso: solo quien puede VER la salida (dueño o círculo).
   const viewer = await getCurrentUser();
@@ -45,6 +54,7 @@ export async function GET(
   if (!session) return new Response("No existe", { status: 404 });
   const circle = await loadCircle(viewer.id);
   if (!circle.has(session.userId)) return new Response("No puedes ver esa salida", { status: 403 });
+  lap("dbMain"); // auth + getSessionDetail + loadCircle (incluye cold start de Neon)
 
   const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
   const single = checkIns.length === 1;
@@ -92,6 +102,7 @@ export async function GET(
     select: { id: true, date: true, createdAt: true },
   });
   const outing = outingNumber(ownerSessions, id);
+  lap("dbExtra"); // ownerPrior (primera vez) + ownerSessions (salida #N)
 
   // El parche: dueño primero + etiquetados (usuario o texto libre → avatar anónimo),
   // cortado a 3 caras. Los nombres (sin el dueño) van en la línea "con …".
@@ -106,6 +117,30 @@ export async function GET(
   const bestCi = rated.length ? rated.reduce((a, b) => ((b.rating ?? 0) > (a.rating ?? 0) ? b : a)) : null;
   // I-2: la foto es de la salida (primera de SessionPhoto), ya no del check-in.
   const photoUrl = session.photos.find((p) => isOurBlobUrl(p.url))?.url ?? null;
+
+  // B-1.1 · modo diagnóstico: mide el fetch de la foto remota por separado (satori lo hace
+  // en serie durante el render; aquí lo aislamos) y devuelve los tramos. El render satori
+  // ocurre al drenar el body (stream), así que se deriva client-side: total − dbMain − dbExtra.
+  if (debug) {
+    let photoBytes = 0;
+    if (photoUrl) {
+      try {
+        const r = await fetch(photoUrl, { cache: "no-store" });
+        photoBytes = (await r.arrayBuffer()).byteLength;
+      } catch {}
+    }
+    lap("photoFetch");
+    // `commit` = SHA que corre esta función desplegada (Vercel lo inyecta): confirma que el
+    // preview medido incluye ESTE commit de instrumentación (punto 2 de B-1.1).
+    return Response.json({
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
+      single,
+      hasPhoto: !!photoUrl,
+      photoBytes,
+      format,
+      tramos_ms: T,
+    });
+  }
 
   const data: ShareData = {
     place: session.placeName,
