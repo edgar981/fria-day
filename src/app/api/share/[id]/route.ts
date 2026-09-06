@@ -49,6 +49,17 @@ export async function GET(
   let mark = performance.now();
   const lap = (k: string) => { T[k] = Math.round(performance.now() - mark); mark = performance.now(); };
 
+  // B-1.5 · diagnóstico de auth: auth (getCurrentUser) es el PRIMER toque a la DB, así que
+  // paga la apertura de la conexión al pooler de Neon. Un `SELECT 1` cronometrado ANTES
+  // aísla ese costo: si `connWarm` se lleva los ~900ms y `auth` cae, era la conexión (no
+  // Better Auth). Solo en debug; reinicia `mark` para no contaminar dbMain.
+  if (debug) {
+    const tc = performance.now();
+    try { await prisma.$queryRaw`SELECT 1`; } catch {}
+    T.connWarm = Math.round(performance.now() - tc);
+    mark = performance.now();
+  }
+
   // Permiso: solo quien puede VER la salida (dueño o círculo). B-1.2: auth va primero
   // (todo depende de viewer.id), pero getSessionDetail y loadCircle son independientes →
   // en paralelo. B-1.3: instrumentado por dentro (auth / getSessionDetail / loadCircle) para
