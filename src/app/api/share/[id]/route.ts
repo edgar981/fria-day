@@ -31,10 +31,22 @@ const DIM = {
   story: { width: 1080, height: 1920 },
 } as const;
 
-export async function GET(
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }): Promise<Response> {
+  try {
+    return await handleShare(req, ctx);
+  } catch (e) {
+    // B-1.7: cualquier throw no controlado (consultas, auth, armado de datos) se LOGUEA con
+    // su motivo antes del 500 — así el próximo fallo deja rastro. El render tiene su propio
+    // try con más contexto (session/format/hasPhoto).
+    console.error("[share] error no controlado generando la card:", e);
+    return new Response("No se pudo generar la imagen", { status: 500 });
+  }
+}
+
+async function handleShare(
   req: Request,
   ctx: { params: Promise<{ id: string }> },
-) {
+): Promise<Response> {
   const t0 = performance.now(); // B-1.1: tiempo desde que entra el request (elapsed_ms)
   const { id } = await ctx.params;
   const reqUrl = new URL(req.url);
@@ -223,12 +235,22 @@ export async function GET(
     });
   }
 
-  const img = new ImageResponse(renderShareCard(data, format), { ...DIM[format], fonts });
-
-  // Nombre de archivo legible (S.3 §2). Se envuelve la respuesta para conservar el
-  // Content-Type/Cache-Control que pone ImageResponse y solo AÑADIR Content-Disposition;
-  // el cliente lo lee para nombrar el File que comparte/descarga.
-  const headers = new Headers(img.headers);
-  headers.set("Content-Disposition", `inline; filename="${shareFileName(session.placeName, session.date)}"`);
-  return new Response(img.body, { status: img.status, statusText: img.statusText, headers });
+  // B-1.7 · observabilidad + robustez: se BUFFERIZA el render (`await arrayBuffer()`) dentro
+  // de un try, en vez de devolver el stream perezoso. Así, si satori/resvg revienta al
+  // rasterizar (p.ej. una foto real que no decodifica), el throw cae AQUÍ: se loguea el
+  // motivo real y se devuelve un 500 limpio. Antes el error ocurría al drenar el stream ya
+  // enviado → el cliente lo veía como "problemas de conexión" y no quedaba rastro en logs
+  // (el fallo intermitente de producción de B-1.7).
+  try {
+    const img = new ImageResponse(renderShareCard(data, format), { ...DIM[format], fonts });
+    const png = await img.arrayBuffer();
+    // Se conserva el Content-Type/Cache-Control de ImageResponse y solo se AÑADE el
+    // Content-Disposition (nombre legible, S.3 §2) que el cliente lee para el File.
+    const headers = new Headers(img.headers);
+    headers.set("Content-Disposition", `inline; filename="${shareFileName(session.placeName, session.date)}"`);
+    return new Response(png, { status: 200, headers });
+  } catch (e) {
+    console.error(`[share] fallo al generar la card · session=${id} format=${format} hasPhoto=${!!photoUrl}:`, e);
+    return new Response("No se pudo generar la imagen", { status: 500 });
+  }
 }

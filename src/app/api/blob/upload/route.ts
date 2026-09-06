@@ -28,9 +28,8 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  const body = (await request.json()) as HandleUploadBody;
-
   try {
+    const body = (await request.json()) as HandleUploadBody;
     const jsonResponse = await handleUpload({
       token,
       body,
@@ -52,6 +51,9 @@ export async function POST(request: Request): Promise<Response> {
     });
     return Response.json(jsonResponse);
   } catch (e) {
+    // B-1.7: dejar rastro del motivo real (autorización, body malformado, fallo del SDK)
+    // antes del 400 — antes se devolvía sin loguear nada.
+    console.error("[blob/upload] fallo autorizando/procesando la subida:", e);
     const msg = e instanceof Error ? e.message : "Error de subida";
     return Response.json({ error: msg }, { status: 400 });
   }
