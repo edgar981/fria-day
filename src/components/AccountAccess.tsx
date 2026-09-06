@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { addRecoveryEmail, setAccountPassword, deletePasskey } from "@/app/actions/account";
+import { addRecoveryEmail, setAccountPassword, changeAccountPassword, deletePasskey } from "@/app/actions/account";
 
 const rowNote: React.CSSProperties = { font: "400 12px/1.45 var(--font-sans)", color: "var(--color-tenue-2)", margin: "6px 0 0" };
 
@@ -27,7 +27,9 @@ export function AccountAccess({
   const [emailVal, setEmailVal] = useState("");
   const [pwVal, setPwVal] = useState("");
   const [pwOpen, setPwOpen] = useState(false);
-  const [busy, setBusy] = useState<null | "email" | "pw" | "passkey" | string>(null);
+  const [changeOpen, setChangeOpen] = useState(false);
+  const [newPw, setNewPw] = useState("");
+  const [busy, setBusy] = useState<null | "email" | "pw" | "passkey" | "faceid" | "change" | string>(null);
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   // Guardarraíl: no dejar al usuario sin acceso. La última passkey no se puede
@@ -46,6 +48,33 @@ export function AccountAccess({
     const res = await setAccountPassword(pwVal);
     setBusy(null);
     if (res.ok) { setHasPw(true); setPwOpen(false); setPwVal(""); setMsg({ kind: "ok", text: "Contraseña guardada. Ya puedes entrar con correo y contraseña." }); }
+    else setMsg({ kind: "err", text: res.error });
+  }
+  async function changePw() {
+    setMsg(null);
+    // Step-up FaceID (RC · punto 1): si el usuario tiene passkey, confirmamos su
+    // presencia con la ceremonia (signIn.passkey refresca la sesión) ANTES de rotar.
+    // Sin passkey (login solo por contraseña) no hay FaceID que pedir → la sesión es
+    // la prueba (anotado en la acción del servidor).
+    if (pks.length > 0) {
+      setBusy("faceid");
+      try {
+        const res = await authClient.signIn.passkey();
+        if (!res || !("data" in res) || !res.data) {
+          setBusy(null);
+          setMsg({ kind: "err", text: "Necesitas confirmar con FaceID para cambiar la contraseña." });
+          return;
+        }
+      } catch {
+        setBusy(null);
+        setMsg({ kind: "err", text: "Tu dispositivo canceló FaceID. La contraseña no se cambió." });
+        return;
+      }
+    }
+    setBusy("change");
+    const res = await changeAccountPassword(newPw);
+    setBusy(null);
+    if (res.ok) { setChangeOpen(false); setNewPw(""); setMsg({ kind: "ok", text: "Contraseña actualizada." }); }
     else setMsg({ kind: "err", text: res.error });
   }
   async function addPasskey() {
@@ -147,7 +176,21 @@ export function AccountAccess({
             <span style={{ font: "600 14.5px var(--font-sans)" }}>Contraseña</span>
             <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>{hasPw ? "configurada" : "no configurada"}</span>
           </div>
-          <p style={rowNote}>Método alterno para entrar si la passkey falla. Necesitas un correo primero.</p>
+          <p style={rowNote}>Método alterno para entrar si la passkey falla.{!hasPw ? " Necesitas un correo primero." : ""}</p>
+          {hasPw && (changeOpen ? (
+            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+              <input className="field" type="password" autoComplete="new-password" placeholder="Nueva contraseña (mínimo 8)" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button type="button" className="btn btn-primary" style={{ flex: 1, height: 46 }} onClick={changePw} disabled={busy === "change" || busy === "faceid"}>
+                  {busy === "faceid" ? "Abriendo FaceID…" : busy === "change" ? "Guardando…" : "Guardar"}
+                </button>
+                <button type="button" className="btn btn-ghost" style={{ height: 46 }} onClick={() => { setChangeOpen(false); setNewPw(""); }}>Cancelar</button>
+              </div>
+              {pks.length > 0 && <p style={rowNote}>Te pediremos FaceID antes de cambiarla.</p>}
+            </div>
+          ) : (
+            <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 46, marginTop: 10 }} onClick={() => setChangeOpen(true)}>Cambiar contraseña</button>
+          ))}
           {!hasPw && curEmail && (pwOpen ? (
             <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
               <input className="field" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres" value={pwVal} onChange={(e) => setPwVal(e.target.value)} />
