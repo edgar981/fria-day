@@ -205,14 +205,13 @@ export function ShareButton({
                 // franco. Nada de "está tardando"/error a los N segundos — la generación toma
                 // sus ~2-4s y el indicador comunica que está trabajando, no que falló.
                 <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "6px 0 2px" }} aria-live="polite">
+                  {/* Copy honesto (B-1.3): no promete un tiempo ("la primera vez…" ya no era
+                      cierto — en caliente igual son ~4-5s). Solo dice que está trabajando. */}
                   <div style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-crema)" }}>
-                    Generando tu {busy === "story" ? "historia" : "publicación"}…
+                    Armando tu {busy === "story" ? "historia" : "publicación"}…
                   </div>
                   <div aria-hidden style={{ position: "relative", height: 6, borderRadius: 99, background: "var(--color-barra-alta)", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: 0, bottom: 0, width: "40%", borderRadius: 99, background: "var(--color-ambar)", animation: "fd-indeterminate 1.1s ease-in-out infinite" }} />
-                  </div>
-                  <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>
-                    La primera vez puede tardar unos segundos.
                   </div>
                 </div>
               ) : (

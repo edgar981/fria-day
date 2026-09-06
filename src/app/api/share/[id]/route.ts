@@ -51,16 +51,20 @@ export async function GET(
 
   // Permiso: solo quien puede VER la salida (dueño o círculo). B-1.2: auth va primero
   // (todo depende de viewer.id), pero getSessionDetail y loadCircle son independientes →
-  // en paralelo, para no encadenar dos idas y vueltas a sa-east-1.
+  // en paralelo. B-1.3: instrumentado por dentro (auth / getSessionDetail / loadCircle) para
+  // ver dónde está el costo — el Promise.all no bajó dbMain.
+  const tAuth = performance.now();
   const viewer = await getCurrentUser();
+  T.auth = Math.round(performance.now() - tAuth);
   if (!viewer) return new Response("No autorizado", { status: 401 });
+  const tPar = performance.now();
   const [session, circle] = await Promise.all([
-    getSessionDetail(id, viewer.id),
-    loadCircle(viewer.id),
+    getSessionDetail(id, viewer.id).then((r) => { T.getSessionDetail = Math.round(performance.now() - tPar); return r; }),
+    loadCircle(viewer.id).then((r) => { T.loadCircle = Math.round(performance.now() - tPar); return r; }),
   ]);
   if (!session) return new Response("No existe", { status: 404 });
   if (!circle.has(session.userId)) return new Response("No puedes ver esa salida", { status: 403 });
-  lap("dbMain"); // auth (serie) + [getSessionDetail ∥ loadCircle]
+  lap("dbMain"); // auth (serie) + [getSessionDetail ∥ loadCircle]; ver T.auth/getSessionDetail/loadCircle
 
   const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
   const single = checkIns.length === 1;
