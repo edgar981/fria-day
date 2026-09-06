@@ -39,12 +39,11 @@ export async function GET(
   const { id } = await ctx.params;
   const reqUrl = new URL(req.url);
   const format = reqUrl.searchParams.get("format") === "story" ? "story" : "post";
-  // B-1.1 · instrumentación: ?debug=1 mide los tramos (dbMain, dbExtra, photoFetch, render)
-  // + elapsed_ms y devuelve JSON en vez de la imagen, para diagnosticar los ~7s en frío por
-  // partes. Se lee en el preview (autenticado) donde Code no llega por el SSO de Vercel. Se
-  // lee por PRESENCIA del parámetro (?debug, ?debug=1, ?debug=true) para no caer al camino de
-  // imagen en silencio si algo normaliza el valor distinto.
-  const debug = reqUrl.searchParams.has("debug");
+  // B-1.1 · instrumentación de diagnóstico: ?debug mide los tramos (dbMain, dbExtra,
+  // photoFetch, render) + elapsed_ms + region y devuelve JSON en vez de la imagen.
+  // B-1.6 · GATEADA: nunca se expone en producción (solo dev/preview) — en prod, ?debug cae
+  // al camino de imagen normal. Se lee por PRESENCIA del parámetro para no fallar callado.
+  const debug = reqUrl.searchParams.has("debug") && process.env.VERCEL_ENV !== "production";
   const T: Record<string, number> = {};
   let mark = performance.now();
   const lap = (k: string) => { T[k] = Math.round(performance.now() - mark); mark = performance.now(); };
