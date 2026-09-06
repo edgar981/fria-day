@@ -272,3 +272,18 @@ function cardBody(d: ShareData, story: boolean): ReactElement {
 export function renderShareCard(d: ShareData, format: "post" | "story"): ReactElement {
   return cardBody(d, format === "story");
 }
+
+/**
+ * B-1.2 · probe de diagnóstico: lienzo mínimo que solo ejercita el parseo/shaping de las
+ * TRES fuentes embebidas (Syne 800, Outfit 400/700). Sirve para aislar cuánto del render
+ * de satori es costo fijo de fuentes vs. el dibujo del resto (foto, avatares, festón, nodos).
+ */
+export function renderFontProbe(story: boolean): ReactElement {
+  return (
+    <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: C.noche, padding: 64 }}>
+      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 84, color: C.crema }}>FriaDay Aa</div>
+      <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 32, color: C.tenue }}>Outfit 400 regular</div>
+      <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 32, color: C.tenue }}>Outfit 700 bold</div>
+    </div>
+  );
+}

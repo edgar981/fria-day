@@ -256,6 +256,13 @@ textarea.field {
   }
 }
 
+/* Barra indeterminada (B-1.2): progreso honesto mientras se genera la share-card. Un
+   segmento que recorre la pista de lado a lado — avanza (no finge un porcentaje). */
+@keyframes fd-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(250%); }
+}
+
 /* Animaciones de reacción (Pasada A-1): corren UNA sola vez al aplicar la reacción,
    NUNCA en loop. Sobre glifos SVG propios (ReactionGlyph): cada PARTE (`data-p`) se
    anima por separado, no el glifo entero. La barra pone `.go` en el mismo tick del tap

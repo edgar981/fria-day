@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { ImageResponse } from "next/og";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/session";
@@ -11,7 +12,7 @@ import {
   outingNumber,
 } from "@/lib/domain";
 import { FORMAT_LABEL, formatAbv, formatDayLong, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
-import { renderShareCard, type ShareData } from "./card";
+import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
 import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
@@ -48,14 +49,18 @@ export async function GET(
   let mark = performance.now();
   const lap = (k: string) => { T[k] = Math.round(performance.now() - mark); mark = performance.now(); };
 
-  // Permiso: solo quien puede VER la salida (dueño o círculo).
+  // Permiso: solo quien puede VER la salida (dueño o círculo). B-1.2: auth va primero
+  // (todo depende de viewer.id), pero getSessionDetail y loadCircle son independientes →
+  // en paralelo, para no encadenar dos idas y vueltas a sa-east-1.
   const viewer = await getCurrentUser();
   if (!viewer) return new Response("No autorizado", { status: 401 });
-  const session = await getSessionDetail(id, viewer.id);
+  const [session, circle] = await Promise.all([
+    getSessionDetail(id, viewer.id),
+    loadCircle(viewer.id),
+  ]);
   if (!session) return new Response("No existe", { status: 404 });
-  const circle = await loadCircle(viewer.id);
   if (!circle.has(session.userId)) return new Response("No puedes ver esa salida", { status: 403 });
-  lap("dbMain"); // auth + getSessionDetail + loadCircle (incluye cold start de Neon)
+  lap("dbMain"); // auth (serie) + [getSessionDetail ∥ loadCircle]
 
   const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
   const single = checkIns.length === 1;
@@ -77,11 +82,20 @@ export async function GET(
   // en una salida estrictamente anterior. Consulta barata (solo las bebidas de ESTA
   // salida, indexada por beerId). La versión "nadie del parche" exigiría el historial de
   // todo el círculo; se descartó por costo, no por diseño.
+  // B-1.2: las dos consultas extra (primera-vez y salida #N) son independientes entre sí
+  // → en paralelo.
   const beerIds = [...new Set(checkIns.map((c) => c.beerId))];
-  const ownerPrior = await prisma.checkIn.findMany({
-    where: { beerId: { in: beerIds }, session: { userId: session.userId } },
-    select: { beerId: true, session: { select: { date: true, createdAt: true } } },
-  });
+  const [ownerPrior, ownerSessions] = await Promise.all([
+    prisma.checkIn.findMany({
+      where: { beerId: { in: beerIds }, session: { userId: session.userId } },
+      select: { beerId: true, session: { select: { date: true, createdAt: true } } },
+    }),
+    // Salida #N del dueño: su puesto entre TODAS sus salidas (date, createdAt) asc.
+    prisma.session.findMany({
+      where: { userId: session.userId },
+      select: { id: true, date: true, createdAt: true },
+    }),
+  ]);
   const thisKey = session.date.getTime();
   const thisCreated = session.createdAt.getTime();
   const seenBefore = new Set(
@@ -97,13 +111,8 @@ export async function GET(
     seenBefore,
   );
 
-  // Salida #N del dueño: su puesto entre TODAS sus salidas (date, createdAt) asc.
-  const ownerSessions = await prisma.session.findMany({
-    where: { userId: session.userId },
-    select: { id: true, date: true, createdAt: true },
-  });
   const outing = outingNumber(ownerSessions, id);
-  lap("dbExtra"); // ownerPrior (primera vez) + ownerSessions (salida #N)
+  lap("dbExtra"); // [ownerPrior ∥ ownerSessions]
 
   // El parche: dueño primero + etiquetados (usuario o texto libre → avatar anónimo),
   // cortado a 3 caras. Los nombres (sin el dueño) van en la línea "con …".
@@ -164,11 +173,27 @@ export async function GET(
       } catch {}
     }
     lap("photoFetch");
-    try {
-      const probe = new ImageResponse(renderShareCard({ ...data, photoUrl: dataUri ?? photoUrl }, format), { ...DIM[format], fonts });
-      await probe.arrayBuffer(); // fuerza el render de satori
-    } catch {}
-    lap("render");
+    const story = format === "story";
+    const withPhoto = { ...data, photoUrl: dataUri ?? photoUrl };
+    const timeRender = async (el: ReactElement) => {
+      const t = performance.now();
+      try { await new ImageResponse(el, { ...DIM[format], fonts }).arrayBuffer(); } catch {}
+      return Math.round(performance.now() - t);
+    };
+    // Tramo oficial "render" = la tarjeta real (con foto como data-URI → render puro).
+    T.render = await timeRender(renderShareCard(withPhoto, format));
+    // ?renderbreak=1: descompone el render por partes (no cuenta para elapsed). Costo fijo
+    // de fuentes vs foto vs avatares vs base (festón+texto+nodos).
+    let render_ms: Record<string, number> | undefined;
+    if (reqUrl.searchParams.has("renderbreak")) {
+      render_ms = {
+        full: T.render,
+        nophoto: await timeRender(renderShareCard({ ...data, photoUrl: null }, format)),
+        noavatars: await timeRender(renderShareCard({ ...withPhoto, avatars: [] }, format)),
+        base: await timeRender(renderShareCard({ ...data, photoUrl: null, avatars: [] }, format)),
+        fontsOnly: await timeRender(renderFontProbe(story)),
+      };
+    }
     return Response.json({
       commit: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
       single,
@@ -177,6 +202,7 @@ export async function GET(
       format,
       elapsed_ms: Math.round(performance.now() - t0),
       tramos_ms: T,
+      ...(render_ms ? { render_ms } : {}),
     });
   }
 

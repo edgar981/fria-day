@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icon";
-import { warmupDb } from "@/app/actions/sessions";
 import { useSheetDrag } from "@/lib/useSheetDrag";
 
 /**
@@ -39,30 +38,17 @@ export function ShareButton({
     setError(null);
     setBusy(format);
     try {
-      // B-1 bug 1: el PRIMER intento en frío puede caerse (cold start corta la conexión) o
-      // volver 504. Un reintento transparente — el 2º ya encuentra todo tibio — antes de
-      // mostrar cualquier error. Es justo el patrón reportado ("el 2º/3º funciona").
-      const fetchCard = () => fetch(`/api/share/${sessionId}?format=${format}`, { cache: "no-store" });
-      let res: Response;
-      try {
-        res = await fetchCard();
-      } catch {
-        res = await fetchCard(); // el primero lanzó (conexión): reintento transparente
-      }
-      if (res.status === 504 || res.status === 408) {
-        res = await fetchCard(); // el primero expiró: reintento transparente
-      }
+      // B-1.2: SIN reintento transparente (escondía el problema y podía duplicar la espera).
+      // La generación tarda ~2-4s (render de satori); el cliente espera con un indicador que
+      // avanza (no un mensaje de error) y `maxDuration=30` le da margen a la función.
+      const res = await fetch(`/api/share/${sessionId}?format=${format}`, { cache: "no-store" });
       if (!res.ok) {
-        // Mensaje distinto según la causa, sin exponer detalles técnicos, y dejando
-        // claro si vale la pena reintentar (S.1).
         setError(
           res.status === 401 || res.status === 403
             ? "No tienes permiso para compartir esta salida."
             : res.status === 404
               ? "No se encontró la salida."
-              : res.status === 504 || res.status === 408
-                ? "La imagen está tardando más de lo normal. Reintenta en un momento."
-                : "El servidor no pudo crear la imagen. Reintenta.",
+              : "No se pudo crear la imagen. Reintenta.",
         );
         return;
       }
@@ -88,8 +74,7 @@ export function ShareButton({
     } catch (e) {
       // AbortError = el usuario canceló la hoja nativa; no es error.
       if (e instanceof Error && e.name === "AbortError") return;
-      // Falló incluso el reintento: no lo llamamos "conexión" (suele ser lentitud en frío).
-      setError("La imagen está tardando más de lo normal. Reintenta en un momento.");
+      setError("No se pudo crear la imagen. Revisa tu conexión y reintenta.");
     } finally {
       setBusy(null);
     }
@@ -101,9 +86,8 @@ export function ShareButton({
     setError(null);
     setOpen(true);
     onAfterOpen?.();
-    // B-1 bug 1: despierta Neon mientras el usuario elige formato (fire-and-forget), para
-    // que el generar no pague el cold start de la base.
-    void warmupDb();
+    // B-1.2: se retiró el warmup de Neon al abrir la hoja — el cold start (~1.5s) no era el
+    // costo dominante (la base caliente ya son ~4s), así que despertar antes no lo movía.
   }
 
   return (
@@ -216,12 +200,31 @@ export function ShareButton({
                 </p>
               </div>
               {error && <p role="alert" style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
-              <button type="button" className="btn btn-primary" style={{ width: "100%" }} disabled={!!busy} onClick={() => share("story")}>
-                {busy === "story" ? "Generando…" : "Historia"}
-              </button>
-              <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} disabled={!!busy} onClick={() => share("post")}>
-                {busy === "post" ? "Generando…" : "Publicación"}
-              </button>
+              {busy ? (
+                // Progreso honesto (B-1.2): una barra que AVANZA mientras se genera, con copy
+                // franco. Nada de "está tardando"/error a los N segundos — la generación toma
+                // sus ~2-4s y el indicador comunica que está trabajando, no que falló.
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "6px 0 2px" }} aria-live="polite">
+                  <div style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-crema)" }}>
+                    Generando tu {busy === "story" ? "historia" : "publicación"}…
+                  </div>
+                  <div aria-hidden style={{ position: "relative", height: 6, borderRadius: 99, background: "var(--color-barra-alta)", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", top: 0, bottom: 0, width: "40%", borderRadius: 99, background: "var(--color-ambar)", animation: "fd-indeterminate 1.1s ease-in-out infinite" }} />
+                  </div>
+                  <div style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>
+                    La primera vez puede tardar unos segundos.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={() => share("story")}>
+                    Historia
+                  </button>
+                  <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} onClick={() => share("post")}>
+                    Publicación
+                  </button>
+                </>
+              )}
             </div>
           </div>,
           document.body,
