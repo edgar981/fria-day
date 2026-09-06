@@ -200,6 +200,9 @@ export async function GET(
     }
     return Response.json({
       commit: process.env.VERCEL_GIT_COMMIT_SHA ?? "local",
+      // B-1.4: región donde CORRE la función (Vercel la inyecta). Si es iad1 (Washington) y
+      // Neon está en sa-east-1 (São Paulo), cada consulta paga la ida y vuelta cruzada.
+      region: process.env.VERCEL_REGION ?? "local",
       single,
       hasPhoto: !!photoUrl,
       photoBytes,
