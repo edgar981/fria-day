@@ -19,6 +19,11 @@ import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 // funciona en Node. Nada de esto consume la cuota de Optimización de Imágenes de
 // Vercel (esa es de next/image); es cómputo de función normal.
 export const dynamic = "force-dynamic";
+// B-1 bug 1: el primer intento en frío (Neon cold start ~3.6s + fetch de la foto remota
+// en el render + satori) medía ~7s y chocaba con el timeout por defecto de la función →
+// la conexión se caía ("Se cortó la conexión" en el cliente). Damos margen holgado; en
+// caliente la ruta responde en ~2s.
+export const maxDuration = 30;
 
 const DIM = {
   post: { width: 1080, height: 1350 },

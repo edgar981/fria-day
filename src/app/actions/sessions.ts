@@ -11,6 +11,20 @@ import { loadCircle } from "@/lib/queries";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
+/**
+ * Despierta la base (Neon) — B-1 bug 1. La share-card en frío pagaba el cold start de
+ * Neon (~3.6s) dentro del render, empujando el primer intento contra el timeout. Al abrir
+ * la hoja de compartir se dispara esto (fire-and-forget) mientras el usuario elige formato,
+ * así la conexión ya está tibia al generar. Query trivial; sin auth ni datos.
+ */
+export async function warmupDb(): Promise<void> {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+  } catch {
+    // El calentamiento es best-effort: si falla, el generar normal reintenta igual.
+  }
+}
+
 async function requireUserId(): Promise<string | null> {
   const user = await getCurrentUser();
   return user?.id ?? null;

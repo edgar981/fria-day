@@ -5,6 +5,7 @@ import { InviteGenerator } from "@/components/InviteGenerator";
 import { ShareCodeButton } from "@/components/ShareCodeButton";
 import { QrCode } from "@/components/QrCode";
 import { formatDay } from "@/lib/format";
+import { useSheetDrag } from "@/lib/useSheetDrag";
 
 export interface InviteRow {
   id: string;
@@ -28,6 +29,8 @@ export function InviteSheet({
   onClose: () => void;
   invitations: InviteRow[];
 }) {
+  const { dragY, dragging, dragHandlers } = useSheetDrag(onClose);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -59,28 +62,31 @@ export function InviteSheet({
           display: "flex",
           flexDirection: "column",
           gap: 16,
+          transform: `translateY(${dragY}px)`,
+          transition: dragging ? "none" : "transform 0.25s ease",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
-          <span style={{ width: 40, height: 4, borderRadius: 99, background: "var(--color-borde)" }} />
-        </div>
-
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-          <div>
+        {/* Zona de agarre (B-1 bug 3): grabber + encabezado arrastran para cerrar. La X
+            queda FUERA de la zona para que su toque no lo trague el pointer capture. */}
+        <div {...dragHandlers}>
+          <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
+            <span style={{ width: 40, height: 4, borderRadius: 99, background: "var(--color-borde)" }} />
+          </div>
+          <div style={{ marginTop: 12, paddingRight: 44 }}>
             <h2 style={{ font: "800 24px/1 var(--font-display)", letterSpacing: "-.02em", margin: 0 }}>Invitar al parche</h2>
             <p style={{ font: "400 13.5px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: "7px 0 0" }}>
               FriaDay es solo por invitación. Genera un código y pásaselo a tu parcero.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar"
-            style={{ width: 34, height: 34, borderRadius: 11, border: "1px solid var(--color-borde)", background: "transparent", color: "var(--color-tenue)", cursor: "pointer", fontSize: 17, lineHeight: 1, flex: "none" }}
-          >
-            ×
-          </button>
         </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar"
+          style={{ position: "absolute", top: 16, right: 16, width: 34, height: 34, borderRadius: 11, border: "1px solid var(--color-borde)", background: "var(--color-noche)", color: "var(--color-tenue)", cursor: "pointer", fontSize: 17, lineHeight: 1, flex: "none", zIndex: 1 }}
+        >
+          ×
+        </button>
 
         <InviteGenerator />
 

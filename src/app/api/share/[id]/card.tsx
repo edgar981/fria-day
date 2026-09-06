@@ -139,6 +139,19 @@ function highlightBand(
   );
 }
 
+// Bloque de UNA bebida bajo la foto (B-1 bug 2): cuando hay foto, la foto manda y esto
+// sostiene la mitad inferior (crece y se centra) — el nombre grande + meta + rating.
+function singleDrinkBlock(drink: { name: string; meta: string; rating: number | null }, story: boolean): ReactElement {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center", marginTop: 30 }}>
+      {eyebrow("LA DE ESA NOCHE")}
+      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: story ? 76 : 64, lineHeight: 1.04, letterSpacing: -2, color: C.espuma, marginTop: 20 }}>{drink.name}</div>
+      {drink.meta ? <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 28, color: C.heroMeta, marginTop: 16 }}>{drink.meta}</div> : null}
+      {drink.rating != null ? <div style={{ display: "flex", marginTop: 26 }}>{glasses(drink.rating)}</div> : null}
+    </div>
+  );
+}
+
 function metric(value: string, label: string, amber: boolean, big: boolean): ReactElement {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
@@ -152,7 +165,9 @@ function metric(value: string, label: string, amber: boolean, big: boolean): Rea
 function cardBody(d: ShareData, story: boolean): ReactElement {
   const single = d.single;
   const heroRating = single ? d.drinks[0]?.rating ?? null : null;
-  const poor = single && heroRating == null; // 3e: héroe grande con eyebrow, parche debajo
+  // B-1 bug 2: si hay foto, la foto manda (sin importar cuántas bebidas). El héroe
+  // tipográfico (y su variante "pobre") queda reservado al caso SIN foto.
+  const poor = single && heroRating == null && !d.photoUrl; // 3e: héroe grande, parche debajo
   const companions = companionsLabel(d.companions);
 
   // Highlight: solo multi-bebida (en single, el héroe ES el highlight). Máximo uno.
@@ -200,8 +215,9 @@ function cardBody(d: ShareData, story: boolean): ReactElement {
       {/* Parche arriba (salvo el caso pobre, que lo baja tras el héroe) */}
       {!poor && parche(64, 20, 18, d.photoUrl ? 28 : 30)}
 
-      {/* Cuerpo: foto + recorrido (3a) · héroe de bebida (3c/3e) · recorrido (3b/3d) */}
-      {d.photoUrl && !single ? (
+      {/* Cuerpo: si hay FOTO, la foto manda (una o varias bebidas). Sin foto: héroe
+          tipográfico (single) o recorrido (multi). Regla B-1 bug 2. */}
+      {d.photoUrl ? (
         // Un solo hijo con columna explícita: satori NO aplana los Fragments (los
         // acomodaría en fila y se saldrían del lienzo).
         <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
@@ -209,7 +225,9 @@ function cardBody(d: ShareData, story: boolean): ReactElement {
             {foam(952)}
             <img src={d.photoUrl} width={952} height={story ? 620 : 330} alt="" style={{ width: 952, height: story ? 620 : 330, objectFit: "cover" }} />
           </div>
-          {recorridoBlock(d.drinks.map((dr) => dr.name), recSize, recLine, smallArrow, 30)}
+          {single
+            ? singleDrinkBlock(d.drinks[0], story)
+            : recorridoBlock(d.drinks.map((dr) => dr.name), recSize, recLine, smallArrow, 30)}
         </div>
       ) : single ? (
         poor ? (

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icon";
+import { warmupDb } from "@/app/actions/sessions";
+import { useSheetDrag } from "@/lib/useSheetDrag";
 
 /**
  * Botón "Compartir" de la barra de acciones (Pasada S). Genera la share-card (imagen)
@@ -31,12 +33,25 @@ export function ShareButton({
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const { dragY, dragging, dragHandlers } = useSheetDrag(() => { if (!busy) setOpen(false); });
 
   async function share(format: "post" | "story") {
     setError(null);
     setBusy(format);
     try {
-      const res = await fetch(`/api/share/${sessionId}?format=${format}`);
+      // B-1 bug 1: el PRIMER intento en frío puede caerse (cold start corta la conexión) o
+      // volver 504. Un reintento transparente — el 2º ya encuentra todo tibio — antes de
+      // mostrar cualquier error. Es justo el patrón reportado ("el 2º/3º funciona").
+      const fetchCard = () => fetch(`/api/share/${sessionId}?format=${format}`, { cache: "no-store" });
+      let res: Response;
+      try {
+        res = await fetchCard();
+      } catch {
+        res = await fetchCard(); // el primero lanzó (conexión): reintento transparente
+      }
+      if (res.status === 504 || res.status === 408) {
+        res = await fetchCard(); // el primero expiró: reintento transparente
+      }
       if (!res.ok) {
         // Mensaje distinto según la causa, sin exponer detalles técnicos, y dejando
         // claro si vale la pena reintentar (S.1).
@@ -46,7 +61,7 @@ export function ShareButton({
             : res.status === 404
               ? "No se encontró la salida."
               : res.status === 504 || res.status === 408
-                ? "Se tardó demasiado. Reintenta."
+                ? "La imagen está tardando más de lo normal. Reintenta en un momento."
                 : "El servidor no pudo crear la imagen. Reintenta.",
         );
         return;
@@ -73,7 +88,8 @@ export function ShareButton({
     } catch (e) {
       // AbortError = el usuario canceló la hoja nativa; no es error.
       if (e instanceof Error && e.name === "AbortError") return;
-      setError("Se cortó la conexión. Reintenta.");
+      // Falló incluso el reintento: no lo llamamos "conexión" (suele ser lentitud en frío).
+      setError("La imagen está tardando más de lo normal. Reintenta en un momento.");
     } finally {
       setBusy(null);
     }
@@ -85,6 +101,9 @@ export function ShareButton({
     setError(null);
     setOpen(true);
     onAfterOpen?.();
+    // B-1 bug 1: despierta Neon mientras el usuario elige formato (fire-and-forget), para
+    // que el generar no pague el cold start de la base.
+    void warmupDb();
   }
 
   return (
@@ -181,15 +200,21 @@ export function ShareButton({
                 display: "flex",
                 flexDirection: "column",
                 gap: 14,
+                transform: `translateY(${dragY}px)`,
+                transition: dragging ? "none" : "transform 0.25s ease",
               }}
             >
-              <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
-                <span style={{ width: 40, height: 4, borderRadius: 99, background: "var(--color-borde)" }} />
+              {/* Zona de agarre (B-1 bug 3): grabber + encabezado arrastran para cerrar
+                  (los botones quedan fuera para no pelear con el toque). */}
+              <div {...dragHandlers} style={{ ...dragHandlers.style, display: "flex", flexDirection: "column", gap: 14 }}>
+                <div style={{ display: "flex", justifyContent: "center", paddingTop: 2 }}>
+                  <span style={{ width: 40, height: 4, borderRadius: 99, background: "var(--color-borde)" }} />
+                </div>
+                <h2 style={{ font: "800 22px/1 var(--font-display)", letterSpacing: "-.02em", margin: 0 }}>Compartir esta salida</h2>
+                <p style={{ font: "400 13.5px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: 0 }}>
+                  Se genera una imagen para mandar por donde quieras.
+                </p>
               </div>
-              <h2 style={{ font: "800 22px/1 var(--font-display)", letterSpacing: "-.02em", margin: 0 }}>Compartir esta salida</h2>
-              <p style={{ font: "400 13.5px/1.45 var(--font-sans)", color: "var(--color-tenue)", margin: 0 }}>
-                Se genera una imagen para mandar por donde quieras.
-              </p>
               {error && <p role="alert" style={{ color: "var(--color-alerta)", font: "500 13px var(--font-sans)", margin: 0 }}>{error}</p>}
               <button type="button" className="btn btn-primary" style={{ width: "100%" }} disabled={!!busy} onClick={() => share("story")}>
                 {busy === "story" ? "Generando…" : "Historia"}
