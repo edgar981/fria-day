@@ -117,9 +117,20 @@ export async function setAccountPassword(
  */
 export async function changeAccountPassword(
   password: string,
-): Promise<{ ok: true } | { ok: false; error: string }> {
+  expectedUserId: string,
+): Promise<{ ok: true } | { ok: false; error: string; code?: "session_switched" }> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
+  // GUARD de identidad (RC.1): el step-up FaceID usa signIn.passkey, que es un LOGIN y
+  // cambia la sesión a quien asertó. Si en el dispositivo hay passkeys de dos cuentas y
+  // se asertó otra, la sesión ahora es de esa otra cuenta. Rotar aquí le cambiaría la
+  // contraseña a la cuenta EQUIVOCADA. Comparamos contra el id capturado por el cliente
+  // ANTES de la ceremonia: si no coinciden, abortamos sin tocar nada (el cliente cierra
+  // la sesión y manda a login). Verificado por ejecución (RC.1). El servidor es la
+  // compuerta real; verify-authentication del plugin no compara con la sesión previa.
+  if (user.id !== expectedUserId) {
+    return { ok: false, error: "La sesión cambió de cuenta. Vuelve a entrar.", code: "session_switched" };
+  }
   if (typeof password !== "string" || password.length < 8) {
     return { ok: false, error: "La contraseña necesita mínimo 8 caracteres" };
   }
