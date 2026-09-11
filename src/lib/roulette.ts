@@ -124,7 +124,48 @@ export function getRouletteChallenge(
   return CHALLENGE_BY_KEY.get(challengeKey);
 }
 
-/** Claves de los retos de una dinámica — el servidor elige una al azar. */
+/** Claves de los retos de una dinámica — el servidor elige una. */
 export function challengeKeysFor(dynamicKey: string): string[] {
   return DYN_BY_KEY.get(dynamicKey)?.challenges.map((c) => c.key) ?? [];
+}
+
+/**
+ * Entero uniforme y sin sesgo en [0, max) usando Web Crypto (`crypto.getRandomValues`),
+ * que es nativo en Node y en el navegador — sin depender de cómo el bundler resuelva
+ * `require("crypto")` (RU.2: el sorteo del perdedor debe ser aleatorio de verdad). Rechazo
+ * por muestreo para evitar el sesgo del módulo sobre 2^32.
+ */
+export function secureRandomInt(max: number): number {
+  if (!Number.isInteger(max) || max <= 1) return 0;
+  const RANGE = 4294967296; // 2^32
+  const limit = Math.floor(RANGE / max) * max; // mayor múltiplo de max dentro del rango
+  const buf = new Uint32Array(1);
+  let x = 0;
+  do {
+    globalThis.crypto.getRandomValues(buf);
+    x = buf[0]!;
+  } while (x >= limit);
+  return x % max;
+}
+
+/** Elige un elemento al azar (rng inyectable para testear). */
+export function pickRandom<T>(arr: readonly T[], rnd: (max: number) => number = secureRandomInt): T | undefined {
+  if (arr.length === 0) return undefined;
+  return arr[rnd(arr.length)];
+}
+
+/**
+ * Elige un reto de una dinámica SIN repetir los ya usados en la misma salida mientras
+ * queden disponibles; al agotarlos, reinicia el pool (RU.1 · §2). `rnd` inyectable.
+ */
+export function pickChallengeKey(
+  dynamicKey: string,
+  usedChallengeKeys: readonly string[],
+  rnd: (max: number) => number = secureRandomInt,
+): string | null {
+  const all = challengeKeysFor(dynamicKey);
+  if (all.length === 0) return null;
+  const unused = all.filter((k) => !usedChallengeKeys.includes(k));
+  const pool = unused.length > 0 ? unused : all; // reinicia cuando se agotan
+  return pool[rnd(pool.length)] ?? null;
 }

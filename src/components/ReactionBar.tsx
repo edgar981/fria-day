@@ -261,8 +261,10 @@ export function ReactionBar({
     </span>
   );
   // Avatares: el propio SIEMPRE primero (anillo ámbar) + los más recientes (I-1.5).
+  // flex:none para que en la fila social NO se encoja: sin esto los avatares con margen
+  // negativo se solapaban con la píldora "Brindaste" cuando el espacio apretaba (RU.1 · §6).
   const avatars = (
-    <span style={{ display: "inline-flex", alignItems: "center" }}>
+    <span style={{ display: "inline-flex", alignItems: "center", flex: "none" }}>
       {pile.visible.map((r, i) => (
         <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
       ))}

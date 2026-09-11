@@ -995,3 +995,22 @@ Mapa/geo/Places, badges/logros/rachas, likes/comentarios, push, vista "misma
 salida" (el schema ya lo permite calcular a futuro), ponderación por formato. El
 `format` **sí** se guarda siempre en cada check-in para poder ponderar en v2 sin
 migrar.
+
+## Pasada RU · La ruleta — háptico en iOS (RU.1 §9)
+
+**Confirmado por ejecución/plataforma:** iOS Safari y las PWA en iOS **no soportan la
+Vibration API** (`navigator.vibrate` es no-op). El diseño del tablero apoyaba tres de los
+siete estados en háptico: la **carga** (pulso ligero cada 300 ms), el **chasquido del pin**
+por casilla durante el giro, y el **golpe fuerte del veredicto**. En iPhone esas tres capas
+hápticas **no existen**: el giro es mudo (sin vibración y —por decisión del tablero— sin
+sonido). En Android/PWA compatibles sí vibran (`navigator.vibrate` se llama igual).
+
+**Compensación visual que ya existe (no hace falta agregar nada para v1):**
+- Carga → la **marca de conteo/medidor** se llena y la rueda retrocede: se ve el "tensado".
+- Chasquido del pin → el pin **chasquea visualmente** (`fd-rl-tick`) en cada casilla.
+- Veredicto → **flash ámbar**, el sector se enciende y el resto baja de opacidad, y el
+  nombre entra desde abajo.
+
+**Decisión:** se acepta la pérdida háptica en iOS apoyándose en esas señales visuales. El
+**sonido** se evalúa aparte (RU.2 §2): es la vía real para devolver el "chasquido" y el
+"golpe" en iPhone, con un control de encendido y default conservador. Ver el reporte de RU.2.

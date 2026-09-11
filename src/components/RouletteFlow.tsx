@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { ROULETTE_DYNAMICS, getRouletteDynamic, getRouletteChallenge } from "@/lib/roulette";
-import { spinRound, setRoundOutcome } from "@/app/actions/rounds";
+import { spinRound, setRoundOutcome, tagForRoulette } from "@/app/actions/rounds";
+import { searchUsersAction } from "@/app/actions/beers";
 
 export type RoulettePlayer = { id: string; name: string; avatar: string | null };
 export type RouletteLatestRound = {
@@ -20,6 +21,11 @@ export type RouletteLatestRound = {
 
 const SPIN_MS = 5100; // duración total del giro (RU · §5)
 const TURNS = 6;
+
+// Colores de casilla (RU.1 · §4): 8 tonos DISTINTOS de la paleta de fauna de la app
+// (nada de grises intermedios, por el bar de noche). El ámbar queda reservado al veredicto.
+// Con ≤8 participantes cada uno tiene color propio; con 9+ se repiten (ver reporte).
+const WHEEL_PALETTE = ["#2F6B4F", "#C4620A", "#8A4A12", "#4A5C2A", "#B0762A", "#6E3A1E", "#3A6B4A", "#7A5C2E"];
 
 type Phase = "dinamica" | "jugadores" | "girar" | "reto";
 
@@ -36,7 +42,7 @@ function haptic(pattern: number | number[]) {
  * ronda persistida y la muestra sin re-animar.
  */
 export function RouletteFlow({
-  players,
+  players: initialPlayers,
   viewerId,
   sessionId,
   preselectedDyn,
@@ -49,6 +55,8 @@ export function RouletteFlow({
   latestRound: RouletteLatestRound | null;
 }) {
   const router = useRouter();
+  // Estado (no prop) para poder AGREGAR participantes desde el gate ≥2 (RU.1 · §8).
+  const [players, setPlayers] = useState<RoulettePlayer[]>(initialPlayers);
   const reduce = useRef(false);
   useEffect(() => {
     reduce.current = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -90,11 +98,18 @@ export function RouletteFlow({
   const enoughPlayers = n >= 2;
 
   const wheelBg = useMemo(() => {
+    // Con muchos participantes evita que la ÚLTIMA casilla choque con la primera (aro cerrado).
+    const colorAt = (i: number) => {
+      let c = WHEEL_PALETTE[i % WHEEL_PALETTE.length]!;
+      if (i === n - 1 && c === WHEEL_PALETTE[0]) c = WHEEL_PALETTE[1]!;
+      return c;
+    };
     const stops = players
       .map((_, i) => {
         const a = i * seg, b = (i + 1) * seg;
-        const dim = verdictId != null && i !== loserIdx;
-        const c = verdictId != null && i === loserIdx ? "#f2a016" : dim ? (i % 2 ? "#1a130d" : "#211812") : i % 2 ? "#2a1d12" : "#3a2713";
+        // Veredicto: el perdedor en ámbar, el resto oscurecido (§5). Fuera del veredicto,
+        // cada casilla con su color propio.
+        const c = verdictId != null ? (i === loserIdx ? "#f2a016" : "#1c130c") : colorAt(i);
         return `${c} ${a}deg ${b}deg`;
       })
       .join(",");
@@ -182,6 +197,11 @@ export function RouletteFlow({
     spinTimer.current = setTimeout(reveal, SPIN_MS);
   }
 
+  function handleTagged(sid: string, player: RoulettePlayer) {
+    setCurSessionId(sid);
+    setPlayers((prev) => (prev.some((p) => p.id === player.id) ? prev : [...prev, player]));
+  }
+
   async function mark(next: "completed" | "passed") {
     if (!roundId) return;
     const value = outcome === next ? "pending" : next;
@@ -249,7 +269,7 @@ export function RouletteFlow({
             {players.map((p) => (
               <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 11, background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 16, padding: "9px 13px 9px 9px" }}>
                 <Avatar avatar={p.avatar} size={36} radius={12} />
-                <span style={{ flex: 1, font: "600 15px var(--font-sans)", color: "var(--color-crema)" }}>{p.id === viewerId ? "Tú" : p.name}</span>
+                <span style={{ flex: 1, font: "600 15px var(--font-sans)", color: "var(--color-crema)" }}>{p.name}</span>
                 <span style={{ font: "500 11.5px var(--font-sans)", color: "var(--color-tenue-2)" }}>{p.id === players[0]?.id ? "dueño" : "etiquetado"}</span>
               </div>
             ))}
@@ -262,10 +282,10 @@ export function RouletteFlow({
               <button type="button" className="btn btn-primary" style={{ width: "100%", height: 56 }} onClick={toGirar}>Armar la ruleta</button>
             ) : (
               <div>
-                <p style={{ font: "500 13.5px/1.5 var(--font-sans)", color: "var(--color-alerta)", margin: "0 0 10px" }}>
-                  La ruleta necesita al menos 2 personas de la app. Etiquetá a alguien en la salida para jugar.
+                <p style={{ font: "500 13.5px/1.5 var(--font-sans)", color: "var(--color-tenue)", margin: "0 0 10px" }}>
+                  Falta gente para jugar. Agrega a alguien del parche aquí mismo.
                 </p>
-                <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} onClick={() => router.push(backHref)}>Ir a la salida</button>
+                <GateTagger sessionId={curSessionId} excludeIds={players.map((p) => p.id)} onTagged={handleTagged} />
               </div>
             )}
           </div>
@@ -289,7 +309,7 @@ export function RouletteFlow({
                 const ink = verdictId ? (i === loserIdx ? "#241609" : "rgba(247,239,221,.28)") : "var(--color-crema)";
                 return (
                   <div key={p.id} style={{ position: "absolute", left: "50%", top: "50%", width: 0, height: 0, transform: `rotate(${center}deg)` }}>
-                    <span style={{ position: "absolute", left: -51, top: -122, width: 102, textAlign: "center", font: "700 15px/1.1 var(--font-sans)", color: ink, transform: `rotate(${textRot}deg)` }}>{p.id === viewerId ? "Tú" : p.name}</span>
+                    <span style={{ position: "absolute", left: -51, top: -122, width: 102, textAlign: "center", font: "700 15px/1.1 var(--font-sans)", color: ink, transform: `rotate(${textRot}deg)` }}>{p.name}</span>
                   </div>
                 );
               })}
@@ -305,10 +325,15 @@ export function RouletteFlow({
             {verdictId && <div style={{ position: "absolute", inset: 0, borderRadius: "50%", background: "var(--color-ambar)", pointerEvents: "none", opacity: 0, animation: "fd-rl-flash .5s ease-out 1 both" }} />}
           </div>
 
+          {/* Modo mesa (§8): rota el bloque COMPLETO (etiqueta + nombre). La rotación va en un
+              hijo APARTE de la animación de entrada: si compartieran elemento, el
+              `transform: translateY(0)` final de fd-rl-rise (fill both) pisaría el rotate. */}
           {verdictId && loser && (
             <div style={{ marginTop: 18, textAlign: "center", animation: "fd-rl-rise .45s cubic-bezier(.2,1.2,.3,1) both" }}>
-              <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--color-alerta)" }}>Perdió</div>
-              <div style={{ font: "800 40px/1 var(--font-display)", letterSpacing: "-.03em", color: "var(--color-espuma)", marginTop: 7, transform: tableMode ? "rotate(180deg)" : undefined }}>{loser.id === viewerId ? "Tú" : loser.name}</div>
+              <div style={{ transform: tableMode ? "rotate(180deg)" : undefined }}>
+                <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--color-alerta)" }}>Perdió</div>
+                <div style={{ font: "800 40px/1 var(--font-display)", letterSpacing: "-.03em", color: "var(--color-espuma)", marginTop: 7 }}>{loser.name}</div>
+              </div>
             </div>
           )}
 
@@ -352,11 +377,12 @@ export function RouletteFlow({
               <div style={{ height: 8, background: "radial-gradient(circle at 50% 100%,var(--color-espuma) 6px,transparent 6.5px) 0 0/13px 8px repeat-x" }} />
               <div style={{ height: 10, background: "var(--color-espuma)" }} />
               <div style={{ padding: "20px 20px 22px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                {/* Modo mesa (§8): rota la identidad COMPLETA del perdedor (avatar + etiqueta + nombre). */}
+                <div style={{ display: "flex", alignItems: "center", gap: 11, transform: tableMode ? "rotate(180deg)" : undefined }}>
                   <Avatar avatar={loser.avatar} size={44} radius={14} />
                   <div style={{ minWidth: 0 }}>
                     <div className="eyebrow" style={{ color: "#c9a874" }}>El reto de</div>
-                    <div style={{ font: "800 24px/1.1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 4, transform: tableMode ? "rotate(180deg)" : undefined }}>{loser.id === viewerId ? "Tú" : loser.name}</div>
+                    <div style={{ font: "800 24px/1.1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 4 }}>{loser.name}</div>
                   </div>
                 </div>
                 <div style={{ font: "700 25px/1.22 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 18, textWrap: "pretty" }}>{challenge.text}</div>
@@ -384,6 +410,79 @@ export function RouletteFlow({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Buscador+etiquetado inline para el gate ≥2 (RU.1 · §8): agrega participantes sin salir. */
+function GateTagger({
+  sessionId,
+  excludeIds,
+  onTagged,
+}: {
+  sessionId: string | null;
+  excludeIds: string[];
+  onTagged: (sessionId: string, player: RoulettePlayer) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [results, setResults] = useState<{ id: string; displayName: string }[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const t = setTimeout(async () => {
+      try {
+        const r = await searchUsersAction(q);
+        if (active) setResults(r);
+      } catch {
+        if (active) setResults([]);
+      }
+    }, 200);
+    return () => { active = false; clearTimeout(t); };
+  }, [q]);
+
+  async function add(u: { id: string; displayName: string }) {
+    setBusy(u.id);
+    setError(null);
+    const res = await tagForRoulette({ sessionId: sessionId ?? undefined, userId: u.id });
+    setBusy(null);
+    if (res.ok) { onTagged(res.sessionId, res.player); setQ(""); }
+    else setError(res.error);
+  }
+
+  const visible = results.filter((u) => !excludeIds.includes(u.id)).slice(0, 6);
+
+  return (
+    <div>
+      <input
+        className="field"
+        placeholder="Buscar a alguien del parche"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        autoComplete="off"
+      />
+      {error && <p role="alert" style={{ font: "500 12.5px var(--font-sans)", color: "var(--color-alerta)", margin: "8px 0 0" }}>{error}</p>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 10 }}>
+        {visible.length === 0 ? (
+          <p style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue-2)", margin: 0 }}>
+            {q ? "Nadie con ese nombre." : "Escribe para buscar."}
+          </p>
+        ) : (
+          visible.map((u) => (
+            <button
+              key={u.id}
+              type="button"
+              onClick={() => add(u)}
+              disabled={busy === u.id}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 14, padding: "10px 13px", cursor: "pointer", font: "600 14.5px var(--font-sans)", color: "var(--color-crema)" }}
+            >
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.displayName}</span>
+              <span style={{ font: "700 13px var(--font-sans)", color: "var(--color-ambar)", flex: "none" }}>{busy === u.id ? "…" : "+ Agregar"}</span>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }

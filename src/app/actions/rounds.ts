@@ -1,11 +1,10 @@
 "use server";
 
-import { randomInt } from "crypto";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay, todayInputValue } from "@/lib/format";
-import { isRouletteDynamicKey, challengeKeysFor } from "@/lib/roulette";
+import { isRouletteDynamicKey, pickRandom, pickChallengeKey } from "@/lib/roulette";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -45,7 +44,6 @@ export async function spinRound(input: {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
   if (!isRouletteDynamicKey(input.dynamicKey)) return { ok: false, error: "Dinámica inválida" };
-  const challengeKeys = challengeKeysFor(input.dynamicKey);
 
   const userId = user.id;
   const todayStored = toStoredDay(todayInputValue());
@@ -91,9 +89,15 @@ export async function spinRound(input: {
         return { ok: false as const, error: `La ruleta necesita al menos ${MIN_ROULETTE_PLAYERS} personas de la app. Etiquetá a alguien en la salida.` };
       }
 
-      // Índices en rango (players.length ≥ 2, challengeKeys.length = 3) → acceso seguro.
-      const loserId = players[randomInt(players.length)]!;
-      const challengeKey = challengeKeys[randomInt(challengeKeys.length)]!;
+      // Perdedor uniforme (Web Crypto, sin sesgo de bundling · RU.2).
+      const loserId = pickRandom(players)!;
+      // Reto SIN repetir los ya usados de esta dinámica en esta salida (RU.1 · §2).
+      const usedRounds = await tx.sessionRound.findMany({
+        where: { sessionId, dynamicKey: input.dynamicKey },
+        select: { challengeKey: true },
+      });
+      const challengeKey = pickChallengeKey(input.dynamicKey, usedRounds.map((r) => r.challengeKey));
+      if (!challengeKey) return { ok: false as const, error: "Dinámica inválida" };
       const agg = await tx.sessionRound.aggregate({ where: { sessionId }, _max: { roundNumber: true } });
       const roundNumber = (agg._max.roundNumber ?? 0) + 1;
       const round = await tx.sessionRound.create({
@@ -111,6 +115,43 @@ export async function spinRound(input: {
   } catch {
     return { ok: false, error: "No se pudo girar la ruleta" };
   }
+}
+
+/**
+ * Etiqueta a alguien PARA la ruleta desde el gate de "≥2 personas" (RU.1 · §8), sin salir a
+ * editar la salida. Crea la salida de HOY si aún no existe (mismo criterio que spinRound).
+ * Idempotente: si ya está etiquetado, no falla. Devuelve el jugador para agregarlo a la rueda.
+ */
+export async function tagForRoulette(input: {
+  sessionId?: string;
+  userId: string;
+}): Promise<Result<{ sessionId: string; player: { id: string; name: string; avatar: string | null } }>> {
+  const me = await getCurrentUser();
+  if (!me) return { ok: false, error: "Inicia sesión de nuevo" };
+  if (input.userId === me.id) return { ok: false, error: "Ya estás en la ruleta" };
+
+  const user = await prisma.user.findUnique({ where: { id: input.userId }, select: { id: true, displayName: true, avatar: true } });
+  if (!user) return { ok: false, error: "No existe ese usuario" };
+
+  let sessionId: string;
+  if (input.sessionId) {
+    const s = await prisma.session.findUnique({ where: { id: input.sessionId }, select: { id: true, userId: true } });
+    if (!s || s.userId !== me.id) return { ok: false, error: "No es tu salida" };
+    sessionId = s.id;
+  } else {
+    const todayStored = toStoredDay(todayInputValue());
+    const existing = await prisma.session.findFirst({ where: { userId: me.id, date: todayStored }, orderBy: { createdAt: "asc" }, select: { id: true } });
+    sessionId = existing?.id ?? (await prisma.session.create({ data: { userId: me.id, date: todayStored }, select: { id: true } })).id;
+  }
+
+  try {
+    await prisma.sessionTag.create({ data: { sessionId, taggedUserId: input.userId } });
+  } catch {
+    // P2002 (ya etiquetado) → idempotente, seguimos.
+  }
+  revalidatePath("/");
+  revalidatePath(`/sessions/${sessionId}`);
+  return { ok: true, sessionId, player: { id: user.id, name: user.displayName, avatar: user.avatar } };
 }
 
 /**
