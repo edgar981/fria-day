@@ -6,6 +6,7 @@ import { FoamStrip } from "@/components/FoamStrip";
 import { FORMAT_LABEL, formatAbv, relativeDay, joinMeta, formatNoun } from "@/lib/format";
 import { ReactionBar } from "@/components/ReactionBar";
 import { formatBreakdown } from "@/lib/domain";
+import { getRouletteDynamic, getRouletteChallenge } from "@/lib/roulette";
 import type { FeedSession } from "@/lib/queries";
 
 type CheckIn = FeedSession["checkIns"][number];
@@ -234,13 +235,29 @@ export function SessionCard({
           </div>
         )}
 
+        {/* RU · §8: una sola línea de la ÚLTIMA ronda, sin robarle la tarjeta al registro.
+            El aro punteado de 26px es la firma de la ruleta. */}
+        {session.lastRound && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-barra-alta)", borderRadius: 14, padding: "10px 12px" }}>
+            <span aria-hidden style={{ width: 26, height: 26, borderRadius: "50%", border: "2px dotted var(--color-ambar)", flex: "none", display: "block" }} />
+            <span style={{ flex: 1, minWidth: 0, font: "500 13.5px/1.35 var(--font-sans)", color: "var(--color-espuma)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              <strong style={{ fontWeight: 700 }}>{session.lastRound.loserId === viewerId ? "Tú" : session.lastRound.loser.displayName}</strong>
+              {" perdió "}
+              <em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{getRouletteDynamic(session.lastRound.dynamicKey)?.name ?? "la ruleta"}</em>
+              {" · "}
+              {getRouletteChallenge(session.lastRound.challengeKey)?.challenge.text ?? ""}
+            </span>
+          </div>
+        )}
+
         {/* Pie: fila compacta de métricas (Pasada N, estilo Pivka). Bebidas totales +
             desglose por formato. Sin unidades de alcohol ni duración: la app no mide
-            consumo con precisión clínica. */}
+            consumo con precisión clínica. RU · §8: "rondas" entra en la fila. */}
         <div style={{ display: "flex", alignItems: "flex-end", gap: 18, borderTop: "1px solid #241A12", paddingTop: 12, flexWrap: "wrap", rowGap: 12 }}>
           <Stat value={totalUnits} label={`bebida${totalUnits !== 1 ? "s" : ""}`} primary />
           {bd.length > 1 &&
             bd.map((b) => <Stat key={b.format} value={b.count} label={formatNoun(b.format, b.count)} />)}
+          {session.roundsCount > 0 && <Stat value={session.roundsCount} label={`ronda${session.roundsCount !== 1 ? "s" : ""}`} />}
         </div>
 
         {/* Pie de brindis (I-1.2): total + emojis + avatares + botón Brindar. Los botones

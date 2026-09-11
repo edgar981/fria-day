@@ -3,6 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/Icon";
+import { RouletteMenu } from "@/components/RouletteMenu";
 
 type Item = { href: string; label: string; icon: IconName };
 // Barra (Pasada N): Feed · Catálogo · [+] · Leaderboard · Perfil. "Invitar" salió de la
@@ -91,26 +92,8 @@ export function BottomNav() {
         {LEFT.map((it) => (
           <Tab key={it.href} item={it} active={isActive(pathname, it.href)} />
         ))}
-        <span style={{ display: "flex", justifyContent: "center" }}>
-          <Link
-            href="/sessions/new"
-            aria-label="Nueva salida"
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 20,
-              background: "var(--color-ambar)",
-              color: "var(--color-tinta)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginTop: -22,
-              boxShadow: "0 8px 20px rgba(242,160,22,.32)",
-            }}
-          >
-            <Icon name="plus" size={28} />
-          </Link>
-        </span>
+        {/* RU · §1: tap = Nueva salida; hold = menú de dinámicas de la ruleta. */}
+        <RouletteMenu />
         {RIGHT.map((it) => (
           <Tab key={it.href} item={it} active={isActive(pathname, it.href)} />
         ))}

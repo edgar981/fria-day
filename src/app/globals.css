@@ -320,3 +320,14 @@ textarea.field {
 /* Motivo: franja de espuma → única implementación en el componente FoamStrip (G.2).
    Se eliminaron las clases .foam/.foam-scallop (estaban sin uso; eran una segunda
    implementación del mismo festón). */
+
+/* --- La ruleta (Pasada RU) --- */
+@keyframes fd-rl-tick { 0% { transform: translateX(-50%) rotate(0); } 30% { transform: translateX(-50%) rotate(-13deg); } 100% { transform: translateX(-50%) rotate(0); } }
+@keyframes fd-rl-flash { 0% { opacity: 0; } 18% { opacity: 0.85; } 100% { opacity: 0; } }
+@keyframes fd-rl-rise { from { transform: translateY(26px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes fd-rl-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.035); } }
+/* prefers-reduced-motion: sin giro ni respiración; el veredicto entra por un barajado
+   discreto (RU · §5). Las animaciones se apagan y la app cambia de estado en seco. */
+@media (prefers-reduced-motion: reduce) {
+  .fd-rl-breathe, .fd-rl-tick, .fd-rl-flash { animation: none !important; }
+}

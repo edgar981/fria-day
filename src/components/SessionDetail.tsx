@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { Tally } from "@/components/Tally";
 import { PhotoHero } from "@/components/PhotoHero";
 import { CheckInReadList } from "@/components/CheckInReadList";
+import { RouletteBlock, type RoundView } from "@/components/RouletteBlock";
 import { TaggedCheckInList } from "@/components/TaggedCheckInList";
 import { OwnerCheckInList, type OwnerCheckIn } from "@/components/OwnerCheckInList";
 import { SessionPhotos } from "@/components/SessionPhotos";
@@ -67,10 +68,11 @@ export function SessionDetail(props: {
   breakdownText: string | null;
   initialMineIds: string[];
   autoFocusComment: boolean;
+  rounds: RoundView[]; // RU · §8
 }) {
   const {
     sessionId, isOwner, isTagged, ownerName, ownerAvatar, viewer, placeName, notes, dateLabel, dateShort, dateInput,
-    compSummary, taggedByName, checkIns, photos, tags, reactions, comments, total, distinct, breakdownText, initialMineIds, autoFocusComment,
+    compSummary, taggedByName, checkIns, photos, tags, reactions, comments, total, distinct, breakdownText, initialMineIds, autoFocusComment, rounds,
   } = props;
 
   const [mode, setMode] = useState<"read" | "edit">("read");
@@ -260,6 +262,16 @@ export function SessionDetail(props: {
               </div>
             </>
           )}
+          {/* RU · §8: "rondas" junto a "bebidas". Sin unidades de alcohol, como la regla. */}
+          {rounds.length > 0 && (
+            <>
+              <div style={{ width: 1, height: 34, background: "var(--color-borde)" }} />
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <span style={{ font: "800 26px/1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-crema)" }}>{rounds.length}</span>
+                <span style={{ font: "500 11px var(--font-sans)", color: "var(--color-tenue)" }}>{rounds.length === 1 ? "ronda" : "rondas"}</span>
+              </div>
+            </>
+          )}
           {isOwner && total > 0 && (
             <span style={{ marginLeft: "auto" }}>
               <Tally count={total} color="#6b5334" barW={3} barH={19} gap={4} maxGroups={5} />
@@ -296,6 +308,9 @@ export function SessionDetail(props: {
           <CheckInReadList checkIns={checkIns.map((c) => ({ id: c.id, quantity: c.quantity, format: c.format, rating: c.rating, beerName: c.beerName, brewery: c.brewery }))} />
         )}
       </div>
+
+      {/* La ruleta (RU · §8): última ronda completa + anteriores colapsadas + girar. */}
+      <RouletteBlock rounds={rounds} isOwner={isOwner} viewerId={viewer.id} sessionId={sessionId} />
 
       {/* Notas (lectura). */}
       {notes && (

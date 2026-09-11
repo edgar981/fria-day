@@ -72,8 +72,14 @@ export async function getFeed(userId: string) {
       },
       // I-2: fotos de la salida, en orden de subida. La tarjeta usa la primera.
       photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+      // RU · §8: la tarjeta del feed muestra SOLO la última ronda (una línea) + el conteo.
+      rounds: {
+        orderBy: { roundNumber: "desc" },
+        take: 1,
+        select: { id: true, dynamicKey: true, challengeKey: true, loserId: true, loser: { select: { id: true, displayName: true, avatar: true } } },
+      },
       // I-3: la tarjeta muestra el CONTEO ("💬 4"), no los comentarios (el feed no crece sin freno).
-      _count: { select: { comments: true } },
+      _count: { select: { comments: true, rounds: true } },
     },
   });
 
@@ -89,6 +95,8 @@ export async function getFeed(userId: string) {
       reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
     },
     commentsCount: s._count.comments, // I-3
+    roundsCount: s._count.rounds, // RU · §8 (métrica "rondas")
+    lastRound: s.rounds[0] ?? null, // RU · §8 (línea del feed)
   }));
 }
 
@@ -117,8 +125,14 @@ export async function getSessionDetail(id: string, viewerId: string) {
       photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
       // I-3: lista PLANA de comentarios con autor, más viejos primero.
       comments: {
-        select: { id: true, body: true, createdAt: true, user: { select: { id: true, displayName: true, avatar: true } } },
+        select: { id: true, body: true, createdAt: true, roundId: true, user: { select: { id: true, displayName: true, avatar: true } } },
         orderBy: { createdAt: "asc" },
+      },
+      // RU · §8: rondas de la ruleta, la más reciente primero. La UI muestra la última
+      // completa y colapsa las anteriores a una línea.
+      rounds: {
+        orderBy: { roundNumber: "desc" },
+        select: { id: true, roundNumber: true, dynamicKey: true, challengeKey: true, loserId: true, completedAt: true, passedAt: true, createdAt: true, loser: { select: { id: true, displayName: true, avatar: true } } },
       },
     },
   });

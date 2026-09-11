@@ -32,11 +32,38 @@ recién vale la pena hacerlo.
 
 ## Ruleta de retos
 
-- **Qué:** retos rotativos para el parche.
-- **Restricción dura:** solo metas de **variedad, disciplina o presencia** (probar
-  estilos nuevos, registrar seguido, aparecer en salidas) — **NUNCA de cantidad**.
-  Un reto de "tomar más" contradice la regla de producto.
-- **Disparador:** cuando un usuario pida **retos o metas** para picarse con el parche.
+- **Resuelto (Pasada RU):** la ruleta se construyó — arquitectura A (un solo teléfono),
+  6 dinámicas × 3 retos en código, perdedor y reto decididos en el servidor, presencia en
+  detalle/feed/métricas. La restricción dura se mantiene: ningún reto de consumo.
+
+### Ruleta · arquitectura B (sincronizada) — descartada para v1
+
+- **Qué:** cada quien ve girar en su propio teléfono, en tiempo real (misma semilla, mismo
+  arranque; todas las pantallas paran en el mismo nombre).
+- **Por qué NO en v1:** exige tiempo real que hoy no existe (Next 16 en Vercel Hobby no
+  sostiene websockets → SSE con función larga o servicio externo tipo Pusher/Ably), manejo
+  de estados de conexión, resolución de carreras (dos giros a la vez) y un caso de rezagado
+  ("abrió la app cuando la rueda ya paró") sin buena respuesta. Y rompe el objeto común: la
+  mesa deja de mirar una sola pantalla. El teatro del giro vive en que todos miren el mismo
+  teléfono, no en la sincronización.
+- **Puente barato (ya viable en A):** al guardar la ronda, a los demás les llega la
+  notificación en su feed — se pierden el giro pero no el resultado.
+- **Disparador:** cuando el parche **juegue estando en bares distintos**. Si eso no pasa, no
+  es v2: es una función que nadie pidió dos veces.
+
+### Ruleta · "Otro reto" (cambiar de reto una vez por ronda)
+
+- **Qué:** el perdedor puede, una vez por ronda, pedir OTRO reto dentro de la misma
+  dinámica (las "salidas del apuro" del tablero, junto a "paso" y "cumplido").
+- **Por qué esperar:** v1 quedó con solo **cumplir/pasar** (decisión de Edgar). Requiere que
+  `spinRound` sepa re-elegir el reto de una ronda existente y un botón en la carta.
+- **Disparador:** cuando el reto que toca no encaje seguido y "paso" se sienta demasiado.
+
+### Ruleta · anclar comentarios a una ronda (UI)
+
+- **Qué:** el modelo ya tiene `SessionComment.roundId` (RU · §8, mínimo), pero NO hay
+  selector para elegir a qué ronda anclar un comentario al escribirlo.
+- **Disparador:** cuando la gente comente rondas específicas y quiera que quede pegado.
 
 ## "Yo también" (check-in propio prellenado)
 

@@ -53,6 +53,7 @@ model User {
   taggedIn           SessionTag[] @relation("SessionTagTaggedUser")
   reactions          SessionReaction[]
   comments           SessionComment[]
+  roundsLost         SessionRound[] @relation("RoundLoser")
 
   @@map("user")
 }
@@ -190,6 +191,7 @@ model Session {
   reactions SessionReaction[]
   photos    SessionPhoto[]
   comments  SessionComment[]
+  rounds    SessionRound[]
 
   @@index([userId])
   @@index([date])
@@ -206,10 +208,45 @@ model SessionComment {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   body      String
+  // Pasada RU (§8, mínimo): un comentario puede anclarse a una ronda de la ruleta.
+  // Opcional; si la ronda se borra, el comentario queda pero se desancla (SetNull).
+  roundId   String?
+  round     SessionRound? @relation(fields: [roundId], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
 
   @@index([sessionId])
+  @@index([roundId])
   @@map("session_comment")
+}
+
+// Rondas de la ruleta (Pasada RU). La ronda se decide EN EL SERVIDOR (perdedor + reto);
+// la animación del cliente solo REVELA un resultado ya persistido → un refresh a mitad de
+// giro conserva el veredicto y el resultado no es manipulable desde el navegador.
+// dynamicKey/challengeKey son claves ESTABLES del catálogo en código (src/lib/roulette.ts):
+// el texto no vive en la base y puede cambiar sin migración.
+model SessionRound {
+  id           String    @id @default(cuid())
+  sessionId    String
+  session      Session   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  dynamicKey   String
+  // Perdedor: usuario de la app (dueño o etiquetado). La compañía de texto libre no juega.
+  loserId      String
+  loser        User      @relation("RoundLoser", fields: [loserId], references: [id], onDelete: Cascade)
+  challengeKey String
+  // Único por salida → numeración estable del historial y sin colisión entre giros
+  // concurrentes (el 2º giro pierde el unique y toma la ronda del 1º).
+  roundNumber  Int
+  createdAt    DateTime  @default(now())
+  // El perdedor marca UNO (o ninguno, si queda pendiente). "Paso" nunca penaliza (§6).
+  completedAt  DateTime?
+  passedAt     DateTime?
+
+  comments     SessionComment[]
+
+  @@unique([sessionId, roundNumber])
+  @@index([sessionId])
+  @@index([loserId])
+  @@map("session_round")
 }
 
 // Fotos de la salida (Pasada I-2). La foto pasó de ser del check-in a ser de la

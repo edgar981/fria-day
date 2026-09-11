@@ -80,6 +80,17 @@ export default async function SessionDetailPage({
       breakdownText={bd.length > 1 ? formatBreakdownText(bd) : null}
       initialMineIds={initialMineIds}
       autoFocusComment={comment === "1"}
+      rounds={s.rounds.map((r) => ({
+        id: r.id,
+        roundNumber: r.roundNumber,
+        dynamicKey: r.dynamicKey,
+        challengeKey: r.challengeKey,
+        loserId: r.loserId,
+        loserName: r.loser.displayName,
+        loserAvatar: r.loser.avatar,
+        completed: r.completedAt != null,
+        passed: r.passedAt != null,
+      }))}
     />
   );
 }
