@@ -235,22 +235,24 @@ export function SessionCard({
           </div>
         )}
 
-        {/* RU · §8: una sola línea de la ÚLTIMA ronda, sin robarle la tarjeta al registro.
-            El aro punteado de 26px es la firma de la ruleta. */}
-        {session.lastRound && (
+        {/* RU · §8: una sola línea de la ruleta (híbrida · RU.1). El aro punteado de 26px es
+            la firma. §1: privado → "tú" conjugada ("Perdiste" / "{Nombre} perdió"). */}
+        {session.roundSummary && (
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-barra-alta)", borderRadius: 14, padding: "10px 12px" }}>
             <span aria-hidden style={{ width: 26, height: 26, borderRadius: "50%", border: "2px dotted var(--color-ambar)", flex: "none", display: "block" }} />
             <span style={{ flex: 1, minWidth: 0, font: "500 13.5px/1.35 var(--font-sans)", color: "var(--color-espuma)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {/* RU.1 §1: privado → "tú" conjugada. "Perdiste" / "{Nombre} perdió". */}
-              {session.lastRound.loserId === viewerId ? (
+              {session.roundSummary.loserId === viewerId ? (
                 <strong style={{ fontWeight: 700 }}>Perdiste</strong>
               ) : (
-                <><strong style={{ fontWeight: 700 }}>{session.lastRound.loser.displayName}</strong>{" perdió"}</>
+                <><strong style={{ fontWeight: 700 }}>{session.roundSummary.loserName}</strong>{" perdió"}</>
               )}
-              {" "}
-              <em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{getRouletteDynamic(session.lastRound.dynamicKey)?.name ?? "la ruleta"}</em>
-              {" · "}
-              {getRouletteChallenge(session.lastRound.challengeKey)?.challenge.text ?? ""}
+              {session.roundSummary.mode === "top" ? (
+                // 3+ rondas: quien más perdió → "N de M".
+                <>{" "}<em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{session.roundSummary.count} de {session.roundSummary.total}</em></>
+              ) : (
+                // 1-2 rondas: la última → dinámica · reto.
+                <>{" "}<em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{getRouletteDynamic(session.roundSummary.dynamicKey ?? "")?.name ?? "la ruleta"}</em>{" · "}{getRouletteChallenge(session.roundSummary.challengeKey ?? "")?.challenge.text ?? ""}</>
+              )}
             </span>
           </div>
         )}

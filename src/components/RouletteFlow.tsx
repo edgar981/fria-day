@@ -7,6 +7,7 @@ import { Icon } from "@/components/Icon";
 import { ROULETTE_DYNAMICS, getRouletteDynamic, getRouletteChallenge } from "@/lib/roulette";
 import { spinRound, setRoundOutcome, tagForRoulette } from "@/app/actions/rounds";
 import { searchUsersAction } from "@/app/actions/beers";
+import { useRouletteSound } from "@/lib/useRouletteSound";
 
 export type RoulettePlayer = { id: string; name: string; avatar: string | null };
 export type RouletteLatestRound = {
@@ -55,6 +56,9 @@ export function RouletteFlow({
   latestRound: RouletteLatestRound | null;
 }) {
   const router = useRouter();
+  const sound = useRouletteSound();
+  const rafRef = useRef<number | null>(null);
+  const lastCasilla = useRef(-1);
   // Estado (no prop) para poder AGREGAR participantes desde el gate ≥2 (RU.1 · §8).
   const [players, setPlayers] = useState<RoulettePlayer[]>(initialPlayers);
   const reduce = useRef(false);
@@ -90,6 +94,7 @@ export function RouletteFlow({
     if (chargeTimer.current) clearInterval(chargeTimer.current);
     if (hapticTimer.current) clearInterval(hapticTimer.current);
     if (spinTimer.current) clearTimeout(spinTimer.current);
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
   }, []);
 
   const n = players.length;
@@ -140,6 +145,7 @@ export function RouletteFlow({
 
   function holdStart() {
     if (spinning || !enoughPlayers) return;
+    sound.unlock(); // dentro del gesto (pointerdown): iOS exige gesto para permitir audio
     setError(null);
     setCharging(true);
     setCharge(0);
@@ -173,9 +179,11 @@ export function RouletteFlow({
     const idx = players.findIndex((p) => p.id === r.loserId);
 
     const reveal = () => {
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       setSpinning(false);
       setVerdictId(r.loserId);
-      haptic([30, 40, 60]); // háptico fuerte del veredicto
+      haptic([30, 40, 60]); // háptico fuerte del veredicto (no-op en iOS)
+      sound.thud(); // golpe del veredicto (el sustituto del háptico en iPhone · RU.2)
       // El veredicto queda en la pantalla del giro (con modo mesa · §8); la carta del
       // reto sube al tocar "Ver el reto". Manual, no auto: así el toggle de modo mesa es
       // usable sobre el nombre del perdedor antes de pasar a la carta.
@@ -194,6 +202,23 @@ export function RouletteFlow({
     const target = rot.current + 360 * TURNS + delta;
     rot.current = target;
     requestAnimationFrame(() => setWheel(target, SPIN_MS));
+
+    // Tick del pin por casilla, SINCRONIZADO al giro real: leo la rotación calculada cada
+    // frame y sueno cuando cambia la casilla bajo el pin (así los ticks se espacian con la
+    // desaceleración, como el chasquido visual). RU.2 · §2.
+    lastCasilla.current = -1;
+    const loop = () => {
+      const el = wheelRef.current;
+      if (el) {
+        const m = new DOMMatrixReadOnly(getComputedStyle(el).transform);
+        const deg = (Math.atan2(m.b, m.a) * 180) / Math.PI;
+        const norm = (((-deg) % 360) + 360) % 360;
+        const casilla = Math.floor(norm / seg);
+        if (casilla !== lastCasilla.current) { lastCasilla.current = casilla; sound.tick(); }
+      }
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
     spinTimer.current = setTimeout(reveal, SPIN_MS);
   }
 
@@ -234,8 +259,27 @@ export function RouletteFlow({
           <Icon name="back" size={22} />
         </button>
         <span className="eyebrow" style={{ color: "var(--color-ambar)" }}>{stepLabel}</span>
-        <div style={{ minWidth: 42, textAlign: "right", font: "600 12px var(--font-sans)", color: "var(--color-tenue)" }}>
-          {phase === "dinamica" ? "" : roundNumber > 0 ? `Ronda ${phase === "reto" ? roundNumber : roundNumber + (verdictId ? 0 : 1)}` : ""}
+        <div style={{ minWidth: 42, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}>
+          {/* Toggle de sonido (RU.2 · §2): encendido por default; recuerda la preferencia. */}
+          <button
+            type="button"
+            aria-label={sound.on ? "Silenciar la ruleta" : "Activar el sonido de la ruleta"}
+            aria-pressed={sound.on}
+            onClick={() => { sound.unlock(); sound.toggle(); }}
+            style={{ width: 30, height: 30, borderRadius: 9, background: "transparent", border: "none", display: "flex", alignItems: "center", justifyContent: "center", color: sound.on ? "var(--color-ambar)" : "var(--color-tenue-2)", cursor: "pointer", flex: "none" }}
+          >
+            <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true">
+              <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" />
+              {sound.on ? (
+                <path d="M16 8.5a4 4 0 0 1 0 7M18.5 6a7 7 0 0 1 0 12" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              ) : (
+                <path d="M16.5 9.5l5 5M21.5 9.5l-5 5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+              )}
+            </svg>
+          </button>
+          <span style={{ font: "600 12px var(--font-sans)", color: "var(--color-tenue)", whiteSpace: "nowrap" }}>
+            {phase === "dinamica" ? "" : roundNumber > 0 ? `Ronda ${phase === "reto" ? roundNumber : roundNumber + (verdictId ? 0 : 1)}` : ""}
+          </span>
         </div>
       </div>
 

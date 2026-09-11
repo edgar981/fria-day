@@ -83,21 +83,65 @@ export async function getFeed(userId: string) {
     },
   });
 
-  return sessions.map((s) => ({
-    ...s,
-    totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
-    isOwner: s.userId === userId,
-    // El distintivo "X te etiquetó" SOLO cuando hay etiqueta real (no por círculo).
-    viewerTagged: s.tags.some((t) => t.taggedUserId === userId),
-    // Pasada R / I-1.2: la reacción del viewer (mine) + la lista de reactores.
-    reactions: {
-      mine: groupReactions(s.reactions, userId).mine,
-      reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
-    },
-    commentsCount: s._count.comments, // I-3
-    roundsCount: s._count.rounds, // RU · §8 (métrica "rondas")
-    lastRound: s.rounds[0] ?? null, // RU · §8 (línea del feed)
-  }));
+  // RU.1 · perdedor del feed HÍBRIDO (decisión de Edgar): con 1-2 rondas, el de la ÚLTIMA;
+  // con 3+, QUIEN MÁS PERDIÓ ("Beto perdió 4 de 7"). El groupBy extra solo se paga en las
+  // salidas con 3+ rondas (con pocas, "quién perdió más" suena forzado; con muchas, "la
+  // última" es arbitrario).
+  const topSessionIds = sessions.filter((s) => s._count.rounds >= 3).map((s) => s.id);
+  const topBySession = new Map<string, { loserId: string; count: number }>();
+  if (topSessionIds.length > 0) {
+    const grouped = await prisma.sessionRound.groupBy({
+      by: ["sessionId", "loserId"],
+      where: { sessionId: { in: topSessionIds } },
+      _count: { _all: true },
+    });
+    for (const g of grouped) {
+      const cur = topBySession.get(g.sessionId);
+      if (!cur || g._count._all > cur.count) topBySession.set(g.sessionId, { loserId: g.loserId, count: g._count._all });
+    }
+  }
+  const topLoserIds = [...new Set([...topBySession.values()].map((v) => v.loserId))];
+  const loserUsers = topLoserIds.length
+    ? await prisma.user.findMany({ where: { id: { in: topLoserIds } }, select: { id: true, displayName: true, avatar: true } })
+    : [];
+  const loserMap = new Map(loserUsers.map((u) => [u.id, u]));
+
+  return sessions.map((s) => {
+    const rc = s._count.rounds;
+    let roundSummary: {
+      mode: "last" | "top";
+      loserId: string;
+      loserName: string;
+      loserAvatar: string | null;
+      count?: number;
+      total?: number;
+      dynamicKey?: string;
+      challengeKey?: string;
+    } | null = null;
+    if (rc >= 3 && topBySession.has(s.id)) {
+      const t = topBySession.get(s.id)!;
+      const u = loserMap.get(t.loserId);
+      roundSummary = { mode: "top", loserId: t.loserId, loserName: u?.displayName ?? "Alguien", loserAvatar: u?.avatar ?? null, count: t.count, total: rc };
+    } else if (s.rounds[0]) {
+      const last = s.rounds[0];
+      roundSummary = { mode: "last", loserId: last.loserId, loserName: last.loser.displayName, loserAvatar: last.loser.avatar, dynamicKey: last.dynamicKey, challengeKey: last.challengeKey };
+    }
+    return {
+      ...s,
+      totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
+      isOwner: s.userId === userId,
+      // El distintivo "X te etiquetó" SOLO cuando hay etiqueta real (no por círculo).
+      viewerTagged: s.tags.some((t) => t.taggedUserId === userId),
+      // Pasada R / I-1.2: la reacción del viewer (mine) + la lista de reactores.
+      reactions: {
+        mine: groupReactions(s.reactions, userId).mine,
+        reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
+      },
+      commentsCount: s._count.comments, // I-3
+      roundsCount: rc, // RU · §8 (métrica "rondas")
+      roundSummary, // RU · §8 + RU.1 (línea del feed, híbrida)
+    };
+  });
 }
 
 export type FeedSession = Awaited<ReturnType<typeof getFeed>>[number];

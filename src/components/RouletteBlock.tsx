@@ -56,7 +56,7 @@ export function RouletteBlock({
         <div aria-hidden style={{ height: 6, background: "radial-gradient(circle at 50% 100%,var(--color-espuma) 4.5px,transparent 5px) 0 0/10px 6px repeat-x" }} />
         <div style={{ padding: "14px 15px 15px" }}>
           <span style={EYEBROW}>La ruleta</span>
-          <p style={{ font: "400 13.5px/1.5 var(--font-sans)", color: "var(--color-tenue)", margin: "8px 0 12px" }}>Nadie ha girado. La mesa decide con un giro.</p>
+          <p style={{ font: "400 13.5px/1.5 var(--font-sans)", color: "var(--color-tenue)", margin: "8px 0 12px" }}>Primera ronda. Pon el teléfono en la mesa.</p>
           <Link href={`/ruleta?session=${sessionId}`} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 44, borderRadius: 14, background: "transparent", border: "1px dashed #6b5334", color: "var(--color-ambar)", font: "600 14.5px var(--font-sans)", textDecoration: "none" }}>
             <span aria-hidden style={{ width: 18, height: 18, borderRadius: "50%", border: "2px dotted var(--color-ambar)", display: "block" }} />
             Girar

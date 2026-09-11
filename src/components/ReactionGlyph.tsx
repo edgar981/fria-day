@@ -25,7 +25,9 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
   brindis: {
     anim: "clink",
     node: () => (
-      <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
+      // RU.3: era el MÁS ANCHO (dos jarras, contenido ~45 de ancho en 48 → llenaba la fila).
+      // viewBox más grande y centrado → el tamaño aparente baja al del resto.
+      <svg viewBox="-6 -7 60 60" width="100%" height="100%" aria-hidden>
         <g data-p="l" style={fb("85% 100%")}>
           <path d="M5 16h13v18a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3z" fill={C.ambar} />
           <path d="M5 16h13v5H5z" fill={C.espuma} />
@@ -48,7 +50,9 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
   fuego: {
     anim: "fire",
     node: () => (
-      <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
+      // RU.3: era el MÁS CHICO (llama angosta, contenido ~26 de ancho en 48). viewBox
+      // ceñido y centrado → sube el tamaño aparente al del resto.
+      <svg viewBox="5 -0.5 38 38" width="100%" height="100%" aria-hidden>
         <path data-p="f1" d="M24 4c7 8 13 11 13 20a13 13 0 0 1-26 0C11 16 17 12 24 4z" fill={C.marca} style={fb("50% 100%")} />
         <path data-p="f2" d="M24 13c4.5 5.5 8 8 8 13.5a8 8 0 0 1-16 0C16 21 19.5 18.5 24 13z" fill={C.ambar} style={fb("50% 100%")} />
         <path data-p="core" d="M24 22c2.4 3 4 4.4 4 7a4 4 0 0 1-8 0c0-2.6 1.6-4 4-7z" fill={C.espuma} style={fb("50% 100%")} />
@@ -96,7 +100,9 @@ const GLYPHS: Record<string, { anim: string; node: (small: boolean) => ReactElem
   corazon: {
     anim: "heart",
     node: () => (
-      <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden>
+      // RU.3: figura SÓLIDA → pesa visualmente más que las de contorno. viewBox un poco
+      // más grande (y centrado en el corazón) para bajar su tamaño aparente y equilibrarlo.
+      <svg viewBox="-2 1 50 50" width="100%" height="100%" aria-hidden>
         <path d="M24 41C7.5 29.5 7 19.5 12.5 15.2 17 11.7 22 14 24 18c2-4 7-6.3 11.5-2.8C41 19.5 40.5 29.5 24 41z" fill={C.rojo} />
       </svg>
     ),
