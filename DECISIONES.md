@@ -1237,3 +1237,34 @@ respaldo `#N mod 5`: Cuba Libre → brasa; con foto + story), más el render loc
 
 > El feed también se vuelve una línea de tiempo con temperatura (una franja de color por salida)
 > según el tablero — queda para una pasada aparte (anotado en el backlog).
+
+## Pasada SC · TANDA 3 — Un solo sheet (preview + generación fresca)
+
+La hoja de compartir se rehace: **un solo paso**. Al abrir se dispara la generación de la imagen
+(Historia por defecto; el **caso pobre** —una bebida, sin foto— abre en Publicación, menos lienzo
+que llenar) y se pide un **meta** liviano. El usuario ve el **preview** y elige formato mientras
+tanto; cuando toca **Compartir**, el toque es FRESCO y la imagen YA está en memoria →
+`navigator.share` entra en la ventana de activación de iOS **sin el re-armado de la v2**. Es el
+arreglo de raíz de RU.6.2: ya no se genera dentro del gesto (que gastaba la activación en ~4s),
+se genera antes y el gesto solo comparte.
+
+**Estados del sheet** (los del tablero): *generando* (esqueleto con la banda de color de la card +
+"Armando tu…", Compartir deshabilitado) · *listo* (preview real + stats + Compartir) · *cambio de
+formato* (la caja conserva su alto, el lienzo cambia de proporción; cada formato se genera **una
+vez** y queda en caché → volver al otro es instantáneo) · *caso pobre* (dos stats, sin duración) ·
+*error* (el preview informa; el botón primario pasa a **Reintentar**, nunca se ofrece Compartir sin
+imagen).
+
+**`GET /api/share/[id]?meta=1`** — rama JSON de la MISMA ruta (mismo auth/círculo, sin render de
+satori): encabezado (lugar · #N · fecha `VIE 28 AGO`), stats compactas, `defaultFormat` y el par
+**color/tinta** de la cascada. El sheet lo pide al abrir para poblar el chrome mientras la imagen
+se genera en paralelo; llega en ~1s, la imagen en ~3-4s.
+
+El chrome usa el tema de la app (noche) con el **color de la cascada** como acento (banda del
+esqueleto, `#N`, formato activo, botón Compartir), así el sheet se siente parte de la misma
+tarjeta. **Nota de tipografía:** el chrome usa la display de la app (Syne, `--font-display`), NO
+Big Shoulders — esa vive embebida solo en satori (la card); meterla como fuente web de la app es su
+propia tarea. Verificado por ejecución (Playwright, dev): la secuencia de generación (story → meta →
+post en el caso pobre), preview real en la caja, cambio de proporción al alternar, caché con 0
+requests al volver, y las stats/encabezado del meta. El camino de escritorio (sin compartir nativo)
+descarga la imagen; el estado de error se revisó por código (mismo mapeo honesto de RU.6.2).
