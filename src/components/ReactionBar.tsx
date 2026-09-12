@@ -299,9 +299,12 @@ export function ReactionBar({
               borderRadius: 13,
               cursor: "pointer",
               font: "700 14px var(--font-sans)",
-              border: reacted ? "none" : "1px solid #4A3A28",
-              background: reacted ? "var(--color-ambar)" : "#2E2217",
-              color: reacted ? "#241609" : "var(--color-ambar)",
+              // RU.3 (#2): "Brindaste" es un ESTADO, no una acción primaria → contorno
+              // ámbar sobre fondo oscuro (no bloque sólido), así deja de competir con los
+              // glifos ámbar del racimo. Mismo tratamiento activo-no-primario de la app.
+              border: reacted ? "1px solid var(--color-ambar)" : "1px solid #4A3A28",
+              background: reacted ? "rgba(242,160,22,.14)" : "#2E2217",
+              color: "var(--color-ambar)",
               WebkitTouchCallout: "none",
               WebkitUserSelect: "none",
               userSelect: "none",
@@ -401,10 +404,14 @@ export function ReactionBar({
             {brindarBtn}
           </div>
         ) : (
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            {clusterPlain}
-            {avatars}
-            <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>{displayText}</span>
+          // RU.3 (#1): más aire entre el racimo y el botón. El racimo+avatares+texto van
+          // en un grupo con su propio gap; un marginLeft:auto separa el botón a la derecha.
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 0 }}>
+              {clusterPlain}
+              {avatars}
+              <span style={{ flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>{displayText}</span>
+            </div>
             {brindarBtn}
           </div>
         )}
