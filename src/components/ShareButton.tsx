@@ -30,19 +30,35 @@ export function ShareButton({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<null | "post" | "story">(null);
   const [error, setError] = useState<string | null>(null);
+  // RU.6.2: imagen ya generada que espera un gesto FRESCO para compartir. En iOS
+  // `navigator.share` exige activación de usuario (~5s); si la generación tardó ~4s la
+  // ventana ya expiró y el auto-share falla con NotAllowedError. La imagen SÍ existe, así
+  // que la guardamos y un botón la comparte dentro de una activación nueva.
+  const [ready, setReady] = useState<{ file: File; format: "post" | "story" } | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const { dragY, dragging, dragHandlers } = useSheetDrag(() => { if (!busy) setOpen(false); });
 
+  function downloadFile(file: File) {
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function share(format: "post" | "story") {
     setError(null);
+    setReady(null);
     setBusy(format);
+    let file: File;
     try {
       // B-1.2: SIN reintento transparente (escondía el problema y podía duplicar la espera).
-      // La generación tarda ~2-4s (render de satori); el cliente espera con un indicador que
-      // avanza (no un mensaje de error) y `maxDuration=30` le da margen a la función.
+      // La generación tarda ~2-4s (render de satori) y `maxDuration=30` le da margen a la función.
       const res = await fetch(`/api/share/${sessionId}?format=${format}`, { cache: "no-store" });
       if (!res.ok) {
+        // Respuesta fallida del servidor: la ruta contestó pero con un estado de error.
         setError(
           res.status === 401 || res.status === 403
             ? "No tienes permiso para compartir esta salida."
@@ -50,6 +66,7 @@ export function ShareButton({
               ? "No se encontró la salida."
               : "No se pudo crear la imagen. Reintenta.",
         );
+        setBusy(null);
         return;
       }
       const blob = await res.blob();
@@ -57,26 +74,54 @@ export function ShareButton({
       // quien recibe el archivo. Si faltara, un respaldo con el id.
       const cd = res.headers.get("content-disposition");
       const name = cd?.match(/filename="?([^";]+)"?/i)?.[1] ?? `friaday-${sessionId}.png`;
-      const file = new File([blob], name, { type: "image/png" });
-      const canShareFiles = typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] });
-      if (canShareFiles) {
-        await navigator.share({ files: [file] });
-      } else {
-        // Respaldo: descargar la imagen.
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = file.name;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      file = new File([blob], name, { type: "image/png" });
+    } catch {
+      // RU.6.2: ÚNICO punto donde "revisa tu conexión" es cierto — el fetch o la lectura del
+      // cuerpo falló, la respuesta nunca llegó completa. NO se confunde con que la hoja de
+      // compartir no abra (eso es después, con la imagen ya en mano).
+      setError("No se pudo conectar para crear la imagen. Revisa tu conexión y reintenta.");
+      setBusy(null);
+      return;
+    }
+
+    // Imagen lista. Se mantiene `busy` durante el intento de compartir para no parpadear los
+    // botones de formato mientras se abre la hoja nativa.
+    const canShareFiles = typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] });
+    if (!canShareFiles) {
+      // Sin compartir nativo (escritorio): descargar. No hay problema de activación aquí.
+      downloadFile(file);
+      setBusy(null);
+      setOpen(false);
+      return;
+    }
+    try {
+      await navigator.share({ files: [file] });
+      setBusy(null);
       setOpen(false);
     } catch (e) {
-      // AbortError = el usuario canceló la hoja nativa; no es error.
-      if (e instanceof Error && e.name === "AbortError") return;
-      setError("No se pudo crear la imagen. Revisa tu conexión y reintenta.");
-    } finally {
       setBusy(null);
+      // AbortError = la hoja SÍ abrió y el usuario la cerró: cancelación normal (camino rápido,
+      // la activación seguía viva). Ni error ni rearme.
+      if (e instanceof Error && e.name === "AbortError") return;
+      // Cualquier otro rechazo = la hoja NO abrió. En iOS es la activación gastada por los ~4s
+      // de generación (NotAllowedError). La imagen ya existe: se rearma para un toque fresco.
+      setReady({ file, format });
+    }
+  }
+
+  // Comparte la imagen ya generada desde un gesto FRESCO (el toque del botón "Compartir
+  // imagen"), que sí entra en la ventana de activación de iOS.
+  async function shareReady() {
+    if (!ready) return;
+    setError(null);
+    try {
+      await navigator.share({ files: [ready.file] });
+      setOpen(false);
+    } catch (e) {
+      // Cerró la hoja: el botón sigue ahí para reintentar.
+      if (e instanceof Error && e.name === "AbortError") return;
+      // Ni con gesto fresco abrió: algo más pasa. Mensaje honesto y la descarga como salida.
+      setError("No se pudo abrir el menú para compartir. Descarga la imagen y compártela a mano.");
     }
   }
 
@@ -84,6 +129,7 @@ export function ShareButton({
     e.preventDefault();
     e.stopPropagation();
     setError(null);
+    setReady(null);
     setOpen(true);
     onAfterOpen?.();
     // B-1.2: se retiró el warmup de Neon al abrir la hoja — el cold start (~1.5s) no era el
@@ -213,6 +259,23 @@ export function ShareButton({
                   <div aria-hidden style={{ position: "relative", height: 6, borderRadius: 99, background: "var(--color-barra-alta)", overflow: "hidden" }}>
                     <div style={{ position: "absolute", top: 0, bottom: 0, width: "40%", borderRadius: 99, background: "var(--color-ambar)", animation: "fd-indeterminate 1.1s ease-in-out infinite" }} />
                   </div>
+                </div>
+              ) : ready ? (
+                // RU.6.2: la imagen se generó pero la hoja nativa no abrió (activación de iOS
+                // expirada por los ~4s de render). Se ofrece un toque fresco que sí comparte.
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: "2px 0" }}>
+                  <div style={{ font: "600 14.5px var(--font-sans)", color: "var(--color-crema)" }}>
+                    Tu {ready.format === "story" ? "historia" : "publicación"} está lista.
+                  </div>
+                  <div style={{ font: "400 13px/1.4 var(--font-sans)", color: "var(--color-tenue)" }}>
+                    Toca Compartir para enviarla.
+                  </div>
+                  <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={shareReady}>
+                    Compartir imagen
+                  </button>
+                  <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} onClick={() => { downloadFile(ready.file); setOpen(false); }}>
+                    Descargar
+                  </button>
                 </div>
               ) : (
                 <>
