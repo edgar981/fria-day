@@ -64,6 +64,27 @@ export function bogotaDayRange(at: Date): { start: Date; end: Date } {
   return { start: new Date(startUTC), end: new Date(startUTC + 24 * 60 * 60 * 1000) };
 }
 
+// ---- Hitos (§9) ----
+// Del tablero "Los Puntos". ⚠️ VALORES PROVISIONALES: el tablero tiene los reales (y quizá
+// nombres); Edgar los cura. Progresión pensada para el ethos (una salida ≈ 50-90 pts, así que
+// los saltos crecen). Se persiguen en SALIDAS, no en puntos (§6, §9).
+export const HITOS: readonly number[] = [250, 500, 1000, 2000, 3500, 5000, 7500, 10000, 15000, 20000, 30000, 50000];
+
+/** El próximo hito por encima del total, o null si ya pasó el último. */
+export function nextHito(total: number): number | null {
+  return HITOS.find((h) => h > total) ?? null;
+}
+
+const UNIDADES = ["cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce"];
+/** "Dos salidas más" / "1 salida más" (§6): el próximo hito expresado en salidas. `ritmo` = pts/salida. */
+export function hitoEnSalidas(total: number, ritmo: number): string | null {
+  const hito = nextHito(total);
+  if (hito == null || ritmo <= 0) return null;
+  const faltan = Math.max(1, Math.ceil((hito - total) / ritmo));
+  const palabra = faltan <= 12 ? UNIDADES[faltan] : String(faltan);
+  return `${palabra.charAt(0).toUpperCase()}${palabra.slice(1)} salida${faltan === 1 ? "" : "s"} más`;
+}
+
 // ---- La cuenta: agrupar entradas en líneas del recibo ----
 
 export interface CuentaLine {
@@ -99,4 +120,36 @@ export function buildCuentaLines(entries: readonly { action: string; points: num
   push("bebidas", "Bebidas", bebidas);
   push("social", "Brindis y comentarios", social);
   return lines;
+}
+
+// ---- El desglose "De dónde salieron" (§8) ----
+
+export interface DesgloseLine { key: string; label: string; points: number }
+
+/** Suma por acción → líneas del desglose, de MAYOR a MENOR (§8). Bebidas y social colapsadas. */
+export function buildDesglose(byAction: Partial<Record<PointAction, number>>): DesgloseLine[] {
+  const bebidas = (byAction.first_time ?? 0) + (byAction.rate ?? 0) + (byAction.drink ?? 0);
+  const social = (byAction.comment ?? 0) + (byAction.toast ?? 0);
+  const lines: DesgloseLine[] = [];
+  const add = (key: string, label: string, points: number) => { if (points > 0) lines.push({ key, label, points }); };
+  add("session", "Salidas", byAction.session ?? 0);
+  add("round", "Ruleta", byAction.round ?? 0);
+  add("challenge", "Retos", byAction.challenge ?? 0);
+  add("photo", "Fotos", byAction.photo ?? 0);
+  add("bebidas", "Bebidas", bebidas);
+  add("social", "Brindis y comentarios", social);
+  return lines.sort((a, b) => b.points - a.points);
+}
+
+const nf = (n: number) => n.toLocaleString("es-CO");
+
+/**
+ * La frase que cierra el desglose y resume la ética (§8): "N bebidas dieron X puntos. M salidas
+ * dieron Y. La app te paga por salir, no por tomar." bebidas = grupo de bebidas (registrar +
+ * calificar + primera vez), salidas = registrar salida, coherente con las líneas de arriba.
+ */
+export function desgloseEthos(bebidasCount: number, bebidasPoints: number, salidasCount: number, salidasPoints: number): string {
+  const b = bebidasCount === 1 ? "bebida dio" : "bebidas dieron";
+  const s = salidasCount === 1 ? "salida dio" : "salidas dieron";
+  return `${nf(bebidasCount)} ${b} ${nf(bebidasPoints)} puntos. ${nf(salidasCount)} ${s} ${nf(salidasPoints)}. La app te paga por salir, no por tomar.`;
 }

@@ -1,7 +1,9 @@
 import { getAuthenticatorName } from "@better-auth/passkey";
 import { requireUser } from "@/lib/session";
 import { getProfile } from "@/lib/queries";
+import { getPointsSummary } from "@/lib/points-queries";
 import { prisma } from "@/lib/prisma";
+import { PointsCard } from "@/components/PointsCard";
 import { BottomNav } from "@/components/BottomNav";
 import { ProfileAvatarEditor } from "@/components/ProfileAvatarEditor";
 import { AccountAccess } from "@/components/AccountAccess";
@@ -27,6 +29,7 @@ export default async function ProfilePage() {
   // Leaderboard salió a su propia pestaña (Pasada N): Perfil ya no usa board*/círculo,
   // solo las métricas personales (stats, breakdown propio, racha).
   const { stats, breakdown, streak } = await getProfile(user.id);
+  const points = await getPointsSummary(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -53,6 +56,9 @@ export default async function ProfilePage() {
       <div className="pb-scroll">
       <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} since={since} />
+
+        {/* Los puntos (PT §6): arriba del total histórico, tarjeta oscura para no competir. */}
+        <PointsCard summary={points} />
 
         {/* Total histórico */}
         <div style={{ background: "linear-gradient(180deg,#C4620A,#8A4208)", borderRadius: 24, padding: 20, overflow: "hidden" }}>

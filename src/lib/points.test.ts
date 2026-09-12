@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { POINT_VALUES, buildCuentaLines, bogotaDayRange, DRINK_TECHO } from "./points";
+import { POINT_VALUES, buildCuentaLines, bogotaDayRange, DRINK_TECHO, buildDesglose, desgloseEthos, nextHito, hitoEnSalidas, HITOS } from "./points";
 
 describe("escala de puntos (PT §1)", () => {
   it("los valores del tablero", () => {
@@ -52,6 +52,36 @@ describe("buildCuentaLines — el recibo (PT §3, §5)", () => {
 
   it("líneas en cero no aparecen", () => {
     expect(buildCuentaLines([{ action: "session", points: 0 }])).toEqual([]);
+  });
+});
+
+describe("desglose (§8) — de dónde salieron", () => {
+  it("agrupa bebidas y social, ordena de mayor a menor", () => {
+    const lines = buildDesglose({ session: 250, drink: 18, rate: 48, first_time: 90, photo: 60, round: 45, comment: 12, toast: 12 });
+    expect(lines.map((l) => l.key)).toEqual(["session", "bebidas", "photo", "round", "social"]);
+    expect(lines.find((l) => l.key === "bebidas")!.points).toBe(156); // 18+48+90
+    expect(lines.find((l) => l.key === "social")!.points).toBe(24); // 12+12
+  });
+  it("la frase de la ética cierra el desglose", () => {
+    expect(desgloseEthos(214, 428, 49, 2450)).toBe("214 bebidas dieron 428 puntos. 49 salidas dieron 2.450. La app te paga por salir, no por tomar.");
+    expect(desgloseEthos(1, 2, 1, 50)).toBe("1 bebida dio 2 puntos. 1 salida dio 50. La app te paga por salir, no por tomar.");
+  });
+});
+
+describe("hitos (§9) — se persiguen en salidas", () => {
+  it("nextHito es el primero por encima del total", () => {
+    expect(nextHito(0)).toBe(HITOS[0]);
+    expect(nextHito(300)).toBe(500);
+    expect(nextHito(HITOS[HITOS.length - 1] + 1)).toBeNull();
+  });
+  it("el próximo hito se expresa en salidas ('Dos salidas más')", () => {
+    // total 420, ritmo 40 → faltan (500-420)/40 = 2 → "Dos salidas más"
+    expect(hitoEnSalidas(420, 40)).toBe("Dos salidas más");
+    // faltan 1 → singular
+    expect(hitoEnSalidas(460, 40)).toBe("Una salida más");
+  });
+  it("sin ritmo (0 salidas) no se puede expresar en salidas", () => {
+    expect(hitoEnSalidas(0, 0)).toBeNull();
   });
 });
 

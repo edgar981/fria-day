@@ -1110,4 +1110,20 @@ salidas viejas): solo lo ganado en vivo de ahí en adelante dispara recibo. En *
 eventos → **52 entradas · 550 puntos** (dry-run y apply coinciden; re-correr crea 0). Producción
 la corre Edgar con el mismo script.
 
-**Pendiente (Tanda 2):** presencia (perfil, círculo ordenado por antigüedad, desglose, hitos).
+**Presencia (Tanda 2 · §6, §7, §8, §9).** En **Perfil**, arriba del total histórico, una
+tarjeta OSCURA con franja de espuma (no el degradado ámbar, para no competir): el número, el
+ritmo (puntos por salida) y el próximo hito EN SALIDAS ("Dos salidas más"). Debajo, "De dónde
+salieron" despliega el desglose (mayor a menor, bebidas y social colapsadas) y cierra con la
+frase de la ética ("N bebidas dieron X. M salidas dieron Y. La app te paga por salir, no por
+tomar."). En el **Leaderboard**, el icono de personas abre la hoja de invitar, con una segunda
+sección "El círculo": cada quien con sus puntos, **ordenada por antigüedad, NUNCA por puntos**
+(por puntos sería el ranking que no es). Los puntos **NO van** en el leaderboard (ranking),
+header, tarjeta del feed ni push (§6).
+
+**Hitos (§9):** `HITOS` en `points.ts` con **valores provisionales** — el tablero tiene los
+reales; Edgar los cura. Se persiguen en salidas.
+
+**Topes "completo" (§3, §7):** el techo de 40 NUNCA se nombra. Los demás sí, en verde y en
+pasado, y solo al alcanzarse: al llegar al tope de puntos de fotos sale "Fotos · ya está
+completo" en verde (no bloquea; se pueden subir más, solo no dan más puntos). No hay "2 de 3"
+en ninguna parte.
