@@ -274,7 +274,7 @@ function footerBlock(d: ShareData, o: { text: string; muted: string; accent: str
  * recuadros. Con foto → photoCard; una bebida sin foto → heroCard.
  */
 function bandedCard(d: ShareData, p: Palette, story: boolean): ReactElement {
-  const place = (d.place || `Salida de ${d.ownerName}`).toLowerCase(); // Bricolage: lugar en minúscula
+  const place = d.place || `Salida de ${d.ownerName}`; // SC.3: tal como lo escribió el usuario ("BBC Andino", no "bbc andino") — es su dato, no de la tarjeta
   const highlight = highlightOf(d);
   const placeSize = story
     ? fitSize(place, [[10, 200], [16, 148], [24, 104], [99, 72]])
@@ -347,7 +347,7 @@ function photoCard(d: ShareData, story: boolean): ReactElement {
   const MUTED2 = "rgba(255,244,236,0.66)";
   const accent = mix(extracted, "#FFFFFF", 0.22); // el color de la foto aclarado para leerse en el scrim
   const single = d.single;
-  const place = (d.place || `Salida de ${d.ownerName}`).toLowerCase(); // Bricolage: lugar en minúscula
+  const place = d.place || `Salida de ${d.ownerName}`; // SC.3: tal como lo escribió el usuario ("BBC Andino", no "bbc andino") — es su dato, no de la tarjeta
   const placeSize = fitSize(place, [[12, story ? 122 : 106], [20, story ? 90 : 78], [99, story ? 64 : 56]]);
   const pAccent: Palette = { ...palette(d.color, d.ink), color: accent };
   const highlight = highlightOf(d);

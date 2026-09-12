@@ -1423,3 +1423,34 @@ Verificado por ejecución (Playwright, gate-ana en dev): (1) tarjeta de puntos y
 lado a lado, las dos con la espuma **rebosando hacia arriba**; (2) el recibo (`CuentaReceipt`) y el
 header de bienvenida (`RegisterWizard`), ambos con la espuma hacia arriba tras el arreglo. 154 tests en
 verde.
+
+## Pasada SC.3 — El lugar respeta las mayúsculas del usuario
+
+En la story y el 4:5, el nombre del lugar salía en minúscula: "bbc andino" cuando Edgar lo registró
+como "BBC Andino". Era un `.toLowerCase()` sobre el lugar en las dos composiciones (`bandedCard` modo
+color y `photoCard` modo foto) — una decisión estética del tablero, donde los mocks usan nombres de
+bar ("la puerta falsa", "andrés carne"). Funciona con palabras; se rompe con siglas: "BBC" no es una
+palabra y en minúscula se lee como error.
+
+**El arreglo.** Se quita la transformación. **El lugar se muestra tal como el usuario lo escribió**,
+en story y en 4:5 — es su dato, no de la tarjeta. Quien escriba "la puerta falsa" en minúscula la ve
+así; quien escriba "BBC Andino" también. (El recorrido de bebidas y el highlight ya respetaban las
+mayúsculas del usuario; solo el lugar las pisaba.)
+
+**Barrido de transformaciones de mayúsculas sobre texto del usuario (lo que pidió revisar):** el lugar
+era la ÚNICA. Todo lo demás es texto NUESTRO o técnico, y se deja:
+- **Etiquetas fijas que escribimos** — "PRIVADO · POR INVITACIÓN", "PRIMERA VEZ" / "LA MEJOR",
+  "bebida(s)", "salida", eyebrows de la app, "La cuenta", etc. (`textTransform`/literales).
+- **Formato de fecha/hora que generamos** — "VIE 6 SEP" (`formatSheetDate`), el día de semana en
+  minúscula del pie 4:5, "pm/am", `capitalize` de "Hoy/Ayer". No es texto del usuario.
+- **Normalización técnica (no se muestra transformada)** — correos a minúscula (`validation`,
+  `account`), slugs (`slugify`), hex a mayúscula (`colors`), llave de consolidación (`domain`), y el
+  **código de invitación** a mayúscula (es un identificador case-insensitive, no un nombre).
+
+**Desborde (lo que pidió verificar).** `fitSize` escoge el tamaño por CANTIDAD de caracteres, no por
+ancho; quitar el `.toLowerCase()` no cambia la longitud → mismo tamaño, pero las mayúsculas son más
+anchas. No desborda porque **satori envuelve en los espacios**: un nombre de varias palabras cae a dos
+líneas antes que salirse. Verificado por ejecución (render directo de `renderShareCard`): "BBC Andino"
+en modo color story (200px → "BBC" / "Andino"), 4:5 (150px, una línea) y modo foto (122px, una línea);
+"la puerta falsa" conservado en minúscula; "Bogotá Beer Co" (mayúsculas + acento) envuelve limpio. Sin
+recorte de `fitSize` — los nombres reales de bar caben. 154 tests en verde.
