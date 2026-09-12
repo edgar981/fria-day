@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { loadCircle } from "@/lib/queries";
-import { buildDesglose, desgloseEthos, hitoEnSalidas, nextHito, type DesgloseLine, type PointAction } from "@/lib/points";
+import { buildDesglose, desgloseEthos, hitoEnSalidas, nextHitoObj, lastHitoPoints, hitosReached, type DesgloseLine, type PointAction } from "@/lib/points";
 
 export interface PointsSummary {
   total: number;
@@ -10,7 +10,11 @@ export interface PointsSummary {
   ethos: string;
   /** Próximo hito en salidas ("Dos salidas más"), o null si no hay ritmo / se pasó el último. */
   nextSalidas: string | null;
-  hasNextHito: boolean;
+  /** Barra de progreso al próximo hito: de `lastHito` (base) a `nextHito`. null = sin próximo. */
+  nextHitoPoints: number | null;
+  lastHitoPoints: number;
+  /** Hitos alcanzados (chips del perfil, en orden — el único historial). */
+  hitos: { points: number; name: string }[];
 }
 
 /** Resumen de puntos de un usuario (Pasada PT · §6, §8, §9). */
@@ -34,6 +38,7 @@ export async function getPointsSummary(userId: string): Promise<PointsSummary> {
   const bebidasPoints = (byAction.first_time ?? 0) + (byAction.rate ?? 0) + (byAction.drink ?? 0);
   const ritmo = salidasCount > 0 ? Math.round(total / salidasCount) : 0;
 
+  const nextH = nextHitoObj(total);
   return {
     total,
     ritmo,
@@ -41,7 +46,9 @@ export async function getPointsSummary(userId: string): Promise<PointsSummary> {
     desglose: buildDesglose(byAction),
     ethos: desgloseEthos(bebidasCount, bebidasPoints, salidasCount, salidasPoints),
     nextSalidas: hitoEnSalidas(total, ritmo),
-    hasNextHito: nextHito(total) != null,
+    nextHitoPoints: nextH?.points ?? null,
+    lastHitoPoints: lastHitoPoints(total),
+    hitos: hitosReached(total).map((h) => ({ points: h.points, name: h.name })),
   };
 }
 

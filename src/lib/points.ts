@@ -64,23 +64,59 @@ export function bogotaDayRange(at: Date): { start: Date; end: Date } {
   return { start: new Date(startUTC), end: new Date(startUTC + 24 * 60 * 60 * 1000) };
 }
 
-// ---- Hitos (§9) ----
-// Del tablero "Los Puntos". ⚠️ VALORES PROVISIONALES: el tablero tiene los reales (y quizá
-// nombres); Edgar los cura. Progresión pensada para el ethos (una salida ≈ 50-90 pts, así que
-// los saltos crecen). Se persiguen en SALIDAS, no en puntos (§6, §9).
-export const HITOS: readonly number[] = [250, 500, 1000, 2000, 3500, 5000, 7500, 10000, 15000, 20000, 30000, 50000];
+// ---- Hitos (§9) — "sin temporadas, los hitos son el calendario" ----
+// Del tablero "Los Puntos": SIETE hitos nombrados y luego uno cada 5.000. Los primeros caben en
+// el primer mes de cualquiera; los últimos tardan años a propósito. `big` = merece la tarjeta a
+// pantalla completa (se comparte); los chicos solo dejan una línea al pie de la cuenta.
+export interface Hito { points: number; name: string; big: boolean }
 
-/** El próximo hito por encima del total, o null si ya pasó el último. */
-export function nextHito(total: number): number | null {
-  return HITOS.find((h) => h > total) ?? null;
+const NAMED_HITOS: Hito[] = [
+  { points: 100, name: "La primera marca", big: false },
+  { points: 250, name: "Habitual", big: false },
+  { points: 500, name: "De la casa", big: false },
+  { points: 1000, name: "Los mil", big: true },
+  { points: 2500, name: "Veterano", big: false },
+  { points: 5000, name: "Los cinco mil", big: true },
+  { points: 10000, name: "Los diez mil", big: true },
+];
+const HITO_STEP = 5000; // después de 10.000, uno cada 5.000 (todos con tarjeta)
+const HITO_CEIL = 500000;
+
+function buildHitos(): Hito[] {
+  const list = [...NAMED_HITOS];
+  for (let p = 15000; p <= HITO_CEIL; p += HITO_STEP) list.push({ points: p, name: p.toLocaleString("es-CO"), big: true });
+  return list;
+}
+export const HITOS: readonly Hito[] = buildHitos();
+
+/** El próximo hito por encima del total (null si se pasó el techo enumerado). */
+export function nextHitoObj(total: number): Hito | null {
+  return HITOS.find((h) => h.points > total) ?? null;
+}
+/** Puntos del hito alcanzado más alto (0 si ninguno) — para la barra de progreso del próximo. */
+export function lastHitoPoints(total: number): number {
+  let last = 0;
+  for (const h of HITOS) {
+    if (h.points <= total) last = h.points;
+    else break;
+  }
+  return last;
+}
+/** Hitos ya alcanzados (≤ total), en orden — los chips del perfil (§9, el único historial). */
+export function hitosReached(total: number): Hito[] {
+  return HITOS.filter((h) => h.points <= total);
+}
+/** Hitos cruzados al ganar puntos, en (before, after] — la línea al pie de la cuenta. */
+export function hitosCrossed(before: number, after: number): Hito[] {
+  return HITOS.filter((h) => h.points > before && h.points <= after);
 }
 
 const UNIDADES = ["cero", "una", "dos", "tres", "cuatro", "cinco", "seis", "siete", "ocho", "nueve", "diez", "once", "doce"];
 /** "Dos salidas más" / "1 salida más" (§6): el próximo hito expresado en salidas. `ritmo` = pts/salida. */
 export function hitoEnSalidas(total: number, ritmo: number): string | null {
-  const hito = nextHito(total);
+  const hito = nextHitoObj(total);
   if (hito == null || ritmo <= 0) return null;
-  const faltan = Math.max(1, Math.ceil((hito - total) / ritmo));
+  const faltan = Math.max(1, Math.ceil((hito.points - total) / ritmo));
   const palabra = faltan <= 12 ? UNIDADES[faltan] : String(faltan);
   return `${palabra.charAt(0).toUpperCase()}${palabra.slice(1)} salida${faltan === 1 ? "" : "s"} más`;
 }

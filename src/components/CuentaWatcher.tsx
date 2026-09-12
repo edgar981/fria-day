@@ -2,9 +2,8 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { takeCuenta } from "@/app/actions/points";
+import { takeCuenta, type CuentaResult } from "@/app/actions/points";
 import { CuentaReceipt } from "@/components/CuentaReceipt";
-import type { CuentaLine } from "@/lib/points";
 
 // Detalle de salida = /sessions/<id>, excluyendo /sessions/new.
 const DETAIL = /^\/sessions\/(?!new$)([^/]+)$/;
@@ -20,7 +19,7 @@ const DETAIL = /^\/sessions\/(?!new$)([^/]+)$/;
 export function CuentaWatcher() {
   const pathname = usePathname();
   const prev = useRef<string | null>(null);
-  const [receipt, setReceipt] = useState<{ lines: CuentaLine[]; total: number } | null>(null);
+  const [receipt, setReceipt] = useState<CuentaResult | null>(null);
 
   useEffect(() => {
     const before = prev.current;
@@ -34,5 +33,5 @@ export function CuentaWatcher() {
   }, [pathname]);
 
   if (!receipt) return null;
-  return <CuentaReceipt lines={receipt.lines} total={receipt.total} onClose={() => setReceipt(null)} />;
+  return <CuentaReceipt lines={receipt.lines} total={receipt.total} crossed={receipt.crossed} onClose={() => setReceipt(null)} />;
 }

@@ -37,6 +37,24 @@ export function PointsCard({ summary }: { summary: PointsSummary }) {
           )}
         </div>
 
+        {/* La barra del próximo hito (§6: "una barra y una frase en salidas"). */}
+        {summary.nextHitoPoints != null && (
+          <div aria-hidden style={{ height: 6, borderRadius: 99, background: "var(--color-barra-alta)", overflow: "hidden", marginTop: 12 }}>
+            <div style={{ height: "100%", borderRadius: 99, background: "var(--color-ambar)", width: `${Math.max(2, Math.min(100, Math.round(((summary.total - summary.lastHitoPoints) / (summary.nextHitoPoints - summary.lastHitoPoints)) * 100)))}%` }} />
+          </div>
+        )}
+
+        {/* Chips de hitos alcanzados, en orden (§9: el único historial). */}
+        {summary.hitos.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 13 }}>
+            {summary.hitos.map((h) => (
+              <span key={h.points} style={{ font: "600 11.5px var(--font-sans)", color: "var(--color-crema)", background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "4px 10px" }}>
+                {h.name}
+              </span>
+            ))}
+          </div>
+        )}
+
         {summary.desglose.length > 0 && (
           <>
             <button

@@ -1120,8 +1120,14 @@ sección "El círculo": cada quien con sus puntos, **ordenada por antigüedad, N
 (por puntos sería el ranking que no es). Los puntos **NO van** en el leaderboard (ranking),
 header, tarjeta del feed ni push (§6).
 
-**Hitos (§9):** `HITOS` en `points.ts` con **valores provisionales** — el tablero tiene los
-reales; Edgar los cura. Se persiguen en salidas.
+**Hitos (§9) — "sin temporadas, los hitos son el calendario" (del tablero).** SIETE nombrados
+(100 La primera marca · 250 Habitual · 500 De la casa · 1.000 Los mil · 2.500 Veterano · 5.000
+Los cinco mil · 10.000 Los diez mil) y luego uno cada 5.000. `big` = merece tarjeta (1.000,
+5.000, 10.000+). En el perfil: la **barra** del próximo hito + la frase en salidas, y los hitos
+alcanzados como **chips en orden** (el único historial). Al **cruzar** un hito, una **línea al
+pie de la cuenta** ("Llegaste a Habitual", ámbar, no interrumpe) — el total de vida se calcula
+en `takeCuenta` (before→after). **Pendiente (follow-up): la tarjeta del hito** a pantalla completa
+para los grandes (variante `kind:"hito"` del share-card, con "Ver" después de cerrar la cuenta).
 
 **Topes "completo" (§3, §7):** el techo de 40 NUNCA se nombra. Los demás sí, en verde y en
 pasado, y solo al alcanzarse: al llegar al tope de puntos de fotos sale "Fotos · ya está

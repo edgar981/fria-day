@@ -2,7 +2,14 @@
 
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
-import { buildCuentaLines, isSocialAction, type CuentaLine } from "@/lib/points";
+import { buildCuentaLines, isSocialAction, hitosCrossed, type CuentaLine } from "@/lib/points";
+
+export interface CuentaResult {
+  lines: CuentaLine[];
+  total: number;
+  /** Hitos cruzados con estos puntos (§9): línea al pie de la cuenta; `big` merece tarjeta. */
+  crossed: { points: number; name: string; big: boolean }[];
+}
 
 /**
  * "La cuenta" (Pasada PT · §5): al SALIR del detalle de una salida donde se registró/editó
@@ -13,9 +20,9 @@ import { buildCuentaLines, isSocialAction, type CuentaLine } from "@/lib/points"
  * Si no se ganó nada de ESTA salida (solo se miró, o solo social), no hay recibo → lines vacío.
  * El +10 de "cumplir un reto" nunca llega aquí: se marca visto al acreditarse (se muestra en vivo).
  */
-export async function takeCuenta(sessionId: string): Promise<{ lines: CuentaLine[]; total: number }> {
+export async function takeCuenta(sessionId: string): Promise<CuentaResult> {
   const user = await getCurrentUser();
-  if (!user) return { lines: [], total: 0 };
+  if (!user) return { lines: [], total: 0, crossed: [] };
 
   const unseen = await prisma.pointEntry.findMany({
     where: {
@@ -28,10 +35,16 @@ export async function takeCuenta(sessionId: string): Promise<{ lines: CuentaLine
 
   // ¿Ganó algo de ESTA salida que no sea social? (registrar/editar algo, no solo mirar/brindar)
   const earnedHere = unseen.some((e) => e.sessionId === sessionId && !isSocialAction(e.action));
-  if (!earnedHere) return { lines: [], total: 0 };
+  if (!earnedHere) return { lines: [], total: 0, crossed: [] };
 
   const lines = buildCuentaLines(unseen.map((e) => ({ action: e.action, points: e.points })));
   const total = unseen.reduce((n, e) => n + e.points, 0);
+
+  // Hitos cruzados: el total DE VIDA pasó de `before` a `after` con estos puntos.
+  const agg = await prisma.pointEntry.aggregate({ where: { userId: user.id }, _sum: { points: true } });
+  const after = agg._sum.points ?? 0;
+  const crossed = hitosCrossed(after - total, after).map((h) => ({ points: h.points, name: h.name, big: h.big }));
+
   await prisma.pointEntry.updateMany({ where: { id: { in: unseen.map((e) => e.id) } }, data: { shownAt: new Date() } });
-  return { lines, total };
+  return { lines, total, crossed };
 }

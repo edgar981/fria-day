@@ -26,7 +26,17 @@ function useCountUp(target: number, ms: number): number {
  * escalonadas (90ms) y el total cuenta en 600ms — menos de segundo y medio, es un recibo, no
  * una ceremonia. Se cierra tocando. Respeta prefers-reduced-motion (aparece sin animar).
  */
-export function CuentaReceipt({ lines, total, onClose }: { lines: CuentaLine[]; total: number; onClose: () => void }) {
+export function CuentaReceipt({
+  lines,
+  total,
+  crossed = [],
+  onClose,
+}: {
+  lines: CuentaLine[];
+  total: number;
+  crossed?: { points: number; name: string; big: boolean }[];
+  onClose: () => void;
+}) {
   const [mounted, setMounted] = useState(false);
   const reduced = useRef(false);
   useEffect(() => {
@@ -91,6 +101,17 @@ export function CuentaReceipt({ lines, total, onClose }: { lines: CuentaLine[]; 
           <span style={{ font: "800 16px var(--font-display)", letterSpacing: "-.01em", color: "var(--color-espuma)" }}>Total</span>
           <span style={{ font: "800 30px/1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-ambar)" }}>+{shown}</span>
         </div>
+
+        {/* Hito cruzado (§9): una línea al pie, no interrumpe. Los grandes llevarán "Ver" → tarjeta. */}
+        {crossed.map((h) => (
+          <div key={h.points} style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", borderRadius: 12, background: "rgba(242,160,22,.12)", border: "1px solid var(--color-ambar)" }}>
+            <span aria-hidden style={{ fontSize: 14 }}>🏅</span>
+            <span style={{ flex: 1, font: "700 13.5px var(--font-sans)", color: "var(--color-espuma)" }}>
+              Llegaste a <span style={{ color: "var(--color-ambar)" }}>{h.name}</span>
+            </span>
+          </div>
+        ))}
+
         <div style={{ marginTop: 14, textAlign: "center", font: "500 12px var(--font-sans)", color: "var(--color-tenue-2)" }}>
           Toca para cerrar
         </div>
