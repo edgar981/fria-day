@@ -1500,3 +1500,37 @@ sugerencias). 154 tests intactos.
 Better Auth en WebKit salía del alcance); se cubrió por la capa de datos + la ruta de UI idéntica al
 caso 4. El costo se argumentó desde el plan de consultas (una carga al montar, no medí latencia en prod
 — Code no toca prod).
+
+## Pasada de ajustes previos al perfil ajeno — copy, "Tabla", más avatares
+
+Tres ajustes chicos antes de construir el perfil ajeno.
+
+**1 · Copy explicativo (regla de la Pasada T: si hay que explicar cómo funciona, sobra la frase).**
+De las 10 líneas señaladas, solo 2 existían en el código; las otras 8 eran anotaciones del tablero
+de perfil-ajeno/solicitudes (features aún no construidas) — no se implementó ninguna. Las 2 que
+existían se quitaron:
+- **"Nadie ha brindado todavía"** en la zona "El brindis" del detalle (`ReactionBar`, layout social):
+  ahora, sin brindis, solo queda el botón Brindar — igual que ya hacía el feed (donde ya se había
+  quitado y no volvió).
+- **"· solo salidas propias"** del subtítulo de la Tabla (`LeaderboardScreen`): queda "El ranking de
+  tu círculo". (Había vuelto tras haberse quitado.)
+
+**2 · "Leaderboard" → "Tabla".** Única aparición VISIBLE: la etiqueta de la pestaña (`BottomNav`). El
+título de esa pantalla ya era "El parche". La ruta `/leaderboard` se queda (no visible); los demás usos
+("leaderboard" en nombres de función, imports, comentarios) también. Con "Tabla" la etiqueta más larga
+pasa a ser "Catálogo" (~44px medidos), así que la fuente vuelve de **10,5px a 11px** y se quita el
+tracking apretado `-.015em`: a 320px (iPhone SE) el 1fr es 61,6px → ~17px de holgura; a 390px, ~31px.
+Sin overflow ni salto de línea (medido y verificado en WebKit a 320 y 390).
+
+**3 · Más avatares (10 → 16).** El avatar se ELIGE en el registro (`AvatarPicker`), editable en Perfil;
+no hay `@unique` en `User.avatar`, así que no "se acaban" ni hay colisión de error — dos personas
+pueden tener el mismo animal, nada falla; el problema es de distinción y crece con el parche. Se
+agregaron **6 fauna** en el mismo estilo del sprite (viewBox 48, cuerpo crema, rasgos oscuros, silueta
+redondeada): **Perezoso, Delfín, Colibrí, Babilla, Venado, Tortuga** (siluetas distintas entre sí y a
+las 10 actuales). Se editó `Sprite.tsx` a mano (documentado en su cabecera, pese al "no editar a mano"
+del generador) y `avatars.ts` (`AVATAR_KEYS` + `AVATAR_META`).
+
+Verificado por ejecución (WebKit, gate-ana en dev): la barra con "Tabla" a 320 y 390 (11px, sin
+overflow); el `AvatarPicker` con los 6 nuevos junto a los 10 viejos en la misma captura; el subtítulo
+de la Tabla sin "solo salidas propias". Las 2 líneas de copy fuera del código (grep). tsc y 154 tests
+en verde.

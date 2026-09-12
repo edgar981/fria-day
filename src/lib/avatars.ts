@@ -12,6 +12,13 @@ export const AVATAR_KEYS = [
   "condor",
   "iguana",
   "oso-andino",
+  // Pasada de ajustes: 6 fauna más (el parche crece y las variantes se agotaban).
+  "perezoso",
+  "delfin",
+  "colibri",
+  "babilla",
+  "venado",
+  "tortuga",
 ] as const;
 
 export type AvatarKey = (typeof AVATAR_KEYS)[number];
@@ -33,6 +40,12 @@ export const AVATAR_META: Record<AvatarKey, AvatarMeta> = {
   condor: { symbol: "av-condor", bg: "#5C4A3A", label: "Cóndor" },
   iguana: { symbol: "av-iguana", bg: "#3A6B4A", label: "Iguana" },
   "oso-andino": { symbol: "av-oso", bg: "#4A3524", label: "Oso andino" },
+  perezoso: { symbol: "av-perezoso", bg: "#6B5A3A", label: "Perezoso" },
+  delfin: { symbol: "av-delfin", bg: "#A85A6E", label: "Delfín" },
+  colibri: { symbol: "av-colibri", bg: "#2E7D6B", label: "Colibrí" },
+  babilla: { symbol: "av-babilla", bg: "#45542B", label: "Babilla" },
+  venado: { symbol: "av-venado", bg: "#9C6B3A", label: "Venado" },
+  tortuga: { symbol: "av-tortuga", bg: "#3E6B47", label: "Tortuga" },
 };
 
 export const ANON_META: AvatarMeta = {

@@ -6,15 +6,16 @@ import { Icon, type IconName } from "@/components/Icon";
 import { RouletteMenu } from "@/components/RouletteMenu";
 
 type Item = { href: string; label: string; icon: IconName };
-// Barra (Pasada N): Feed · Catálogo · [+] · Leaderboard · Perfil. "Invitar" salió de la
+// Barra (Pasada N): Feed · Catálogo · [+] · Tabla · Perfil. "Invitar" salió de la
 // barra (es acción de dos veces en la vida, no un lugar; pasó a una hoja en el header
-// del Leaderboard). El leaderboard subió a pestaña propia: antes vivía dentro de Perfil.
+// de la Tabla). La Tabla (antes "Leaderboard") subió a pestaña propia: antes vivía dentro
+// de Perfil. La ruta sigue siendo /leaderboard (no visible); solo cambió la etiqueta.
 const LEFT: Item[] = [
   { href: "/", label: "Feed", icon: "home" },
   { href: "/beers", label: "Catálogo", icon: "mug" },
 ];
 const RIGHT: Item[] = [
-  { href: "/leaderboard", label: "Leaderboard", icon: "chart" },
+  { href: "/leaderboard", label: "Tabla", icon: "chart" },
   { href: "/profile", label: "Perfil", icon: "user" },
 ];
 
@@ -36,11 +37,10 @@ function TabInner({ item, active }: { item: Item; active: boolean }) {
         alignItems: "center",
         gap: 3,
         color: on ? "var(--color-ambar)" : "var(--color-tenue)",
-        // 10.5px + tracking apretado: "Leaderboard" es la etiqueta más larga y a 320px
-        // (iPhone SE) el 1fr le queda al ras. Bajarla un pelo le da holgura sin que se
-        // note frente a las demás. whiteSpace:nowrap para que nunca parta en dos líneas.
-        font: `${on ? 700 : 500} 10.5px var(--font-sans)`,
-        letterSpacing: "-.015em",
+        // 11px: al pasar "Leaderboard" → "Tabla" (pasada de ajustes), la etiqueta más larga
+        // es ahora "Catálogo" (~44px) y a 320px (iPhone SE) sobran ~17px en el 1fr, así que se
+        // volvió a 11px sin el tracking apretado. whiteSpace:nowrap: nunca parte en dos líneas.
+        font: `${on ? 700 : 500} 11px var(--font-sans)`,
         whiteSpace: "nowrap",
         transition: "color .1s ease",
       }}

@@ -399,10 +399,9 @@ export function ReactionBar({
     return (
       <div>
         {total === 0 ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
-            <span style={{ flex: 1, minWidth: 0, font: "500 13.5px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado todavía</span>
-            {brindarBtn}
-          </div>
+          // Sin brindis: solo el botón Brindar, sin frase que explique el vacío (igual que el
+          // feed; regla de la Pasada T: si hay que explicar el vacío, sobra la frase).
+          brindarBtn
         ) : (
           // RU.3 (#1): más aire entre el racimo y el botón. El racimo+avatares+texto van
           // en un grupo con su propio gap; un marginLeft:auto separa el botón a la derecha.
