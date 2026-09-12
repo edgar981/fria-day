@@ -38,6 +38,10 @@ export interface ShareData {
   color: string; // color de la cascada (hex)
   ink: string; // tinta emparejada con el color (≥ 4,5:1)
   lastLabel: string | null; // "hasta las 5:30 am" (ventana real) o null (retroactiva)
+  // T5 · stats para llenar la story:
+  ruleta: { rondas: number; loserName: string; losses: number } | null; // la ruleta de la salida
+  formato: string | null; // "3 botellas · 1 copa" (solo con más de un formato)
+  distinct: number; // bebidas distintas (para "N distintas" cuando el recorrido se trunca)
 }
 
 const DARK = "#070B16"; // el fondo de los estados con banda
@@ -45,6 +49,13 @@ const CREAM = "#FBFCFF"; // texto sobre el fondo oscuro
 const MUTED = "#8496C4"; // subetiquetas / acompañantes sobre el fondo oscuro
 const DISP = "Big Shoulders Display";
 const SANS = "Outfit";
+
+// Zona segura de la STORY (T5): Instagram tapa la parte de arriba (progreso + perfil + cerrar) y,
+// sobre todo, la de abajo (el campo "Add a caption" + la barra de compartir). El pie de la v2 a
+// 240px del borde quedaba TAPADO. Estos márgenes dejan el contenido libre del chrome de IG; se
+// marcan y se verifican contra la UI real, no contra el lienzo vacío.
+const STORY_TOP_SAFE = 150; // franja oscura arriba: despeja el chrome superior sin gastar color
+const STORY_BOTTOM_SAFE = 380; // el pie termina aquí, holgado por encima de "Add a caption"
 
 // ---- Derivación de tonos de apoyo desde el par (color, tinta) ----
 function hexToRgb(hex: string): [number, number, number] {
@@ -171,6 +182,22 @@ function highlightBand(h: Highlight, p: Palette): ReactElement {
   );
 }
 
+// La ruleta (T5): recuadro con el borde del color — contenido nativo de FriaDay que llena la
+// story. "N RONDAS" grande + "{quién} perdió {n}" a la derecha, en el color (solo si alguien
+// perdió 2 o más; repartida, basta el número de rondas).
+function ruletaBox(r: NonNullable<ShareData["ruleta"]>, p: Palette): ReactElement {
+  const repeat = r.losses >= 2;
+  return (
+    <div style={{ display: "flex", alignItems: "center", marginTop: 40, flex: "none", border: `2px solid ${p.color}`, borderRadius: 18, padding: "24px 28px" }}>
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
+        {eyebrow("LA RULETA", p.accentSoft, 19)}
+        {disp(`${r.rondas} ${r.rondas === 1 ? "RONDA" : "RONDAS"}`, 50, CREAM, { marginTop: 14 })}
+      </div>
+      {repeat ? sans(`${r.loserName} perdió ${r.losses}`, 27, p.color, { fontWeight: 600 }) : null}
+    </div>
+  );
+}
+
 // Métrica de pie (valor grande + subetiqueta). `accent` pinta el valor con el color.
 function metric(value: string, label: string, valueColor: string, labelColor: string, size: number): ReactElement {
   return (
@@ -181,17 +208,20 @@ function metric(value: string, label: string, valueColor: string, labelColor: st
   );
 }
 
-// La banda de color superior (FriaDay + lugar + fecha), común a con-foto y sin-foto.
+// La banda de color superior (FriaDay + lugar + fecha), común a con-foto y sin-foto. En la STORY
+// es COMPACTA (T5: antes se llevaba ~25% del alto): el despeje del chrome de IG lo da la franja
+// oscura de arriba (STORY_TOP_SAFE), no 200px de color. En la publicación (4:5) la banda arranca
+// desde el borde como antes.
 function colorBand(d: ShareData, p: Palette, placeSize: number, story: boolean): ReactElement {
   const dateLine = d.lastLabel ? `${d.dateLabel} · ${d.lastLabel}` : d.dateLabel;
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.color, padding: story ? "200px 64px 54px" : "64px 64px 54px" }}>
+    <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.color, padding: story ? "40px 64px 40px" : "64px 64px 54px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         {disp("FRIADAY", 40, p.ink, { letterSpacing: 2.4 })}
         {eyebrow("PRIVADO · POR INVITACIÓN", p.ink, 22)}
       </div>
-      {disp((d.place || `Salida de ${d.ownerName}`).toUpperCase(), placeSize, p.ink, { marginTop: 44, lineHeight: 0.9 })}
-      {sans(dateLine, 32, p.ink, { marginTop: 24 })}
+      {disp((d.place || `Salida de ${d.ownerName}`).toUpperCase(), placeSize, p.ink, { marginTop: story ? 32 : 44, lineHeight: 0.9 })}
+      {sans(dateLine, 32, p.ink, { marginTop: story ? 20 : 24 })}
     </div>
   );
 }
@@ -207,11 +237,11 @@ function companionsRow(d: ShareData, companions: string): ReactElement {
 }
 
 // Métricas de pie sobre fondo oscuro (duración · total · salida #N — el #N en el color).
-function darkStats(d: ShareData, p: Palette): ReactElement {
+function darkStats(d: ShareData, p: Palette, size = 56): ReactElement {
   const cols: ReactNode[] = [];
-  if (d.duration) cols.push(metric(d.duration.value, d.duration.window, CREAM, MUTED, 56));
-  cols.push(metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", CREAM, MUTED, 56));
-  cols.push(metric(`#${d.outing}`, "salida", p.color, MUTED, 56));
+  if (d.duration) cols.push(metric(d.duration.value, d.duration.window, CREAM, MUTED, size));
+  cols.push(metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", CREAM, MUTED, size));
+  cols.push(metric(`#${d.outing}`, "salida", p.color, MUTED, size));
   return (
     <div style={{ display: "flex", alignItems: "flex-end", flex: "none" }}>
       {cols.map((c, i) => (
@@ -219,6 +249,15 @@ function darkStats(d: ShareData, p: Palette): ReactElement {
       ))}
     </div>
   );
+}
+
+// Línea secundaria (T5): formato ("3 botellas · 1 copa") y, cuando el recorrido se trunca,
+// "N distintas". Da textura sin números grandes. Vacía → no se dibuja.
+function secondaryText(d: ShareData): string {
+  const parts: string[] = [];
+  if (d.formato) parts.push(d.formato);
+  if (d.drinks.length > 3 && d.distinct >= 2) parts.push(`${d.distinct} distintas`);
+  return parts.join("   ·   ");
 }
 
 /** Estados CON banda (con foto / sin foto multi): fondo oscuro + banda de color. */
@@ -236,38 +275,84 @@ function bandedCard(d: ShareData, p: Palette, story: boolean): ReactElement {
 
   const placeSize = d.photoUrl
     ? fitSize(place, [[12, 76], [20, 58], [99, 46]])
-    : fitSize(place, [[10, story ? 150 : 142], [18, story ? 108 : 100], [26, 74], [99, 56]]);
-  const recSize = d.photoUrl ? 52 : story ? 82 : 74;
-  // Con foto la imagen ES el hero: ocupa alto para no dejar un vacío bajo la banda.
-  const photoH = story ? 1000 : 480;
+    : fitSize(place, [[10, story ? 128 : 142], [18, story ? 96 : 100], [26, 74], [99, 56]]);
+  const recSize = d.photoUrl ? (story ? 58 : 52) : story ? 96 : 74;
+  // La foto en la story ya NO es todo el hero (antes 1000px dejaba el pie fuera de la zona
+  // segura): más chica, para que las stats quepan sobre la zona de "Add a caption".
+  const photoH = story ? 540 : 480;
+  const secondary = secondaryText(d);
 
-  return (
-    <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: DARK }}>
-      {colorBand(d, p, placeSize, story)}
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: "52px 64px 60px" }}>
-        {d.photoUrl ? (
-          <div style={{ display: "flex", borderRadius: 28, overflow: "hidden", flex: "none", marginBottom: 40 }}>
-            <img src={d.photoUrl} width={952} height={photoH} alt="" style={{ width: 952, height: photoH, objectFit: "cover" }} />
-          </div>
-        ) : null}
+  // Bloque principal: bajo la foto el nombre de la única bebida; si no, el recorrido.
+  const mainBlock =
+    single && d.photoUrl ? (
+      <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+        {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", p.accentSoft, 20)}
+        {disp(d.drinks[0].name.toUpperCase(), story ? 92 : 78, CREAM, { marginTop: 18, lineHeight: 1.02 })}
+        {d.drinks[0].meta ? sans(d.drinks[0].meta, 28, MUTED, { marginTop: 16 }) : null}
+        {d.drinks[0].rating != null ? <div style={{ display: "flex", marginTop: 26 }}>{ratingBars(d.drinks[0].rating, p.color, p.dimBar)}</div> : null}
+      </div>
+    ) : (
+      recorridoBlock(d.drinks.map((dr) => dr.name), recSize, !!d.photoUrl, p)
+    );
 
-        {single && d.photoUrl ? (
+  const photoBlock = d.photoUrl ? (
+    <div style={{ display: "flex", borderRadius: 28, overflow: "hidden", flex: "none", marginBottom: 40 }}>
+      <img src={d.photoUrl} width={952} height={photoH} alt="" style={{ width: 952, height: photoH, objectFit: "cover" }} />
+    </div>
+  ) : null;
+
+  const hlBlock = !single && !d.photoUrl && highlight ? highlightBand(highlight, p) : null;
+  const rulBlock = d.ruleta ? ruletaBox(d.ruleta, p) : null;
+
+  const bottomCluster = (
+    <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+      {secondary ? sans(secondary, story ? 27 : 24, MUTED, { marginBottom: 22 }) : null}
+      {companionsRow(d, companions)}
+      {darkStats(d, p, story ? 68 : 56)}
+    </div>
+  );
+
+  // STORY (T5): franja oscura de zona segura arriba + banda compacta; el cuerpo REPARTE su alto
+  // (justify-between) para que aun con pocas bebidas se vea lleno y no un hueco negro; la ruleta
+  // (si hubo) llena el centro; el pie termina sobre la zona de "Add a caption".
+  if (story) {
+    // "Rico" = hay FOTO (ancla arriba) o RULETA (pie alto): el cuerpo REPARTE su alto
+    // (space-between) y llena. Si solo hay recorrido (con o sin highlight/stats), se CENTRA en
+    // bloque compacto: el aire queda equilibrado arriba y abajo (se lee intencional, no un hueco
+    // negro al fondo) y las stats quedan lejos del chrome de IG igual. El highlight solo no basta
+    // para repartir: pinchado con el recorrido, centrado se ve mejor que un pie bajo con hueco.
+    const rich = !!d.photoUrl || !!rulBlock;
+    return (
+      <div style={{ width: 1080, height: 1920, display: "flex", flexDirection: "column", background: DARK }}>
+        <div style={{ display: "flex", flex: "none", height: STORY_TOP_SAFE }} />
+        {colorBand(d, p, placeSize, true)}
+        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: rich ? "space-between" : "center", padding: `44px 64px ${STORY_BOTTOM_SAFE}px` }}>
           <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
-            {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", p.accentSoft, 20)}
-            {disp(d.drinks[0].name.toUpperCase(), story ? 92 : 78, CREAM, { marginTop: 18, lineHeight: 1.02 })}
-            {d.drinks[0].meta ? sans(d.drinks[0].meta, 28, MUTED, { marginTop: 16 }) : null}
-            {d.drinks[0].rating != null ? <div style={{ display: "flex", marginTop: 26 }}>{ratingBars(d.drinks[0].rating, p.color, p.dimBar)}</div> : null}
+            {photoBlock}
+            {mainBlock}
+            {hlBlock}
           </div>
-        ) : (
-          recorridoBlock(d.drinks.map((dr) => dr.name), recSize, !!d.photoUrl, p)
-        )}
+          <div style={{ display: "flex", flexDirection: "column", flex: "none", marginTop: rich ? 0 : 72 }}>
+            {rulBlock}
+            <div style={{ display: "flex", flexDirection: "column", marginTop: rulBlock ? 40 : 0 }}>{bottomCluster}</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-        {/* Highlight (primera vez → mejor): solo multi-bebida y sin foto. */}
-        {!single && !d.photoUrl && highlight ? highlightBand(highlight, p) : null}
-
+  // PUBLICACIÓN (4:5): anclada (el pie abajo). La ruleta entra solo cuando hay hueco (sin foto y
+  // sin highlight) para no reventar el alto del 4:5.
+  return (
+    <div style={{ width: 1080, height: 1350, display: "flex", flexDirection: "column", background: DARK }}>
+      {colorBand(d, p, placeSize, false)}
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: "52px 64px 60px" }}>
+        {photoBlock}
+        {mainBlock}
+        {hlBlock}
+        {!hlBlock && !d.photoUrl && rulBlock ? rulBlock : null}
         <div style={{ display: "flex", flexGrow: 1 }} />
-        {companionsRow(d, companions)}
-        {darkStats(d, p)}
+        {bottomCluster}
       </div>
     </div>
   );
@@ -294,7 +379,9 @@ function heroCard(d: ShareData, p: Palette, story: boolean): ReactElement {
         {drink?.rating != null ? <div style={{ display: "flex", marginTop: 36 }}>{ratingBars(drink.rating, p.ink, p.heroDim, 40)}</div> : null}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.footerBg, padding: "52px 64px 60px" }}>
+      {/* El pie invertido: en la story su padding inferior es la ZONA SEGURA (T5) — las stats
+          quedan por encima de "Add a caption"; la tinta bleed hasta el borde queda tapada por IG. */}
+      <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.footerBg, padding: story ? `52px 64px ${STORY_BOTTOM_SAFE}px` : "52px 64px 60px" }}>
         <div style={{ display: "flex", alignItems: "center", flex: "none" }}>
           {avatarStack(d.avatars, 62, 16)}
           {sans(companions ? `con ${companions}` : `Salida de ${d.ownerName} · ${d.dateLabel}`, 30, p.footerMuted, { marginLeft: 22 })}

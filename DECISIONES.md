@@ -1288,3 +1288,42 @@ Dos ajustes de copy/UI sobre el sistema de puntos (Pasada PT):
 
 Verificado por ejecución (perfil de Ana en dev): la tarjeta sin la línea/barra, y el desglose
 cerrando con "3 bebidas: 52 puntos. 2 salidas: 100.". tsc y 154 tests en verde.
+
+## Pasada SC · Turno 5 — La story rebalanceada
+
+Tres problemas de la story en Instagram real (capturas de Edgar) + el dato de duración:
+
+1. **Zona segura de Instagram.** El pie a 240px del borde quedaba TAPADO por "Add a caption". Ahora
+   una franja OSCURA arriba (`STORY_TOP_SAFE` 150px) despeja el chrome superior sin gastar color, y
+   el pie termina a `STORY_BOTTOM_SAFE` 380px del borde, por encima del campo de caption. Los
+   márgenes se **marcan** (overlay de verificación) para confirmarlos contra la UI real de IG, no
+   contra el lienzo vacío. Solo la story; la publicación (4:5) no tiene chrome de IG.
+
+2. **Banda superior más chica.** Antes se llevaba ~25% (200px de padding COLOREADO). Ahora la franja
+   segura de arriba es oscura y la banda de color es COMPACTA (place más chico, márgenes apretados).
+
+3. **La story sin foto ya no se ve vacía.** Antes: pie anclado abajo + hueco negro enorme. Ahora el
+   cuerpo REPARTE su alto: con foto/ruleta reparte (space-between) y llena; si solo hay recorrido
+   (con o sin highlight), se CENTRA en bloque compacto → el aire queda equilibrado, se lee
+   intencional. El recorrido de la story es más grande (96px).
+
+**La duración** (`>1h`) casi nunca disparaba (la gente registra en tandas). Decisión de Edgar:
+mostrarla SIEMPRE, aunque sea "2m" (solo se omite si el span es 0, registro instantáneo). La
+cascada de color y el "hasta las" del titular siguen atados a la ventana real (≥1h): esas son
+afirmaciones de titular, la stat es dato preciso.
+
+**Stats nuevas para llenar (qué entra):**
+- **La ruleta** — contenido nativo de FriaDay, imposible de copiar: "N rondas · {quién} perdió {n}"
+  (el que más perdió, si perdió ≥2; empate → el de la ronda más reciente). Recuadro con el borde
+  del color, llena el centro. Sin rondas → no se dibuja.
+- **Formato** — "3 botellas · 1 copa" (solo con más de un formato).
+- **Bebidas distintas** — "N distintas", solo cuando el recorrido se trunca (>3 bebidas) y no se ven
+  todas.
+- **Qué NO entra:** "cuántos del parche salieron" (los avatares ya lo dicen); "la mejor de la noche"
+  como stat aparte (ya es el recuadro de highlight, prioridad primera-vez → mejor, de los turnos 3-4).
+
+No cambia: la cascada de color, Big Shoulders, el contenido de los turnos 3-4, ni la regla de no
+celebrar cantidad de alcohol. Verificado por ejecución: los 6 estados de la story renderizados
+(sin foto con/sin ruleta, con foto single/multi, caso pobre, bare centrado) + el 4:5, el overlay de
+zona segura, y un render REAL contra dev con 3 rondas sembradas (ruleta "3 rondas · Beto perdió 2" +
+formato "2 botellas · 1 lata"). tsc y 154 tests en verde.
