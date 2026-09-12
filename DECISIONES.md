@@ -1014,3 +1014,30 @@ sonido). En Android/PWA compatibles sí vibran (`navigator.vibrate` se llama igu
 **Decisión:** se acepta la pérdida háptica en iOS apoyándose en esas señales visuales. El
 **sonido** se evalúa aparte (RU.2 §2): es la vía real para devolver el "chasquido" y el
 "golpe" en iPhone, con un control de encendido y default conservador. Ver el reporte de RU.2.
+
+## Compartir en iOS — `navigator.share` exige activación fresca (RU.6.2)
+
+**Confirmado por ejecución:** el fallo intermitente "No se pudo crear la imagen. Revisa tu
+conexión" **no era del servidor**. En el log de producción la ruta `/api/share/[id]` devolvía
+**200 en 4.7 s** — la imagen se generó bien. Quien abortaba era el **cliente**: `navigator.share()`
+en iOS exige *transient user activation* (ventana de ~5 s desde el toque), y los ~4 s de
+generación la **agotan** → `share()` rechaza con `NotAllowedError` → el `catch` lo etiquetaba
+como fallo de creación/conexión (mentira doble: la imagen existía y la red funcionó). **No había
+timeout de cliente** (ni `AbortController`, ni `setTimeout`, ni service worker); el mensaje era
+un `catch` que mezclaba tres causas distintas.
+
+**Por qué 4 s es el piso real:** la app ya comprime las fotos en el cliente a **1200px máx, JPEG
+q0.82** antes de subir, así que el render **nunca ve** los 4032×3024 de la cámara. Medido: el
+render con foto real de 1200px son **~760 ms** (de los cuales ~600 ms son un peaje FIJO por tener
+cualquier raster; el resto escala poco con la dimensión). Los ~4 s vienen de Neon frío + auth +
+queries + el **fetch remoto del blob** que satori hace dentro del render. **Comprimir más no
+ayuda.** Memoria ~343 MB con foto real (bajo el límite de 1024 MB de Hobby).
+
+**Decisión (Edgar, opción C):** (1) **mensajes honestos** — el `catch` distingue respuesta
+fallida (`!res.ok`, con submensajes por estado), fallo de red real (único caso donde "revisa tu
+conexión" es cierto) y cancelación (`AbortError`, sin error); (2) **rearmar el gesto** — si el
+auto-share falla porque la ventana expiró, la imagen ya generada se guarda y se ofrece un botón
+**"Compartir imagen"** que la comparte dentro de una activación **fresca** (con "Descargar" como
+salida). Regla para futuro: **cualquier flujo generar-luego-compartir en iOS debe separar la
+generación lenta del `share()`** con un toque fresco; no se puede `await` varios segundos y luego
+llamar a `share()`.
