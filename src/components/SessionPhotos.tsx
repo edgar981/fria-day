@@ -84,13 +84,13 @@ export function SessionPhotos({
     setError(null);
     setBusy(true);
     try {
-      const { blob, filename, color } = await compressImage(file);
+      const { blob, filename, color, luminance } = await compressImage(file);
       const uploaded = await upload(filename, blob, {
         access: "public",
         handleUploadUrl: "/api/blob/upload",
         contentType: "image/jpeg",
       });
-      const res = await addSessionPhoto(sessionId, uploaded.url, color); // SC nivel 2
+      const res = await addSessionPhoto(sessionId, uploaded.url, color, luminance); // SC nivel 2 + T6 brillo
       if (!res.ok) setError(res.error);
       else router.refresh();
     } catch (err) {

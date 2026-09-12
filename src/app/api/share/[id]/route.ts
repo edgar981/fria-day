@@ -16,7 +16,7 @@ import { FORMAT_LABEL, formatAbv, formatBreakdownText, formatClock, formatDayLon
 import { resolveCardColor, styleColorFor } from "@/lib/colors";
 import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
-import { BIG_SHOULDERS_700, BIG_SHOULDERS_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
+import { BRICOLAGE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
 // Node runtime (no edge): usamos Prisma + auth por cookie. ImageResponse (next/og)
 // funciona en Node. Nada de esto consume la cuota de Optimización de Imágenes de
@@ -93,17 +93,20 @@ async function handleShare(
   const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
   const single = checkIns.length === 1;
 
-  // Duración (T5): la ventana real de la noche (min→max de createdAt). Antes se omitía si era
-  // < 1h, pero como la gente registra en TANDAS ese umbral casi nunca dispara y la stat estrella
-  // quedaba ausente. Ahora se MUESTRA aunque sea corta (decisión de Edgar: "así sea 2 minutos");
-  // solo se omite si es 0 (registro instantáneo, sin ventana). El riesgo asumido: puede decir
-  // "5m". La cascada de color y el "hasta las" del titular SIGUEN atados a la ventana real
-  // (hasRealWindow = span ≥ 1h): esas son afirmaciones de titular, la stat es dato preciso.
+  // Duración (T6): CONDICIONAL a una ventana real (≥ 1h). El T5 la mostraba siempre ("así sea 2m"),
+  // pero el turno 6 la vuelve condicional y saca la hora aparte: la duración solo aparece cuando
+  // hubo noche de verdad; la HORA ("hasta las X") va SIEMPRE, en el pie, del último check-in. Así
+  // "duración" no miente con "2m" de un registro en tandas, y el pie siempre ancla la salida en el
+  // tiempo. La cascada de color usa la misma ventana real (hasRealWindow) para el nivel hora.
   const times = checkIns.map((c) => c.createdAt);
   const span = drinkingSpanMinutes(times);
+  const ms = times.map((t) => t.getTime());
+  // La duración solo cuenta como una NOCHE plausible: ≥ 1h y ≤ 20h. Un span mayor no es una salida
+  // (un check-in rezagado días después, un registro corregido) → no se muestra "162h 53m"; el pie
+  // igual ancla la hora con "hasta las X".
+  const NIGHT_MAX_MINUTES = 20 * 60;
   let duration: ShareData["duration"] = null;
-  if (span >= 1) {
-    const ms = times.map((t) => t.getTime());
+  if (span >= DURATION_MIN_MINUTES && span <= NIGHT_MAX_MINUTES) {
     duration = {
       value: formatDurationLabel(span),
       window: formatTimeWindow(new Date(Math.min(...ms)), new Date(Math.max(...ms))),
@@ -175,9 +178,10 @@ async function handleShare(
     hasRealWindow,
     outingNumber: outing,
   });
-  // El texto cambió (decisión del tablero): "arrancó {inicio}" → "hasta las {último check-in}".
-  // Solo cuando hay ventana real; retroactiva (sin ventana) no muestra hora.
-  const lastLabel = hasRealWindow ? `hasta las ${formatClock(last.createdAt)}` : null;
+  // "hasta las {hora del último check-in}" — SIEMPRE (T6): la hora vive en el pie y ancla la salida
+  // en el tiempo aunque no haya ventana ≥1h. La fecha sale del header de la story (vive 24h); en el
+  // 4:5 la fecha baja al pie como cuarto dato.
+  const lastLabel = `hasta las ${formatClock(last.createdAt)}`;
 
   // T5 · stats propias para LLENAR la story (sobre todo sin foto y con pocas bebidas):
   // La RULETA — contenido nativo de FriaDay, imposible de copiar. "N rondas · {quién} perdió {n}":
@@ -201,8 +205,11 @@ async function handleShare(
   const distinct = beerIds.length;
 
   const data: ShareData = {
+    photoColor: photo?.color ?? null,
+    luminance: photo?.luminance ?? null,
     place: session.placeName,
     dateLabel: formatDayLong(session.date),
+    dateShort: formatSheetDate(session.date),
     ownerName: session.user.displayName,
     avatars,
     companions,
@@ -250,12 +257,11 @@ async function handleShare(
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
   // 500). Embebidas funciona igual en local, preview y prod.
-  // SC · Tanda 2: Big Shoulders Display en instancias ESTÁTICAS 700/800 (satori 0.25 no
-  // interpola ejes variables → una variable saldría en su master fino). Syne salió (era la
-  // display de la v2). Outfit 400/700 se queda para el texto de apoyo.
+  // SC · tanda 2.1: Bricolage Grotesque en instancia ESTÁTICA 800 (satori 0.25 no interpola ejes
+  // variables). La composición usa un solo peso → un peso en vez de los dos de Big Shoulders.
+  // Outfit 400/700 se queda para el texto de apoyo (eyebrows, meta, subetiquetas).
   const fonts = [
-    { name: "Big Shoulders Display", data: BIG_SHOULDERS_700, weight: 700 as const, style: "normal" as const },
-    { name: "Big Shoulders Display", data: BIG_SHOULDERS_800, weight: 800 as const, style: "normal" as const },
+    { name: "Bricolage Grotesque", data: BRICOLAGE_800, weight: 800 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_400, weight: 400 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_700, weight: 700 as const, style: "normal" as const },
   ];

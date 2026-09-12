@@ -30,24 +30,35 @@ export interface CompressedImage {
   /** Pasada SC · nivel 2: el tono dominante ya ajustado a la rueda de doce, o null si la foto
    *  es demasiado gris. La extracción va AQUÍ (canvas ya decodificado), nunca en el servidor. */
   color: string | null;
+  /** Pasada SC · Turno 6: el BRILLO real de la foto (0 = negra, 1 = blanca), luminancia percibida
+   *  promedio. El velo del modo-foto ajusta su alfa con esto — una foto clara necesita más velo
+   *  para que el texto se lea. NO se puede derivar de `color` (que es el tono ajustado a la rueda,
+   *  no el brillo). Se calcula en el MISMO canvas, best-effort → null si el canvas falla. */
+  luminance: number | null;
 }
 
 /**
- * Tono dominante de la imagen ajustado a la rueda (Pasada SC · nivel 2). Vota por matiz: cada
- * píxel con saturación y luz suficientes suma a la casilla de la rueda más cercana en matiz; gana
- * la más votada. null si casi no hay píxeles con color (foto gris → la cascada baja al nivel 3).
+ * Extrae del canvas, en UNA sola lectura de píxeles: (1) el tono dominante ajustado a la rueda
+ * (nivel 2 · SC — vota por matiz) y (2) la luminancia percibida promedio (0–1, Turno 6 · para el
+ * alfa del velo). Best-effort: si el canvas está "tainted" u otro fallo, ambos null.
  */
-function dominantWheelColor(ctx: CanvasRenderingContext2D, w: number, h: number): string | null {
+function extractPhotoData(ctx: CanvasRenderingContext2D, w: number, h: number): { color: string | null; luminance: number | null } {
   let data: Uint8ClampedArray;
   try {
     data = ctx.getImageData(0, 0, w, h).data;
   } catch {
-    return null; // canvas "tainted" u otro fallo: sin color, no romper el flujo
+    return { color: null, luminance: null }; // canvas "tainted" u otro fallo: no romper el flujo
   }
   const step = Math.max(1, Math.floor((w * h) / 20000)) * 4; // ~20k muestras
   const samples: [number, number, number][] = [];
-  for (let i = 0; i < data.length; i += step) samples.push([data[i], data[i + 1], data[i + 2]]);
-  return dominantWheel(samples);
+  let lumSum = 0;
+  for (let i = 0; i < data.length; i += step) {
+    const r = data[i], g = data[i + 1], b = data[i + 2];
+    samples.push([r, g, b]);
+    lumSum += 0.2126 * r + 0.7152 * g + 0.0722 * b; // luminancia percibida (Rec. 709)
+  }
+  const luminance = samples.length ? lumSum / (samples.length * 255) : null;
+  return { color: dominantWheel(samples), luminance };
 }
 
 /** Escala (w,h) para que el lado mayor no supere `max`, sin agrandar. */
@@ -87,8 +98,9 @@ export async function compressImage(file: File): Promise<CompressedImage> {
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
 
-  // Nivel 2 (SC): el tono dominante, aquí, con la imagen ya en canvas. Best-effort: si falla, null.
-  const color = dominantWheelColor(ctx, w, h);
+  // Nivel 2 (SC) + brillo (T6): tono dominante y luminancia, aquí, con la imagen ya en canvas.
+  // Best-effort: si falla, ambos null.
+  const { color, luminance } = extractPhotoData(ctx, w, h);
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
@@ -98,5 +110,5 @@ export async function compressImage(file: File): Promise<CompressedImage> {
     throw new ImageError("La foto sigue muy pesada. Prueba con otra.");
   }
 
-  return { blob, filename: "beer.jpg", width: w, height: h, color };
+  return { blob, filename: "beer.jpg", width: w, height: h, color, luminance };
 }

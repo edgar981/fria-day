@@ -24,6 +24,7 @@ import type { AvatarImg } from "./avatars";
 export interface ShareData {
   place: string | null;
   dateLabel: string; // "Sábado 6 de septiembre"
+  dateShort: string; // "VIE 6 SEP" — la fecha compacta del pie del 4:5 (T6)
   ownerName: string;
   avatars: AvatarImg[]; // el parche: dueño primero, cortado a 3
   companions: string[]; // nombres SIN el dueño
@@ -34,10 +35,12 @@ export interface ShareData {
   best: { name: string; rating: number } | null; // mejor calificada (o null)
   drinks: { name: string; meta: string; rating: number | null }[]; // orden de registro
   photoUrl: string | null;
+  photoColor: string | null; // T6 · tono dominante de la foto (SessionPhoto.color) — tiñe el velo/scrim
+  luminance: number | null; // T6 · brillo real de la foto (0–1) — decide el alfa del velo (null = respaldo)
   single: boolean; // una sola fila de check-in → hero de bebida a todo color
   color: string; // color de la cascada (hex)
   ink: string; // tinta emparejada con el color (≥ 4,5:1)
-  lastLabel: string | null; // "hasta las 5:30 am" (ventana real) o null (retroactiva)
+  lastLabel: string | null; // "hasta las 5:30 am" (siempre, T6) — la hora del último check-in
   // T5 · stats para llenar la story:
   ruleta: { rondas: number; loserName: string; losses: number } | null; // la ruleta de la salida
   formato: string | null; // "3 botellas · 1 copa" (solo con más de un formato)
@@ -47,7 +50,7 @@ export interface ShareData {
 const DARK = "#070B16"; // el fondo de los estados con banda
 const CREAM = "#FBFCFF"; // texto sobre el fondo oscuro
 const MUTED = "#8496C4"; // subetiquetas / acompañantes sobre el fondo oscuro
-const DISP = "Big Shoulders Display";
+const DISP = "Bricolage Grotesque"; // tanda 2.1: reemplaza a Big Shoulders (solo el share-card)
 const SANS = "Outfit";
 
 // Zona segura de la STORY (T5): Instagram tapa la parte de arriba (progreso + perfil + cerrar) y,
@@ -71,6 +74,9 @@ function mix(a: string, b: string, t: number): string {
 }
 const linChan = (c: number) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
 function lum(hex: string): number { const [r, g, b] = hexToRgb(hex).map(linChan); return 0.2126 * r + 0.7152 * g + 0.0722 * b; }
+// rgba desde hex — para las paradas de los degradados del velo (T6), teñidas y con alfa.
+function rgba(hex: string, a: number): string { const [r, g, b] = hexToRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+const clamp = (x: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, x));
 
 interface Palette {
   color: string;
@@ -98,8 +104,9 @@ function palette(color: string, ink: string): Palette {
 }
 
 // ---- Primitivas tipográficas ----
+// Bricolage 800 lleva tracking NEGATIVO que crece con el tamaño (el aire de la display grande).
 function disp(text: string, size: number, color: string, extra: Record<string, unknown> = {}): ReactElement {
-  return <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: size, lineHeight: 1, color, ...extra }}>{text}</div>;
+  return <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: size, lineHeight: 1, letterSpacing: -size * (size >= 150 ? 0.06 : 0.04), color, ...extra }}>{text}</div>;
 }
 function eyebrow(text: string, color: string, size = 22): ReactElement {
   return <div style={{ display: "flex", fontFamily: SANS, fontWeight: 600, fontSize: size, lineHeight: 1, letterSpacing: size * 0.09, color }}>{text}</div>;
@@ -149,51 +156,64 @@ function avatarStack(avatars: AvatarImg[], size: number, overlap: number): React
   );
 }
 
-// El recorrido: nombres (MAYÚSCULA) en orden de registro con flechas, cortado a 3 + "+N".
-function recorridoBlock(names: string[], size: number, small: boolean, p: Palette): ReactElement {
-  const { names: shown, extra } = recorrido(names, 3);
+// El recorrido HORIZONTAL (modo foto): nombres (Title Case, Bricolage) en orden de registro con
+// flechas, cortado a `max` + "+N". Bricolage es más ancha que Big Shoulders → tamaño más chico.
+function recorridoBlock(names: string[], size: number, small: boolean, p: Palette, textColor: string, max = 3): ReactElement {
+  const { names: shown, extra } = recorrido(names, max);
+  const ls = -size * 0.04;
   const nodes: ReactNode[] = [];
   shown.forEach((n, i) => {
     if (i > 0) nodes.push(arrow(p.color, `a${i}`, small));
     nodes.push(
-      <div key={`n${i}`} style={{ display: "flex", fontFamily: DISP, fontWeight: 700, fontSize: size, lineHeight: 1.12, color: CREAM, flex: "none" }}>{n.toUpperCase()}</div>,
+      <div key={`n${i}`} style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: size, lineHeight: 1.14, letterSpacing: ls, color: textColor, flex: "none" }}>{n}</div>,
     );
   });
   if (extra > 0) {
     nodes.push(
-      <div key="extra" style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: small ? 16 : 18, paddingBottom: small ? 10 : 16, fontFamily: DISP, fontWeight: 700, fontSize: Math.round(size * 0.62), color: p.color }}>{`+${extra}`}</div>,
+      <div key="extra" style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: small ? 16 : 18, paddingBottom: small ? 10 : 16, fontFamily: DISP, fontWeight: 800, fontSize: Math.round(size * 0.62), color: p.color }}>{`+${extra}`}</div>,
     );
   }
   return <div style={{ display: "flex", flexWrap: "wrap", alignItems: "baseline" }}>{nodes}</div>;
 }
 
-// Banda de highlight (máximo UNA, prioridad primera-vez → mejor de la noche): recuadro con
-// borde del color, nombre en crema; la "mejor" además lleva sus barras de rating.
 type Highlight = { kind: "first"; name: string } | { kind: "best"; name: string; rating: number };
-function highlightBand(h: Highlight, p: Palette): ReactElement {
+
+// Cabecera común de la tarjeta (friaday + privado), en la tinta/crema. "friaday" en MINÚSCULA
+// (dirección Bricolage del tablero). Compartida por los dos modos y los dos formatos.
+function brandHeader(ink: string): ReactElement {
   return (
-    <div style={{ display: "flex", alignItems: "center", marginTop: 40, flex: "none", border: `2px solid ${p.color}`, borderRadius: 18, padding: "24px 28px" }}>
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        {eyebrow(h.kind === "first" ? "PRIMERA VEZ" : "LA MEJOR DE LA NOCHE", p.accentSoft, 19)}
-        {disp(h.name.toUpperCase(), 50, CREAM, { marginTop: 14 })}
-      </div>
-      {h.kind === "best" ? ratingBars(h.rating, p.color, p.dimBar) : null}
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: "none" }}>
+      {disp("friaday", 40, ink, { letterSpacing: -1.4 })}
+      {eyebrow("PRIVADO · POR INVITACIÓN", ink, 22)}
     </div>
   );
 }
 
-// La ruleta (T5): recuadro con el borde del color — contenido nativo de FriaDay que llena la
-// story. "N RONDAS" grande + "{quién} perdió {n}" a la derecha, en el color (solo si alguien
-// perdió 2 o más; repartida, basta el número de rondas).
-function ruletaBox(r: NonNullable<ShareData["ruleta"]>, p: Palette): ReactElement {
-  const repeat = r.losses >= 2;
+// El highlight INLINE (tanda 2.1, como el 6b): eyebrow + nombre, SIN recuadro — es la línea que
+// más conversación genera afuera, decidida desde el turno 3. Prioridad primera-vez → mejor.
+function inlineHighlight(h: Highlight, eyebrowColor: string, nameColor: string, nameSize: number): ReactElement {
   return (
-    <div style={{ display: "flex", alignItems: "center", marginTop: 40, flex: "none", border: `2px solid ${p.color}`, borderRadius: 18, padding: "24px 28px" }}>
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1 }}>
-        {eyebrow("LA RULETA", p.accentSoft, 19)}
-        {disp(`${r.rondas} ${r.rondas === 1 ? "RONDA" : "RONDAS"}`, 50, CREAM, { marginTop: 14 })}
-      </div>
-      {repeat ? sans(`${r.loserName} perdió ${r.losses}`, 27, p.color, { fontWeight: 600 }) : null}
+    <div style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", flex: "none" }}>
+      {eyebrow(h.kind === "first" ? "PRIMERA VEZ" : "LA MEJOR", eyebrowColor, 20)}
+      {disp(h.name, nameSize, nameColor, { marginLeft: 20 })}
+    </div>
+  );
+}
+
+function highlightOf(d: ShareData): Highlight | null {
+  return d.firstTime ? { kind: "first", name: d.firstTime } : d.best ? { kind: "best", name: d.best.name, rating: d.best.rating } : null;
+}
+
+// El recorrido VERTICAL del modo color (6b): un trago por línea, tipografía grande que llena la
+// altura, todo en la tinta. Corta a `max` + "y N más".
+function verticalRecorrido(names: string[], size: number, ink: string, max: number): ReactElement {
+  const { names: shown, extra } = recorrido(names, max);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+      {shown.map((n, i) => (
+        <div key={i} style={{ display: "flex", marginBottom: 34 }}>{disp(n, size, ink, {})}</div>
+      ))}
+      {extra > 0 ? sans(`y ${extra} más`, Math.round(size * 0.6), ink, { flex: "none" }) : null}
     </div>
   );
 }
@@ -208,187 +228,162 @@ function metric(value: string, label: string, valueColor: string, labelColor: st
   );
 }
 
-// La banda de color superior (FriaDay + lugar + fecha), común a con-foto y sin-foto. En la STORY
-// es COMPACTA (T5: antes se llevaba ~25% del alto): el despeje del chrome de IG lo da la franja
-// oscura de arriba (STORY_TOP_SAFE), no 200px de color. En la publicación (4:5) la banda arranca
-// desde el borde como antes.
-function colorBand(d: ShareData, p: Palette, placeSize: number, story: boolean): ReactElement {
-  const dateLine = d.lastLabel ? `${d.dateLabel} · ${d.lastLabel}` : d.dateLabel;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.color, padding: story ? "40px 64px 40px" : "64px 64px 54px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        {disp("FRIADAY", 40, p.ink, { letterSpacing: 2.4 })}
-        {eyebrow("PRIVADO · POR INVITACIÓN", p.ink, 22)}
-      </div>
-      {disp((d.place || `Salida de ${d.ownerName}`).toUpperCase(), placeSize, p.ink, { marginTop: story ? 32 : 44, lineHeight: 0.9 })}
-      {sans(dateLine, 32, p.ink, { marginTop: story ? 20 : 24 })}
-    </div>
-  );
-}
-
-// El parche + "con …" (sobre fondo oscuro).
-function companionsRow(d: ShareData, companions: string): ReactElement {
-  return (
-    <div style={{ display: "flex", alignItems: "center", flex: "none", marginBottom: 34 }}>
-      {avatarStack(d.avatars, 58, 16)}
-      {companions ? sans(`con ${companions}`, 29, MUTED, { marginLeft: 22 }) : null}
-    </div>
-  );
-}
-
-// Métricas de pie sobre fondo oscuro (duración · total · salida #N — el #N en el color).
-function darkStats(d: ShareData, p: Palette, size = 56): ReactElement {
+// Columnas de stats del pie (T6): [duración + «hasta las X» si hubo ventana ≥1h] · bebidas · #N ·
+// [fecha, SOLO en 4:5]. La HORA va de subetiqueta de la duración; sin duración, el pie la muestra
+// como línea aparte (para que «hasta las X» salga SIEMPRE). Colores parametrizados (foto / color).
+function statCols(d: ShareData, text: string, muted: string, accent: string, size: number, story: boolean): ReactNode[] {
   const cols: ReactNode[] = [];
-  if (d.duration) cols.push(metric(d.duration.value, d.duration.window, CREAM, MUTED, size));
-  cols.push(metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", CREAM, MUTED, size));
-  cols.push(metric(`#${d.outing}`, "salida", p.color, MUTED, size));
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", flex: "none" }}>
-      {cols.map((c, i) => (
-        <div key={i} style={{ display: "flex", marginRight: i < cols.length - 1 ? 60 : 0 }}>{c}</div>
-      ))}
-    </div>
-  );
-}
-
-// Línea secundaria (T5): formato ("3 botellas · 1 copa") y, cuando el recorrido se trunca,
-// "N distintas". Da textura sin números grandes. Vacía → no se dibuja.
-function secondaryText(d: ShareData): string {
-  const parts: string[] = [];
-  if (d.formato) parts.push(d.formato);
-  if (d.drinks.length > 3 && d.distinct >= 2) parts.push(`${d.distinct} distintas`);
-  return parts.join("   ·   ");
-}
-
-/** Estados CON banda (con foto / sin foto multi): fondo oscuro + banda de color. */
-function bandedCard(d: ShareData, p: Palette, story: boolean): ReactElement {
-  const place = (d.place || `Salida de ${d.ownerName}`).toUpperCase();
-  const companions = companionsLabel(d.companions);
-  const single = d.single;
-  // Highlight máximo uno (primera vez → mejor de la noche). Solo multi-bebida y sin foto: con
-  // foto, la foto es el hero; en single, el nombre grande YA es el highlight.
-  const highlight: Highlight | null = d.firstTime
-    ? { kind: "first", name: d.firstTime }
-    : d.best
-      ? { kind: "best", name: d.best.name, rating: d.best.rating }
-      : null;
-
-  const placeSize = d.photoUrl
-    ? fitSize(place, [[12, 76], [20, 58], [99, 46]])
-    : fitSize(place, [[10, story ? 128 : 142], [18, story ? 96 : 100], [26, 74], [99, 56]]);
-  const recSize = d.photoUrl ? (story ? 58 : 52) : story ? 96 : 74;
-  // La foto en la story ya NO es todo el hero (antes 1000px dejaba el pie fuera de la zona
-  // segura): más chica, para que las stats quepan sobre la zona de "Add a caption".
-  const photoH = story ? 540 : 480;
-  const secondary = secondaryText(d);
-
-  // Bloque principal: bajo la foto el nombre de la única bebida; si no, el recorrido.
-  const mainBlock =
-    single && d.photoUrl ? (
-      <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
-        {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", p.accentSoft, 20)}
-        {disp(d.drinks[0].name.toUpperCase(), story ? 92 : 78, CREAM, { marginTop: 18, lineHeight: 1.02 })}
-        {d.drinks[0].meta ? sans(d.drinks[0].meta, 28, MUTED, { marginTop: 16 }) : null}
-        {d.drinks[0].rating != null ? <div style={{ display: "flex", marginTop: 26 }}>{ratingBars(d.drinks[0].rating, p.color, p.dimBar)}</div> : null}
-      </div>
-    ) : (
-      recorridoBlock(d.drinks.map((dr) => dr.name), recSize, !!d.photoUrl, p)
-    );
-
-  const photoBlock = d.photoUrl ? (
-    <div style={{ display: "flex", borderRadius: 28, overflow: "hidden", flex: "none", marginBottom: 40 }}>
-      <img src={d.photoUrl} width={952} height={photoH} alt="" style={{ width: 952, height: photoH, objectFit: "cover" }} />
-    </div>
-  ) : null;
-
-  const hlBlock = !single && !d.photoUrl && highlight ? highlightBand(highlight, p) : null;
-  const rulBlock = d.ruleta ? ruletaBox(d.ruleta, p) : null;
-
-  const bottomCluster = (
-    <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
-      {secondary ? sans(secondary, story ? 27 : 24, MUTED, { marginBottom: 22 }) : null}
-      {companionsRow(d, companions)}
-      {darkStats(d, p, story ? 68 : 56)}
-    </div>
-  );
-
-  // STORY (T5): franja oscura de zona segura arriba + banda compacta; el cuerpo REPARTE su alto
-  // (justify-between) para que aun con pocas bebidas se vea lleno y no un hueco negro; la ruleta
-  // (si hubo) llena el centro; el pie termina sobre la zona de "Add a caption".
-  if (story) {
-    // "Rico" = hay FOTO (ancla arriba) o RULETA (pie alto): el cuerpo REPARTE su alto
-    // (space-between) y llena. Si solo hay recorrido (con o sin highlight/stats), se CENTRA en
-    // bloque compacto: el aire queda equilibrado arriba y abajo (se lee intencional, no un hueco
-    // negro al fondo) y las stats quedan lejos del chrome de IG igual. El highlight solo no basta
-    // para repartir: pinchado con el recorrido, centrado se ve mejor que un pie bajo con hueco.
-    const rich = !!d.photoUrl || !!rulBlock;
-    return (
-      <div style={{ width: 1080, height: 1920, display: "flex", flexDirection: "column", background: DARK }}>
-        <div style={{ display: "flex", flex: "none", height: STORY_TOP_SAFE }} />
-        {colorBand(d, p, placeSize, true)}
-        <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: rich ? "space-between" : "center", padding: `44px 64px ${STORY_BOTTOM_SAFE}px` }}>
-          <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
-            {photoBlock}
-            {mainBlock}
-            {hlBlock}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", flex: "none", marginTop: rich ? 0 : 72 }}>
-            {rulBlock}
-            <div style={{ display: "flex", flexDirection: "column", marginTop: rulBlock ? 40 : 0 }}>{bottomCluster}</div>
-          </div>
-        </div>
-      </div>
-    );
+  if (d.duration) cols.push(metric(d.duration.value, d.lastLabel ?? d.duration.window, text, muted, size));
+  cols.push(metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", text, muted, size));
+  cols.push(metric(`#${d.outing}`, "salida", accent, muted, size));
+  if (!story) {
+    // 4:5 · la fecha baja al pie como cuarto dato (T6): "6 SEP" grande, el día de semana debajo.
+    const [wd, ...rest] = d.dateShort.split(" ");
+    cols.push(metric(rest.join(" "), (wd ?? "").toLowerCase(), text, muted, size));
   }
+  return cols;
+}
 
-  // PUBLICACIÓN (4:5): anclada (el pie abajo). La ruleta entra solo cuando hay hueco (sin foto y
-  // sin highlight) para no reventar el alto del 4:5.
+// El pie común (T6): parche + «con …» · [«hasta las X» aparte si no hubo duración] · las stats.
+// Cada modo pasa sus colores (foto: crema/velo; color: crema/tenue).
+function footerBlock(d: ShareData, o: { text: string; muted: string; accent: string; avatarSize: number; statSize: number; story: boolean }): ReactElement {
+  const companions = companionsLabel(d.companions);
+  const cols = statCols(d, o.text, o.muted, o.accent, o.statSize, o.story);
   return (
-    <div style={{ width: 1080, height: 1350, display: "flex", flexDirection: "column", background: DARK }}>
-      {colorBand(d, p, placeSize, false)}
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, padding: "52px 64px 60px" }}>
-        {photoBlock}
-        {mainBlock}
-        {hlBlock}
-        {!hlBlock && !d.photoUrl && rulBlock ? rulBlock : null}
-        <div style={{ display: "flex", flexGrow: 1 }} />
-        {bottomCluster}
+    <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+      <div style={{ display: "flex", alignItems: "center", flex: "none" }}>
+        {avatarStack(d.avatars, o.avatarSize, 16)}
+        {sans(companions ? `con ${companions}` : `Salida de ${d.ownerName}`, 28, o.muted, { marginLeft: 20 })}
+      </div>
+      {/* «hasta las X» aparte solo cuando no hubo duración Y hay varias bebidas: la salida de una
+          sola bebida suele ser retroactiva y su hora no es la de la noche (como el pobre del 6b). */}
+      {!d.duration && !d.single ? <div style={{ display: "flex", marginTop: 16 }}>{sans(d.lastLabel ?? "", 26, o.muted)}</div> : null}
+      <div style={{ display: "flex", alignItems: "flex-end", flex: "none", marginTop: 26 }}>
+        {cols.map((c, i) => (
+          <div key={i} style={{ display: "flex", marginRight: i < cols.length - 1 ? 52 : 0 }}>{c}</div>
+        ))}
       </div>
     </div>
   );
 }
 
-/** Estado a TODO COLOR (una sola bebida sin foto, incluye el caso pobre retroactivo). */
+/**
+ * MODO COLOR · varias bebidas (6b, tanda 2.1): el color es el HÉROE — fondo a TODO color, todo en
+ * la TINTA emparejada (una sola tinta, la jerarquía la hacen tamaño y peso), el lugar grande, el
+ * recorrido VERTICAL que llena la altura, el highlight inline, parche y stats. Sin banda, sin
+ * recuadros. Con foto → photoCard; una bebida sin foto → heroCard.
+ */
+function bandedCard(d: ShareData, p: Palette, story: boolean): ReactElement {
+  const place = (d.place || `Salida de ${d.ownerName}`).toLowerCase(); // Bricolage: lugar en minúscula
+  const highlight = highlightOf(d);
+  const placeSize = story
+    ? fitSize(place, [[10, 200], [16, 148], [24, 104], [99, 72]])
+    : fitSize(place, [[10, 150], [16, 116], [24, 84], [99, 60]]);
+  const recSize = story ? 76 : 58;
+  const recMax = story ? 4 : 3;
+  const H = story ? 1920 : 1350;
+  const pad = story ? `200px 64px ${STORY_BOTTOM_SAFE}px` : "64px 64px 64px";
+
+  return (
+    <div style={{ width: 1080, height: H, display: "flex", flexDirection: "column", background: p.color, padding: pad }}>
+      {brandHeader(p.ink)}
+      {disp(place, placeSize, p.ink, { marginTop: story ? 60 : 40, lineHeight: 0.88 })}
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center" }}>
+        {verticalRecorrido(d.drinks.map((dr) => dr.name), recSize, p.ink, recMax)}
+        {highlight ? <div style={{ display: "flex", marginTop: 34 }}>{inlineHighlight(highlight, p.ink, p.ink, story ? 46 : 40)}</div> : null}
+      </div>
+      {footerBlock(d, { text: p.ink, muted: p.ink, accent: p.ink, avatarSize: 58, statSize: story ? 54 : 48, story })}
+    </div>
+  );
+}
+
+/**
+ * CASO POBRE (6b, tanda 2.1): una sola bebida sin foto → fondo a TODO color, TODO en la tinta (sin
+ * pie invertido): cabecera, «la de esa noche» / «primera vez», el nombre GIGANTE, la meta, y el pie
+ * común — todo monocromo sobre el color, jerarquía por tamaño y peso.
+ */
 function heroCard(d: ShareData, p: Palette, story: boolean): ReactElement {
   const drink = d.drinks[0];
-  const name = (drink?.name || "").toUpperCase();
-  const companions = companionsLabel(d.companions);
-  const heroSize = fitSize(name, [[5, story ? 300 : 240], [8, story ? 208 : 168], [12, story ? 156 : 124], [18, story ? 116 : 92], [99, story ? 92 : 72]]);
+  const name = drink?.name || ""; // Title Case (Bricolage), sin mayúsculas
+  const heroSize = fitSize(name, [[5, story ? 300 : 240], [8, story ? 208 : 168], [12, story ? 150 : 120], [18, story ? 110 : 88], [99, story ? 84 : 66]]);
+  const pad = story ? `200px 64px ${STORY_BOTTOM_SAFE}px` : "64px 64px 64px";
 
   return (
-    <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: p.color }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: "none", padding: story ? "200px 64px 0" : "64px 64px 0" }}>
-        {disp("FRIADAY", 40, p.ink, { letterSpacing: 2.4 })}
-        {eyebrow("PRIVADO · POR INVITACIÓN", p.ink, 22)}
+    <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: p.color, padding: pad }}>
+      {brandHeader(p.ink)}
+      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center" }}>
+        {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", p.ink, 24)}
+        {disp(name, heroSize, p.ink, { marginTop: 34, lineHeight: 0.84 })}
+        {drink?.meta ? sans(drink.meta, 36, p.ink, { marginTop: 34 }) : null}
+        {drink?.rating != null ? <div style={{ display: "flex", marginTop: 34 }}>{ratingBars(drink.rating, p.ink, rgba(p.ink, 0.26), 40)}</div> : null}
       </div>
+      {footerBlock(d, { text: p.ink, muted: p.ink, accent: p.ink, avatarSize: 62, statSize: story ? 54 : 50, story })}
+    </div>
+  );
+}
 
-      <div style={{ display: "flex", flexDirection: "column", flexGrow: 1, justifyContent: "center", padding: "0 64px" }}>
-        {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", p.ink, 22)}
-        {disp(name, heroSize, p.ink, { marginTop: 26, lineHeight: 0.82 })}
-        {drink?.meta ? sans(drink.meta, 36, p.ink, { marginTop: 32 }) : null}
-        {drink?.rating != null ? <div style={{ display: "flex", marginTop: 36 }}>{ratingBars(drink.rating, p.ink, p.heroDim, 40)}</div> : null}
-      </div>
+/**
+ * MODO FOTO (T6 · 6a): la foto es la historia — a sangre completa, el contenido ENCIMA sobre un
+ * scrim de CUATRO capas, todas satori (sin filter/blur/mix-blend/máscara/radial):
+ *   1. la foto: <img> absoluta, inset 0, objectFit cover, con width/height explícitos.
+ *   2. el VELO: color plano (la tinta oscura del color de la foto) a TODA la imagen, con alfa según
+ *      la LUMINANCIA real (.22 oscura → .46 clara; respaldo .34 sin dato). Es lo que salva la foto
+ *      clara: una foto brillante recibe más velo para que el texto se lea.
+ *   3. degradado superior (520px story / 300px 4:5): scrim suave para la cabecera.
+ *   4. degradado inferior (1180px story / 880px 4:5): termina OPACO en la tinta oscura; las paradas
+ *      llevan ese matiz, no negro, para que la zona de texto armonice con la foto.
+ * Tres zonas: cabecera (arriba) · la foto RESPIRA en el medio (sin texto) · el contenido (abajo).
+ * La banda de color no existe aquí (el color ya sale de la foto).
+ */
+function photoCard(d: ShareData, story: boolean): ReactElement {
+  const W = 1080, H = story ? 1920 : 1350;
+  const extracted = d.photoColor ?? d.color; // el color de la foto (o el de la cascada de respaldo)
+  const tintVeil = mix(extracted, "#000000", 0.76); // el velo y la parada media del degradado
+  const tintTop = mix(extracted, "#000000", 0.89); // matiz del scrim superior
+  const tintDeep = mix(extracted, "#000000", 0.915); // el opaco del fondo del degradado inferior
+  // Alfa del velo por luminancia real (T6). Rango útil 0.15–0.75 → .22–.46; respaldo .34 sin dato.
+  const veilAlpha = d.luminance != null ? clamp(0.22 + (d.luminance - 0.15) * 0.4, 0.22, 0.46) : 0.34;
+  const TEXT = "#FFF4EC";
+  const MUTED2 = "rgba(255,244,236,0.66)";
+  const accent = mix(extracted, "#FFFFFF", 0.22); // el color de la foto aclarado para leerse en el scrim
+  const single = d.single;
+  const place = (d.place || `Salida de ${d.ownerName}`).toLowerCase(); // Bricolage: lugar en minúscula
+  const placeSize = fitSize(place, [[12, story ? 122 : 106], [20, story ? 90 : 78], [99, story ? 64 : 56]]);
+  const pAccent: Palette = { ...palette(d.color, d.ink), color: accent };
+  const highlight = highlightOf(d);
+  const topH = story ? 520 : 300;
+  const botH = story ? 1180 : 880;
+  // El recorrido HORIZONTAL en Bricolage (más ancha que Big Shoulders): 50px para no crecer a 3
+  // líneas y empujar el contenido hacia la ZONA 2 (los 640px donde la foto respira). Corte a 3 (o
+  // 2 si con 3 todavía toca la zona 2 — se verifica).
+  const drinks = single ? (
+    <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+      {eyebrow(d.firstTime ? "PRIMERA VEZ" : "LA DE ESA NOCHE", accent, 20)}
+      {disp(d.drinks[0].name, story ? 84 : 74, TEXT, { marginTop: 14, lineHeight: 1.02 })}
+      {d.drinks[0].meta ? sans(d.drinks[0].meta, 28, MUTED2, { marginTop: 14 }) : null}
+      {d.drinks[0].rating != null ? <div style={{ display: "flex", marginTop: 24 }}>{ratingBars(d.drinks[0].rating, accent, "rgba(255,255,255,0.22)")}</div> : null}
+    </div>
+  ) : (
+    recorridoBlock(d.drinks.map((dr) => dr.name), 50, true, pAccent, TEXT, 3)
+  );
 
-      {/* El pie invertido: en la story su padding inferior es la ZONA SEGURA (T5) — las stats
-          quedan por encima de "Add a caption"; la tinta bleed hasta el borde queda tapada por IG. */}
-      <div style={{ display: "flex", flexDirection: "column", flex: "none", background: p.footerBg, padding: story ? `52px 64px ${STORY_BOTTOM_SAFE}px` : "52px 64px 60px" }}>
-        <div style={{ display: "flex", alignItems: "center", flex: "none" }}>
-          {avatarStack(d.avatars, 62, 16)}
-          {sans(companions ? `con ${companions}` : `Salida de ${d.ownerName} · ${d.dateLabel}`, 30, p.footerMuted, { marginLeft: 22 })}
-        </div>
-        <div style={{ display: "flex", alignItems: "flex-end", flex: "none", marginTop: 40 }}>
-          <div style={{ display: "flex", marginRight: 64 }}>{metric(String(d.total), d.total === 1 ? "bebida" : "bebidas", p.footerText, p.footerMuted, 58)}</div>
-          <div style={{ display: "flex" }}>{metric(`#${d.outing}`, "salida del parche", p.color, p.footerMuted, 58)}</div>
+  return (
+    <div style={{ position: "relative", width: W, height: H, display: "flex" }}>
+      <img src={d.photoUrl as string} width={W} height={H} alt="" style={{ position: "absolute", top: 0, left: 0, width: W, height: H, objectFit: "cover" }} />
+      <div style={{ position: "absolute", top: 0, left: 0, width: W, height: H, display: "flex", background: rgba(tintVeil, veilAlpha) }} />
+      <div style={{ position: "absolute", top: 0, left: 0, width: W, height: topH, display: "flex", background: `linear-gradient(180deg, ${rgba(tintTop, 0.78)}, ${rgba(tintTop, 0.34)} 55%, ${rgba(tintTop, 0)})` }} />
+      <div style={{ position: "absolute", left: 0, bottom: 0, width: W, height: botH, display: "flex", background: `linear-gradient(180deg, ${rgba(tintTop, 0)}, ${rgba(tintVeil, 0.62)} 32%, ${rgba(tintDeep, 0.93)} 66%, ${rgba(tintDeep, 1)})` }} />
+      <div style={{ position: "absolute", top: 0, left: 0, width: W, height: H, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: `${story ? 200 : 56}px 64px ${story ? STORY_BOTTOM_SAFE : 64}px` }}>
+        {brandHeader(TEXT)}
+        <div style={{ display: "flex", flexDirection: "column", flex: "none" }}>
+          {disp(place, placeSize, TEXT, { lineHeight: 0.9 })}
+          <div style={{ display: "flex", marginTop: 26 }}>{drinks}</div>
+          {!single && highlight ? (
+            <div style={{ display: "flex", marginTop: 22 }}>{inlineHighlight(highlight, accent, TEXT, 34)}</div>
+          ) : null}
+          <div style={{ display: "flex", marginTop: 32 }}>
+            {footerBlock(d, { text: TEXT, muted: MUTED2, accent, avatarSize: 54, statSize: story ? 56 : 50, story })}
+          </div>
         </div>
       </div>
     </div>
@@ -398,21 +393,21 @@ function heroCard(d: ShareData, p: Palette, story: boolean): ReactElement {
 export function renderShareCard(d: ShareData, format: "post" | "story"): ReactElement {
   const story = format === "story";
   const p = palette(d.color, d.ink);
-  // Una sola bebida y sin foto → hero a todo color (el "caso pobre" retroactivo cae aquí). El
-  // resto (con foto, o varias bebidas) → tarjeta con banda de color sobre fondo oscuro.
-  return d.single && !d.photoUrl ? heroCard(d, p, story) : bandedCard(d, p, story);
+  // T6 · dos modos. CON foto → foto a sangre completa (photoCard). SIN foto: una sola bebida → hero
+  // a todo color (caso pobre); varias → banda de color sobre fondo oscuro (modo color del T5).
+  if (d.photoUrl) return photoCard(d, story);
+  return d.single ? heroCard(d, p, story) : bandedCard(d, p, story);
 }
 
 /**
  * Probe de diagnóstico (B-1.2 / SC): lienzo mínimo que solo ejercita el parseo/shaping de las
- * fuentes embebidas — Big Shoulders 700/800, Outfit 400/700, Syne 800. Aísla el costo fijo de
- * fuentes del resto del render.
+ * fuentes embebidas — Bricolage Grotesque 800 + Outfit 400/700. Aísla el costo fijo de fuentes.
  */
 export function renderFontProbe(story: boolean): ReactElement {
   return (
     <div style={{ width: 1080, height: story ? 1920 : 1350, display: "flex", flexDirection: "column", background: DARK, padding: 64 }}>
-      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 96, color: CREAM }}>BIG SHOULDERS 800 ÁÉ</div>
-      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 700, fontSize: 72, color: CREAM, marginTop: 20 }}>BIG SHOULDERS 700 ÑÚ</div>
+      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 96, color: CREAM }}>Bricolage 800 Áé</div>
+      <div style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: 72, color: CREAM, marginTop: 20 }}>la puerta falsa ÑÚ</div>
       <div style={{ display: "flex", fontFamily: SANS, fontWeight: 400, fontSize: 32, color: MUTED, marginTop: 20 }}>Outfit 400 regular</div>
       <div style={{ display: "flex", fontFamily: SANS, fontWeight: 700, fontSize: 32, color: MUTED, marginTop: 8 }}>Outfit 700 bold</div>
     </div>

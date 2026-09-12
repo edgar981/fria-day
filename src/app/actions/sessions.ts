@@ -271,6 +271,7 @@ export async function addSessionPhoto(
   sessionId: string,
   url: string,
   color?: string | null, // SC nivel 2: tono dominante ya ajustado a la rueda (o null)
+  luminance?: number | null, // SC · T6: brillo real de la foto (0–1) para el alfa del velo
 ): Promise<Result<{ id: string }>> {
   const userId = await requireUserId();
   if (!userId) return { ok: false, error: "Inicia sesión de nuevo" };
@@ -288,7 +289,7 @@ export async function addSessionPhoto(
   }
 
   const created = await prisma.sessionPhoto.create({
-    data: { sessionId, url, color: color ?? null, order: (agg._max.order ?? -1) + 1 },
+    data: { sessionId, url, color: color ?? null, luminance: luminance ?? null, order: (agg._max.order ?? -1) + 1 },
     select: { id: true },
   });
   // Puntos (PT): subir una foto (tope 3/salida). El dueño es quien la sube.

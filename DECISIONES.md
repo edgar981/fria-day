@@ -1327,3 +1327,65 @@ celebrar cantidad de alcohol. Verificado por ejecución: los 6 estados de la sto
 (sin foto con/sin ruleta, con foto single/multi, caso pobre, bare centrado) + el 4:5, el overlay de
 zona segura, y un render REAL contra dev con 3 rondas sembradas (ruleta "3 rondas · Beto perdió 2" +
 formato "2 botellas · 1 lata"). tsc y 154 tests en verde.
+
+## Pasada SC · Turno 6 — La tarjeta, dos modos (foto a sangre / color)
+
+Con foto, la foto ES la historia; sin foto, el color es el héroe. Dos composiciones propias.
+
+**Hueco resuelto primero — la LUMINANCIA de la foto.** El velo del modo-foto ajusta su alfa según
+el brillo de la foto (.22 oscura → .46 clara), pero `SessionPhoto.color` guarda el TONO ajustado a
+la rueda, NO el brillo — una foto clara caída en un tono oscuro habría recibido alfa .22 y el texto
+se perdía. Se agregó **`SessionPhoto.luminance`** (Float nullable), calculado en el MISMO canvas de
+`compressImage` (luminancia percibida Rec.709, 0–1, en la misma lectura de píxeles que el color).
+Migración `20260912210000_session_photo_luminance` (columna nullable). **Fotos ya subidas → null →
+respaldo alfa .34** (media); recuperan el dato al re-subirse. En DEV: 4 fotos, las 4 sin luminancia
+(la columna es nueva). En PROD: al llegar la migración, TODAS las fotos existentes quedan en null
+(usan el respaldo) hasta re-subirse.
+
+**MODO FOTO (6a) · cuatro capas satori** (sin filter/backdrop/mix-blend/máscara/radial): (1) `<img>`
+absoluta inset-0 objectFit cover; (2) el VELO — color plano (la tinta oscura del color de la foto),
+alfa por luminancia; (3) degradado superior (520px story / 300px 4:5); (4) degradado inferior
+(1180px / 880px) que termina OPACO en la tinta oscura, con las paradas teñidas de ese matiz, no
+negro. Tres zonas: cabecera · la foto respira (sin texto) · el contenido. La banda de color no
+existe aquí. El color/tinta de las capas se escala del color de la foto hacia negro (matiz
+preservado); el acento (flechas, #N) es ese color aclarado.
+
+**MODO COLOR (6b)** = la dirección del Turno 5 (banda + recorrido + ruleta/mejor + stats).
+
+**Header y pie:** FUERA la fecha del header (ambos formatos comparten cabecera, solo el lugar). La
+HORA vive en el pie, «hasta las X», SIEMPRE (subetiqueta de la duración si la hay, línea propia si
+no). En el 4:5 la FECHA baja al pie como cuarto dato (junto a duración y #N). La **duración** es
+condicional (≥1h) y además acotada a una noche plausible (**≤ 20h**): un span mayor no es una salida
+(un check-in rezagado días después) → no se muestra "162h 53m", pero el pie igual ancla la hora.
+
+Verificado por render (card real): modo foto CLARA/oscura/gente/respaldo (la clara, la que decide el
+sistema, queda legible con velo .46); modo color rico/pobre; story y 4:5; ningún texto en la zona 2;
+y un render REAL contra dev (foto a sangre + el tope de duración). tsc, 154 tests y build en verde.
+
+## Pasada SC · tanda 2.1 — Modo color al tablero (6b) + Bricolage Grotesque
+
+**Modo color** (sin foto) no había aplicado la dirección 6b: usaba una BANDA de color sobre fondo
+oscuro con recorrido horizontal y recuadros (ruleta, "la mejor"). El 6b es una composición propia:
+**el color es el héroe** — fondo a TODO color, todo en la **tinta emparejada** (una sola tinta, la
+jerarquía la hacen tamaño y peso: un segundo tono más claro no pasaría 4,5:1), el lugar grande en
+**minúscula**, el **recorrido VERTICAL** (un trago por línea, que llena la altura), el **highlight
+inline** (primera vez / la mejor — se queda, es la línea que más conversación genera; decisión de
+Edgar), parche y stats. Se **quitó el recuadro de la ruleta** (el recorrido vertical llena el hueco);
+la ruleta/formato/distinct quedan calculados en la ruta pero sin dibujar (reversible). El caso pobre
+va igual: a todo color, tinta, sin el pie invertido.
+
+**Bricolage Grotesque** reemplaza a Big Shoulders **solo en el share-card** (la app sigue con Syne +
+Outfit — no se tocó `layout.tsx` ni `globals.css`). Es variable y satori no interpola → instancia
+estática; la composición usa **un solo peso (800)**, así que el bundle de fuentes **baja de ~35 KB
+(Big Shoulders 700+800) a ~26 KB**. Title Case en los tragos, minúscula en marca y lugar, tracking
+negativo. El recorrido HORIZONTAL del modo foto bajó a **50px** (Bricolage es ~2× más ancha que la
+condensada): con nombres largos reales y 3 ítems el bloque queda a 2 líneas y **NO toca la zona 2**
+(los 640px donde la foto respira) — verificado con overlay; no hizo falta cortar a 2.
+
+## Nota (SC · Turno 6) — `createdAt` no es la hora de la bebida
+
+`createdAt` mide cuándo se REGISTRÓ un check-in, no cuándo se tomó. El mismo dato alimenta tres
+cosas: la **duración**, el **«hasta las X»** del pie y el **nivel 3** de la cascada de color (la hora
+de la franja). Una edición tardía (un check-in agregado días después) distorsiona los tres; el tope
+de ≤20h solo cubre la duración. No se arregla ahora — disparador: si alguien reporta una hora o un
+color que no corresponde a su noche.
