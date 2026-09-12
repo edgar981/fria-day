@@ -6,7 +6,6 @@ import { FoamStrip } from "@/components/FoamStrip";
 import { FORMAT_LABEL, formatAbv, relativeDay, joinMeta, formatNoun } from "@/lib/format";
 import { ReactionBar } from "@/components/ReactionBar";
 import { formatBreakdown } from "@/lib/domain";
-import { getRouletteDynamic, getRouletteChallenge } from "@/lib/roulette";
 import type { FeedSession } from "@/lib/queries";
 
 type CheckIn = FeedSession["checkIns"][number];
@@ -235,27 +234,8 @@ export function SessionCard({
           </div>
         )}
 
-        {/* RU · §8: una sola línea de la ruleta (híbrida · RU.1). El aro punteado de 26px es
-            la firma. §1: privado → "tú" conjugada ("Perdiste" / "{Nombre} perdió"). */}
-        {session.roundSummary && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-barra-alta)", borderRadius: 14, padding: "10px 12px" }}>
-            <span aria-hidden style={{ width: 26, height: 26, borderRadius: "50%", border: "2px dotted var(--color-ambar)", flex: "none", display: "block" }} />
-            <span style={{ flex: 1, minWidth: 0, font: "500 13.5px/1.35 var(--font-sans)", color: "var(--color-espuma)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {session.roundSummary.loserId === viewerId ? (
-                <strong style={{ fontWeight: 700 }}>Perdiste</strong>
-              ) : (
-                <><strong style={{ fontWeight: 700 }}>{session.roundSummary.loserName}</strong>{" perdió"}</>
-              )}
-              {session.roundSummary.mode === "top" ? (
-                // 3+ rondas: quien más perdió → "N de M".
-                <>{" "}<em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{session.roundSummary.count} de {session.roundSummary.total}</em></>
-              ) : (
-                // 1-2 rondas: la última → dinámica · reto.
-                <>{" "}<em style={{ fontStyle: "normal", color: "var(--color-ambar)" }}>{getRouletteDynamic(session.roundSummary.dynamicKey ?? "")?.name ?? "la ruleta"}</em>{" · "}{getRouletteChallenge(session.roundSummary.challengeKey ?? "")?.challenge.text ?? ""}</>
-              )}
-            </span>
-          </div>
-        )}
+        {/* RU: la tarjeta del feed NO muestra la línea de quién perdió (decisión de Edgar);
+            eso vive en el detalle. Aquí solo queda la métrica "rondas" en el pie. */}
 
         {/* Pie: fila compacta de métricas (Pasada N, estilo Pivka). Bebidas totales +
             desglose por formato. Sin unidades de alcohol ni duración: la app no mide

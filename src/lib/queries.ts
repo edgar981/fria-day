@@ -72,60 +72,14 @@ export async function getFeed(userId: string) {
       },
       // I-2: fotos de la salida, en orden de subida. La tarjeta usa la primera.
       photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
-      // RU · §8: la tarjeta del feed muestra SOLO la última ronda (una línea) + el conteo.
-      rounds: {
-        orderBy: { roundNumber: "desc" },
-        take: 1,
-        select: { id: true, dynamicKey: true, challengeKey: true, loserId: true, loser: { select: { id: true, displayName: true, avatar: true } } },
-      },
       // I-3: la tarjeta muestra el CONTEO ("💬 4"), no los comentarios (el feed no crece sin freno).
+      // RU: la tarjeta del feed ya NO muestra la línea de quién perdió (decisión de Edgar);
+      // solo cuenta las rondas para la métrica. El detalle sí muestra el bloque de la ruleta.
       _count: { select: { comments: true, rounds: true } },
     },
   });
 
-  // RU.1 · perdedor del feed HÍBRIDO (decisión de Edgar): con 1-2 rondas, el de la ÚLTIMA;
-  // con 3+, QUIEN MÁS PERDIÓ ("Beto perdió 4 de 7"). El groupBy extra solo se paga en las
-  // salidas con 3+ rondas (con pocas, "quién perdió más" suena forzado; con muchas, "la
-  // última" es arbitrario).
-  const topSessionIds = sessions.filter((s) => s._count.rounds >= 3).map((s) => s.id);
-  const topBySession = new Map<string, { loserId: string; count: number }>();
-  if (topSessionIds.length > 0) {
-    const grouped = await prisma.sessionRound.groupBy({
-      by: ["sessionId", "loserId"],
-      where: { sessionId: { in: topSessionIds } },
-      _count: { _all: true },
-    });
-    for (const g of grouped) {
-      const cur = topBySession.get(g.sessionId);
-      if (!cur || g._count._all > cur.count) topBySession.set(g.sessionId, { loserId: g.loserId, count: g._count._all });
-    }
-  }
-  const topLoserIds = [...new Set([...topBySession.values()].map((v) => v.loserId))];
-  const loserUsers = topLoserIds.length
-    ? await prisma.user.findMany({ where: { id: { in: topLoserIds } }, select: { id: true, displayName: true, avatar: true } })
-    : [];
-  const loserMap = new Map(loserUsers.map((u) => [u.id, u]));
-
   return sessions.map((s) => {
-    const rc = s._count.rounds;
-    let roundSummary: {
-      mode: "last" | "top";
-      loserId: string;
-      loserName: string;
-      loserAvatar: string | null;
-      count?: number;
-      total?: number;
-      dynamicKey?: string;
-      challengeKey?: string;
-    } | null = null;
-    if (rc >= 3 && topBySession.has(s.id)) {
-      const t = topBySession.get(s.id)!;
-      const u = loserMap.get(t.loserId);
-      roundSummary = { mode: "top", loserId: t.loserId, loserName: u?.displayName ?? "Alguien", loserAvatar: u?.avatar ?? null, count: t.count, total: rc };
-    } else if (s.rounds[0]) {
-      const last = s.rounds[0];
-      roundSummary = { mode: "last", loserId: last.loserId, loserName: last.loser.displayName, loserAvatar: last.loser.avatar, dynamicKey: last.dynamicKey, challengeKey: last.challengeKey };
-    }
     return {
       ...s,
       totalUnits: sessionTotalUnits({ checkIns: s.checkIns }),
@@ -138,8 +92,7 @@ export async function getFeed(userId: string) {
         reactors: s.reactions.map((r) => ({ userId: r.userId, name: r.user.displayName, avatar: r.user.avatar, emoji: r.emoji })),
       },
       commentsCount: s._count.comments, // I-3
-      roundsCount: rc, // RU · §8 (métrica "rondas")
-      roundSummary, // RU · §8 + RU.1 (línea del feed, híbrida)
+      roundsCount: s._count.rounds, // RU · §8 (métrica "rondas")
     };
   });
 }
