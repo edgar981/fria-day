@@ -1410,14 +1410,16 @@ es el mismo componente que las bebidas, no una réplica que se pueda desincroniz
 - **Intencional, no se toca** — `SessionDetail` (la "costura de espuma invertida" de la zona social:
   `circle at 50% 0%` en color oscuro `#191310`, es un divisor, no la firma de espuma; su comentario
   lo dice). ✓
-- **`CuentaReceipt` (la cuenta)** — tiene la **misma copia inline invertida** que tenía la tarjeta de
-  puntos (14 `span`, `marginTop:-10`, festón "firma de la marca" mordiendo hacia abajo). Es tarjeta
-  oscura (`--color-noche`), así que la espuma crema del `FoamStrip` se vería. Reportado a Edgar; a la
-  espera de su decisión (mismo arreglo, o dejar el borde festoneado del recibo).
-- **`RegisterWizard` (bienvenida)** — espuma crema `circle at 50% 0` (hacia abajo) al **pie** del
-  header naranja de bienvenida. Ambiguo: puede ser un borde inferior deliberado del header (la espuma
-  chorrea del header hacia el formulario), no una tarjeta que rebosa. Reportado; sin tocar.
+- **`CuentaReceipt` (la cuenta)** — tenía la **misma copia inline invertida** que la tarjeta de puntos
+  (14 `span`, `marginTop:-10`, festón "firma de la marca" mordiendo hacia abajo). **Arreglado** igual
+  (decisión de Edgar): borrada la copia, ahora usa `FoamStrip size="md"`. Es tarjeta oscura
+  (`--color-noche`), la espuma crema se ve.
+- **`RegisterWizard` (bienvenida)** — espuma crema al **pie** del header naranja. **Volteada**
+  (decisión de Edgar): `circle at 50% 0` → `50% 100%`, ahora rebosa hacia arriba como el resto. Se dejó
+  su tamaño propio (16px, `#FBF0D5`) — es la espuma grande de bienvenida, no la firma pequeña de las
+  tarjetas; solo se invirtió la dirección.
 
-Verificado por ejecución (Playwright + captura compuesta, gate-ana en dev): la tarjeta de puntos y una
-de bebida (feed) lado a lado, las dos con la espuma **rebosando hacia arriba** en la misma dirección.
-154 tests en verde.
+Verificado por ejecución (Playwright, gate-ana en dev): (1) tarjeta de puntos y una de bebida (feed)
+lado a lado, las dos con la espuma **rebosando hacia arriba**; (2) el recibo (`CuentaReceipt`) y el
+header de bienvenida (`RegisterWizard`), ambos con la espuma hacia arriba tras el arreglo. 154 tests en
+verde.
