@@ -354,3 +354,24 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   `lastHitoPoints`) y `hitoEnSalidas` con sus tests — listo para volver.
 - **Cuándo vuelve la línea:** cuando los hitos tengan nombre. Ahí la línea del próximo hito
   (texto + barra en `PointsCard`) se re-activa nombrando el destino, no un número pelado.
+
+## Fusionar lugares repetidos (normalización retroactiva) (Pasada L)
+
+- **Qué:** unificar lugares ya registrados que son el mismo sitio escrito distinto ("BBC Andino"
+  vs "bbc andino"): elegir una ortografía y reescribir las salidas viejas a esa.
+- **Disparador:** cuando alguien **pida** fusionar sitios repetidos (ve dos veces el mismo bar en
+  su historial y le molesta).
+- **Por qué esperar:** Pasada L ya **previene** duplicados nuevos (el autocompletar sugiere la
+  ortografía dominante). Los viejos se dejan como están: borrar o fusionar datos del usuario sin
+  pedirlo es peor que el duplicado. Si se hace, es una acción explícita, con confirmación de a qué
+  ortografía se colapsa.
+
+## El lugar como entidad (tabla `Place`) (Pasada L)
+
+- **Qué:** convertir el lugar de texto libre en una **entidad** `Place` (con coordenadas, y de ahí
+  "salidas en este bar", mapa, contador por sitio).
+- **Disparador:** cuando se quiera una vista **por lugar** (todas las salidas de un bar, o un mapa
+  del parche) — producto nuevo, no un campo mejorado.
+- **Por qué esperar:** el problema real (Pasada L) era de **normalización**, no de descubrimiento;
+  el historial del círculo (~20 bares) basta y no hace falta Google Places ni una tabla. Una
+  entidad `Place` es peso muerto hasta que exista una vista que la aproveche.

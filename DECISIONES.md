@@ -1454,3 +1454,49 @@ líneas antes que salirse. Verificado por ejecución (render directo de `renderS
 en modo color story (200px → "BBC" / "Andino"), 4:5 (150px, una línea) y modo foto (122px, una línea);
 "la puerta falsa" conservado en minúscula; "Bogotá Beer Co" (mayúsculas + acento) envuelve limpio. Sin
 recorte de `fitSize` — los nombres reales de bar caben. 154 tests en verde.
+
+## Pasada L — Autocompletar lugares desde el historial del círculo
+
+El lugar es texto libre, y en el bar nadie escribe con cuidado: "BBC Andino", "bbc andino" y "BBC
+andino" quedaban como tres sitios. No es un problema de descubrimiento (no hace falta Google Places);
+es de **normalización**, y el propio historial del parche (~20 bares) es mejor fuente que cualquier API.
+
+**Qué se hizo.** Al escribir "Dónde" en una nueva salida, un combobox sugiere los lugares ya
+registrados por el usuario y su círculo:
+- **Coincidencia sin acentos ni mayúsculas** — reusa `normalizeKey` (el criterio G.2 de la búsqueda
+  de cervezas), en el server para agrupar y en el cliente para filtrar (el MISMO helper, no una copia).
+- **Orden por frecuencia**; con el campo vacío, los más frecuentes **del usuario** (en el bar lo más
+  probable es que esté donde ya estuvo).
+- **Elegir una sugerencia** escribe su ortografía dominante (la más usada del grupo) — texto original,
+  conserva mayúsculas. Eso también empuja a converger y reduce duplicados nuevos.
+- **Se puede seguir escribiendo libre**: sigue siendo texto libre; no obliga a elegir.
+
+**Costo (lo que se reportó antes de implementar).** El form de crear salida NO cargaba el círculo
+(`searchUsersAction` no usa `loadCircle`). El autocompletar agrega `loadCircle` (las mismas 2 lecturas
+que ya pagan feed/permisos) + 1 consulta de `placeName` del círculo. Se carga **una vez al montar**
+(como ya se cargan cervezas y parche), **no** por tecla ni en el submit; el filtrado es en el cliente.
+El flujo de crear salida no se hace más lento. `placeSuggestionsAction` en `actions/beers.ts` (junto a
+`searchUsers`/`searchBeers`); es "use server", así que `queries.ts` (server-only) no toca el cliente.
+
+**Lo que NO se hizo** (a BACKLOG, con disparador): no se normaliza retroactivo los lugares viejos
+(borrar/fusionar datos del usuario sin pedirlo es peor que el duplicado), ni se convierte el lugar en
+entidad `Place`. Sin APIs externas.
+
+**Datos en dev al implementar:** 6 salidas, 5 con lugar, todas distintas incluso normalizadas → 0
+duplicados (el seed es limpio; los duplicados reales viven en prod, que Code no toca). El autocompletar
+los previene de aquí en adelante.
+
+**Verificación (los 6 casos, por ejecución en WebKit + capa de datos).** 1 "bbc" → "BBC Andino"
+(insensible a mayúsculas), 2 "andres" → "Andrés Carne de Res" (insensible a acentos), 3 campo vacío →
+los más frecuentes del usuario, 4 lugar nuevo → sin dropdown, se escribe libre, 5 elegir → se guarda con
+las mayúsculas originales: los 5 en **WebKit** (con datos de prueba sembrados en el círculo de Ana,
+luego borrados). Caso 1 confirmó además la **deduplicación**: "bbc andino" de Beto se fundió bajo "BBC
+Andino". Caso 6 (usuario sin círculo ni salidas → sin sugerencias, sin error) por la **capa de datos**
+(`gate-x-dani`, aislado → la acción devuelve `[]`) + la misma ruta de lista vacía que ejerció el caso 4
+en WebKit (sin dropdown, sin error). El submit no se ralentiza (el campo se usa antes de que carguen las
+sugerencias). 154 tests intactos.
+
+**Sin verificar por ejecución:** el caso 6 con un **login fresco real** (montar una cuenta nueva por
+Better Auth en WebKit salía del alcance); se cubrió por la capa de datos + la ruta de UI idéntica al
+caso 4. El costo se argumentó desde el plan de consultas (una carga al montar, no medí latencia en prod
+— Code no toca prod).

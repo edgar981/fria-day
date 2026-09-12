@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { normalizeKey, type DrinkKind } from "@/lib/domain";
+import { loadCircle } from "@/lib/queries";
 import { beerSchema } from "@/lib/validation";
 import { brandColorFor } from "@/lib/colors";
 
@@ -110,6 +111,51 @@ export async function searchBeersAction(query: string) {
     take: 20,
   });
   return beers.map((b) => ({ ...b, abv: b.abv ? b.abv.toString() : null }));
+}
+
+export interface PlaceSuggestion {
+  display: string; // la ortografía más usada del grupo — texto original, conserva mayúsculas
+  key: string; // normalizeKey — para filtrar en el cliente con el MISMO criterio (G.2, sin acentos/mayúsculas)
+  count: number; // usos en el círculo (uno mismo incluido)
+  mine: boolean; // el usuario ya usó este lugar
+  myCount: number; // usos del usuario (para ordenar el estado vacío: sus más frecuentes primero)
+}
+
+/**
+ * Lugares ya registrados por el usuario y su círculo, para autocompletar "Dónde" al crear una salida
+ * (Pasada L). El lugar es texto libre; esto NO obliga a elegir, solo evita que "BBC Andino" y "bbc
+ * andino" queden como sitios distintos. Se carga UNA vez al montar el form (no en cada tecla ni en el
+ * submit); el filtrado al teclear es en el cliente sobre esta lista (~20 bares). `loadCircle` ya
+ * incluye a uno mismo (circleOf arranca con userId) y es la misma lectura que ya pagan feed/permisos;
+ * aquí solo se lee `placeName` + `userId` de las sesiones del círculo. Agrupa por `normalizeKey` y
+ * devuelve una entrada por lugar, con su ortografía más usada.
+ */
+export async function placeSuggestionsAction(): Promise<PlaceSuggestion[]> {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const circle = await loadCircle(user.id); // incluye a uno mismo
+  const rows = await prisma.session.findMany({
+    where: { userId: { in: [...circle] }, placeName: { not: null } },
+    select: { placeName: true, userId: true },
+  });
+  const groups = new Map<string, { key: string; variants: Map<string, number>; count: number; myCount: number }>();
+  for (const r of rows) {
+    const name = r.placeName?.trim();
+    if (!name) continue; // ignora "" y solo-espacios (placeName es opcional)
+    const key = normalizeKey(name);
+    const g = groups.get(key) ?? { key, variants: new Map<string, number>(), count: 0, myCount: 0 };
+    g.variants.set(name, (g.variants.get(name) ?? 0) + 1);
+    g.count += 1;
+    if (r.userId === user.id) g.myCount += 1;
+    groups.set(key, g);
+  }
+  const list = [...groups.values()].map((g) => {
+    // display = la variante más usada; a empate, la primera alfabéticamente (determinista).
+    const display = [...g.variants.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+    return { display, key: g.key, count: g.count, mine: g.myCount > 0, myCount: g.myCount };
+  });
+  list.sort((a, b) => b.count - a.count || a.display.localeCompare(b.display));
+  return list;
 }
 
 export async function searchUsersAction(query: string) {

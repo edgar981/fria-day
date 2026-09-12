@@ -6,9 +6,9 @@ import { BeerSheet, type SheetDraft } from "@/components/BeerSheet";
 import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { createSession } from "@/app/actions/sessions";
-import { searchUsersAction, searchBeersAction } from "@/app/actions/beers";
+import { searchUsersAction, searchBeersAction, placeSuggestionsAction, type PlaceSuggestion } from "@/app/actions/beers";
 import { todayInputValue, FORMAT_LABEL } from "@/lib/format";
-import type { BeerFormat } from "@/lib/domain";
+import { normalizeKey, type BeerFormat } from "@/lib/domain";
 import type { BeerOption } from "@/lib/beer";
 
 interface LocalCheckIn {
@@ -83,6 +83,8 @@ export function NewSessionForm() {
   const [dateMode, setDateMode] = useState<"hoy" | "ayer" | "otra">("hoy");
   const [dateValue, setDateValue] = useState(todayInputValue());
   const [place, setPlace] = useState("");
+  const [placeSug, setPlaceSug] = useState<PlaceSuggestion[]>([]);
+  const [placeFocused, setPlaceFocused] = useState(false);
   const [tags, setTags] = useState<LocalTag[]>([]);
   const [checkIns, setCheckIns] = useState<LocalCheckIn[]>([]);
   const [users, setUsers] = useState<UserOpt[]>([]);
@@ -106,12 +108,27 @@ export function NewSessionForm() {
       .then((b) => { if (alive) setRecent(b.slice(0, 8)); })
       .catch(() => { if (alive) setRecentError(true); })
       .finally(() => { if (alive) setRecentLoading(false); });
+    // Lugares del círculo para autocompletar "Dónde" (Pasada L). Silencioso: si falla, el campo
+    // funciona igual (es texto libre) — sin estado de error, solo no aparecen sugerencias.
+    placeSuggestionsAction()
+      .then((p) => { if (alive) setPlaceSug(p); })
+      .catch(() => {});
     return () => { alive = false; };
   }, []);
 
   let seq = 0;
   const newKey = () => `${Date.now()}-${seq++}-${Math.round(performance.now())}`;
   const total = checkIns.reduce((s, c) => s + c.quantity, 0);
+
+  // Sugerencias de "Dónde" (Pasada L): campo vacío → los más frecuentes del USUARIO; al teclear →
+  // user+círculo cuyo key (sin acentos/mayúsculas, G.2) CONTIENE lo escrito, por frecuencia. El
+  // filtrado es en el cliente sobre la lista ya traída — cero consultas por tecla.
+  const q = place.trim();
+  const placeMatches = (q === ""
+    ? placeSug.filter((s) => s.mine).sort((a, b) => b.myCount - a.myCount || a.display.localeCompare(b.display))
+    : (() => { const nk = normalizeKey(q); return placeSug.filter((s) => s.key.includes(nk) && s.display !== place).sort((a, b) => b.count - a.count || a.display.localeCompare(b.display)); })()
+  ).slice(0, 6);
+  const showPlaceMenu = placeFocused && placeMatches.length > 0;
 
   function toggleUser(u: UserOpt) {
     setTags((cur) => {
@@ -200,12 +217,44 @@ export function NewSessionForm() {
           )}
         </section>
 
-        {/* DÓNDE */}
+        {/* DÓNDE · autocompletar desde el historial del círculo (Pasada L). Combobox: se puede
+            elegir una sugerencia o seguir escribiendo libre (el lugar es texto libre). */}
         <section>
           <div className="eyebrow" style={{ marginBottom: 8 }}>
             Dónde <span style={{ fontWeight: 400, letterSpacing: 0, textTransform: "none", fontSize: 12, color: "var(--color-tenue-2)" }}>· opcional</span>
           </div>
-          <input className="field" placeholder="Bar, casa, parque…" value={place} onChange={(e) => setPlace(e.target.value)} />
+          <div style={{ position: "relative" }}>
+            <input
+              className="field"
+              placeholder="Bar, casa, parque…"
+              value={place}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={showPlaceMenu}
+              aria-autocomplete="list"
+              onChange={(e) => { setPlace(e.target.value); setPlaceFocused(true); }}
+              onFocus={() => setPlaceFocused(true)}
+              // Cierra al salir del campo. El onMouseDown de cada opción evita el blur antes del click.
+              onBlur={() => setPlaceFocused(false)}
+            />
+            {showPlaceMenu && (
+              <div role="listbox" style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, zIndex: 20, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 14, overflow: "hidden", boxShadow: "0 12px 30px rgba(0,0,0,.4)" }}>
+                {placeMatches.map((s, i) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    role="option"
+                    aria-selected={false}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => { setPlace(s.display); setPlaceFocused(false); }}
+                    style={{ display: "block", width: "100%", textAlign: "left", background: "transparent", border: "none", borderBottom: i === placeMatches.length - 1 ? "none" : "1px solid var(--color-borde)", padding: "11px 13px", cursor: "pointer", font: "500 14.5px var(--font-sans)", color: "var(--color-crema)" }}
+                  >
+                    {s.display}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </section>
 
         {/* CON QUIÉN */}
