@@ -1070,3 +1070,66 @@ hook compartido `useSheetEnter(open)` + `sheetEnterTransform(entered, dragY)`. R
 transición que ya tenían (sin keyframe), y arranca en `translateY(100%)` cambiando a `0` un
 frame después de abrir (rAF) — así no pisa el `translateY(dragY)` del gesto (la trampa de
 RU.5). Se reinicia al cerrar para volver a deslizar en la próxima apertura.
+
+## Pasada PT — El sistema de puntos (Tanda 1: motor + migración + la cuenta)
+
+Un número personal, acumulativo de por vida, que paga por dejar constancia. Tres reglas del
+tablero, codificadas: **nada resta nunca** (los borrados no llaman al motor; el número solo
+sube), **tomar más no rinde más** (el techo de 40), **paga el registro, no la visita** (cero
+por abrir/deslizar).
+
+**Modelo — ledger, no contador (§4).** `PointEntry(userId, action, points, sessionId?, refId,
+createdAt, shownAt?)`. Guarda los puntos YA con el tope aplicado (efectivos) → el total es
+`SUM(points)` y el desglose cuadra solo. **Idempotencia por `@@unique([userId, action,
+refId])`**; claves por acción: session→sessionId, round/challenge→roundId, photo→photoId,
+first_time→beerId (global, se acredita donde se probó por primera vez), rate/drink→checkInId,
+comment→commentId, toast→sessionId (un brindis por salida aunque cambie el emoji). `createdAt`
+= cuándo ocurrió la acción (topes por día en hora de Bogotá + orden del techo, deterministas
+en vivo y en backfill). El motor (`src/lib/award-points.ts`) es best-effort en vivo
+(`safeAward`, un fallo no tumba la acción del usuario) y el backfill RECONCILIA.
+
+**El techo de 40 NO se nombra (§3).** Las bebidas (registrar/calificar/primera vez) salen en
+la cuenta como UNA línea "Bebidas" con su total; quien tope verá el mismo +40 en dos salidas
+sin saber por qué. Verificado: 10 bebidas calificadas → 40; 4 fotos → 45 (no 60).
+
+**La cuenta (§5).** Se dispara al SALIR del detalle de una salida editada, vía un watcher de
+`usePathname` en el layout `(app)` (sobrevive al cambio de ruta). El detalle tiene **dos**
+salidas reales — botón atrás y gesto de iOS (no tiene barra inferior: esa vive solo en las
+pestañas) —; ambas cambian el pathname, así que se detecta la TRANSICIÓN, no el mecanismo (el
+gesto de iOS no se puede interceptar). `takeCuenta` lee lo no visto y lo marca visto en el
+mismo paso (atómico) → nunca repite. Si la app se cierra dentro del detalle no hay transición:
+los puntos quedan `shownAt=null` y salen la próxima vez que se sale de un detalle editado
+(nunca al abrir). El +10 de "cumplir un reto" es la excepción: se marca visto al acreditarse
+(se muestra en vivo junto al botón, 700ms) y el servidor devuelve `awarded` para mostrarlo solo
+la primera vez.
+
+**Migración (§10) — retroactiva.** `scripts/backfill-points.ts` reconstruye el ledger desde los
+datos existentes con el mismo motor idempotente (dry-run por defecto; `--apply` escribe). Al
+aplicar marca TODO lo reconstruido como visto (es historia; no debe saltar la cuenta al abrir
+salidas viejas): solo lo ganado en vivo de ahí en adelante dispara recibo. En **dev**: 39
+eventos → **52 entradas · 550 puntos** (dry-run y apply coinciden; re-correr crea 0). Producción
+la corre Edgar con el mismo script.
+
+**Presencia (Tanda 2 · §6, §7, §8, §9).** En **Perfil**, arriba del total histórico, una
+tarjeta OSCURA con franja de espuma (no el degradado ámbar, para no competir): el número, el
+ritmo (puntos por salida) y el próximo hito EN SALIDAS ("Dos salidas más"). Debajo, "De dónde
+salieron" despliega el desglose (mayor a menor, bebidas y social colapsadas) y cierra con la
+frase de la ética ("N bebidas dieron X. M salidas dieron Y. La app te paga por salir, no por
+tomar."). En el **Leaderboard**, el icono de personas abre la hoja de invitar, con una segunda
+sección "El círculo": cada quien con sus puntos, **ordenada por antigüedad, NUNCA por puntos**
+(por puntos sería el ranking que no es). Los puntos **NO van** en el leaderboard (ranking),
+header, tarjeta del feed ni push (§6).
+
+**Hitos (§9) — "sin temporadas, los hitos son el calendario" (del tablero).** SIETE nombrados
+(100 La primera marca · 250 Habitual · 500 De la casa · 1.000 Los mil · 2.500 Veterano · 5.000
+Los cinco mil · 10.000 Los diez mil) y luego uno cada 5.000. `big` = merece tarjeta (1.000,
+5.000, 10.000+). En el perfil: la **barra** del próximo hito + la frase en salidas, y los hitos
+alcanzados como **chips en orden** (el único historial). Al **cruzar** un hito, una **línea al
+pie de la cuenta** ("Llegaste a Habitual", ámbar, no interrumpe) — el total de vida se calcula
+en `takeCuenta` (before→after). **Pendiente (follow-up): la tarjeta del hito** a pantalla completa
+para los grandes (variante `kind:"hito"` del share-card, con "Ver" después de cerrar la cuenta).
+
+**Topes "completo" (§3, §7):** el techo de 40 NUNCA se nombra. Los demás sí, en verde y en
+pasado, y solo al alcanzarse: al llegar al tope de puntos de fotos sale "Fotos · ya está
+completo" en verde (no bloquea; se pueden subir más, solo no dan más puntos). No hay "2 de 3"
+en ninguna parte.

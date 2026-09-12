@@ -302,3 +302,21 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
 - **Disparador para retomar:** si alguien del parche pide no aparecer, o incomoda en uso
   real. Opciones: opt-out por usuario (no aparecer en imágenes de otros), o que el dueño
   elija incluir/omitir compañía al compartir. Decisión de producto de Edgar.
+
+## La tarjeta del hito a pantalla completa (Pasada PT · §9)
+
+- **Qué:** para los hitos **grandes** (1.000 / 5.000 / 10.000 y de ahí cada 5.000), el
+  tablero "Los Puntos" prevé una **tarjeta a pantalla completa** que se comparte, además de
+  la línea al pie de la cuenta que ya existe. Con "Ver" en esa línea → la tarjeta aparece
+  **después de cerrar la cuenta, nunca encima**.
+- **Diseño (del tablero):** reusa el share-card que ya existe — mismo lienzo (1080×1350 y
+  1080×1920 story), padding 64, fondo noche, wordmark, franja de espuma y marcas de conteo.
+  Es una variante **`kind:"hito"`** en la MISMA ruta `/api/share/[id]`, no una tubería nueva.
+  Contenido: fecha (MES AÑO), nombre del hito, el número, "Edgar · en el parche desde…",
+  "…× N", y "Lo que los hizo": salidas / rondas de ruleta / fotos / retos cumplidos. NO
+  lleva: bebidas, puesto en ranking, ni el número de nadie más.
+- **Estado:** en PT quedaron los hitos completos SIN la tarjeta: valores/nombres, barra y
+  frase en el perfil, chips del historial, y la línea de cruce al pie de la cuenta. Falta
+  solo esta tarjeta (y el botón "Ver" que la abre).
+- **Disparador:** va **después de unos ajustes al sistema de puntos** que Edgar hará primero
+  (decisión de Edgar, 2026-09-12). Retomar cuando esos ajustes estén.

@@ -1,4 +1,5 @@
 import { requireUser } from "@/lib/session";
+import { CuentaWatcher } from "@/components/CuentaWatcher";
 
 export const dynamic = "force-dynamic";
 
@@ -11,5 +12,10 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   await requireUser();
-  return <div className="app-shell">{children}</div>;
+  return (
+    <div className="app-shell">
+      {children}
+      <CuentaWatcher />
+    </div>
+  );
 }

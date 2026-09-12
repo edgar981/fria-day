@@ -77,6 +77,10 @@ export function RouletteFlow({
   const [outcome, setOutcome] = useState<"completed" | "passed" | "pending">(
     latestRound?.completed ? "completed" : latestRound?.passed ? "passed" : "pending",
   );
+  // PT §5: el +10 de cumplir el reto sube junto al botón (700ms, sin bloquear) — el único
+  // punto que se gana con público mirando. El servidor dice si se acreditó AHORA (idempotente),
+  // así solo aparece la primera vez.
+  const [retoPlus, setRetoPlus] = useState(false);
 
   const [charging, setCharging] = useState(false);
   const [charge, setCharge] = useState(0);
@@ -232,7 +236,12 @@ export function RouletteFlow({
     const value = outcome === next ? "pending" : next;
     setOutcome(value); // optimista
     const res = await setRoundOutcome(roundId, value);
-    if (!res.ok) setError(res.error);
+    if (!res.ok) { setError(res.error); return; }
+    // PT §5: el +10 sube junto al botón solo cuando se acreditó de verdad (una vez por ronda).
+    if (res.awarded) {
+      setRetoPlus(true);
+      setTimeout(() => setRetoPlus(false), 720);
+    }
   }
 
   const backHref = curSessionId ? `/sessions/${curSessionId}` : "/";
@@ -449,9 +458,16 @@ export function RouletteFlow({
             </div>
             {/* Cumplir / Paso (el paso NUNCA penaliza · §6) — acciones, NO rotan. */}
             <div style={{ display: "flex", gap: 9, marginTop: 12 }}>
-              <button type="button" onClick={() => mark("completed")} aria-pressed={outcome === "completed"} style={{ flex: 1, height: 46, borderRadius: 14, cursor: "pointer", font: "700 14px var(--font-sans)", border: outcome === "completed" ? "none" : "1px solid rgba(62,143,107,.42)", background: outcome === "completed" ? "var(--color-botella)" : "transparent", color: outcome === "completed" ? "#241609" : "var(--color-botella)" }}>
-                {outcome === "completed" ? "Cumplido ✓" : "Cumplido"}
-              </button>
+              <div style={{ flex: 1, position: "relative" }}>
+                {retoPlus && (
+                  <span aria-hidden style={{ position: "absolute", top: -6, left: "50%", transform: "translateX(-50%)", font: "800 18px var(--font-display)", color: "var(--color-ambar)", pointerEvents: "none", animation: "fd-reto-plus .72s ease-out both" }}>
+                    +10
+                  </span>
+                )}
+                <button type="button" onClick={() => mark("completed")} aria-pressed={outcome === "completed"} style={{ width: "100%", height: 46, borderRadius: 14, cursor: "pointer", font: "700 14px var(--font-sans)", border: outcome === "completed" ? "none" : "1px solid rgba(62,143,107,.42)", background: outcome === "completed" ? "var(--color-botella)" : "transparent", color: outcome === "completed" ? "#241609" : "var(--color-botella)" }}>
+                  {outcome === "completed" ? "Cumplido ✓" : "Cumplido"}
+                </button>
+              </div>
               <button type="button" onClick={() => mark("passed")} aria-pressed={outcome === "passed"} style={{ flex: 1, height: 46, borderRadius: 14, cursor: "pointer", font: "700 14px var(--font-sans)", border: outcome === "passed" ? "none" : "1px solid var(--color-borde)", background: outcome === "passed" ? "var(--color-barra-alta)" : "transparent", color: "var(--color-tenue)" }}>
                 {outcome === "passed" ? "Pasó ✓" : "Paso"}
               </button>

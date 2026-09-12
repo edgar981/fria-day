@@ -6,6 +6,7 @@ import { upload } from "@vercel/blob/client";
 import { compressImage, ImageError } from "@/lib/image";
 import { addSessionPhoto, removeSessionPhoto } from "@/app/actions/sessions";
 import { MAX_SESSION_PHOTOS } from "@/lib/domain";
+import { PER_SALIDA_COUNT_CAP } from "@/lib/points";
 
 /**
  * Fotos de la salida (Pasada I-2). Carrusel deslizable en el detalle; tocar una abre a
@@ -195,6 +196,14 @@ export function SessionPhotos({
           <div style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", marginTop: 6, textAlign: "center" }}>
             {shown.length}/{MAX_SESSION_PHOTOS}
           </div>
+          {/* PT §3/§7: al alcanzar el tope de puntos de fotos (nunca antes), se dice en verde y
+              en pasado. NO bloquea (se pueden subir más, solo no dan más puntos). El techo de 40
+              de bebidas NO se nombra jamás; este sí (es uno de "los demás topes"). */}
+          {shown.length >= (PER_SALIDA_COUNT_CAP.photo ?? 3) && (
+            <div style={{ font: "600 12px var(--font-sans)", color: "var(--color-botella)", marginTop: 4, textAlign: "center" }}>
+              Fotos · ya está completo
+            </div>
+          )}
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { toStoredDay, todayInputValue } from "@/lib/format";
 import { isRouletteDynamicKey, secureRandomInt, pickChallengeKey } from "@/lib/roulette";
+import { safeAward, awardSession, awardRound, awardChallenge } from "@/lib/award-points";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -104,11 +105,19 @@ export async function spinRound(input: {
         data: { sessionId, dynamicKey: input.dynamicKey, loserId, challengeKey, roundNumber },
         select: { id: true, roundNumber: true, loserId: true, dynamicKey: true, challengeKey: true, sessionId: true },
       });
-      return { ok: true as const, round };
+      return { ok: true as const, round, players };
     });
 
     if (!result.ok) return { ok: false, error: result.error };
     const r = result.round;
+    // Puntos (PT): la salida (idempotente) + jugar la ronda: 20 a cada participante (tope 3/salida).
+    await safeAward(async () => {
+      const at = new Date();
+      await awardSession(prisma, { userId, sessionId: r.sessionId, at });
+      for (const pid of result.players) {
+        await awardRound(prisma, { userId: pid, sessionId: r.sessionId, roundId: r.id, at });
+      }
+    });
     revalidatePath("/");
     revalidatePath(`/sessions/${r.sessionId}`);
     return { ok: true, round: { id: r.id, sessionId: r.sessionId, roundNumber: r.roundNumber, loserId: r.loserId, dynamicKey: r.dynamicKey, challengeKey: r.challengeKey } };
@@ -162,13 +171,13 @@ export async function tagForRoulette(input: {
 export async function setRoundOutcome(
   roundId: string,
   outcome: "completed" | "passed" | "pending",
-): Promise<Result> {
+): Promise<Result<{ awarded: boolean }>> {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
 
   const round = await prisma.sessionRound.findUnique({
     where: { id: roundId },
-    select: { sessionId: true, session: { select: { userId: true } } },
+    select: { sessionId: true, loserId: true, session: { select: { userId: true } } },
   });
   if (!round || round.session.userId !== user.id) return { ok: false, error: "No es tu salida" };
 
@@ -180,7 +189,18 @@ export async function setRoundOutcome(
       passedAt: outcome === "passed" ? now : null,
     },
   });
+  // Puntos (PT): cumplir el reto suma 10 al PERDEDOR (tope 3/salida). "Paso" NO resta (§2, §6):
+  // solo "completed" acredita; passed/pending no tocan puntos. `awarded` = si se acreditó AHORA
+  // (idempotente) → el cliente muestra el +10 en vivo solo esa vez.
+  let awarded = false;
+  if (outcome === "completed") {
+    try {
+      awarded = await awardChallenge(prisma, { userId: round.loserId, sessionId: round.sessionId, roundId, at: now });
+    } catch (e) {
+      console.error("[points] no se pudo acreditar el reto:", e);
+    }
+  }
   revalidatePath("/");
   revalidatePath(`/sessions/${round.sessionId}`);
-  return { ok: true };
+  return { ok: true, awarded };
 }

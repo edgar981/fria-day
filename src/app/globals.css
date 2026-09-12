@@ -263,6 +263,23 @@ textarea.field {
   100% { transform: translateX(250%); }
 }
 
+/* La cuenta (Pasada PT · §5): el recibo entra con un pop suave y sus líneas escalonadas. */
+@keyframes fd-cuenta-pop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes fd-cuenta-line {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+/* El +10 de "cumplir un reto" (§5): sube junto al botón, 700ms, sin bloquear. */
+@keyframes fd-reto-plus {
+  0% { opacity: 0; transform: translateY(4px) scale(0.9); }
+  25% { opacity: 1; transform: translateY(-6px) scale(1); }
+  75% { opacity: 1; transform: translateY(-14px); }
+  100% { opacity: 0; transform: translateY(-22px); }
+}
+
 /* Animaciones de reacción (Pasada A-1): corren UNA sola vez al aplicar la reacción,
    NUNCA en loop. Sobre glifos SVG propios (ReactionGlyph): cada PARTE (`data-p`) se
    anima por separado, no el glifo entero. La barra pone `.go` en el mismo tick del tap

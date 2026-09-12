@@ -5,8 +5,10 @@ import { InviteGenerator } from "@/components/InviteGenerator";
 import { ShareCodeButton } from "@/components/ShareCodeButton";
 import { QrCode } from "@/components/QrCode";
 import { formatDay } from "@/lib/format";
+import { Avatar } from "@/components/Avatar";
 import { useSheetDrag } from "@/lib/useSheetDrag";
 import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
+import type { CircleMemberPoints } from "@/lib/points-queries";
 
 export interface InviteRow {
   id: string;
@@ -25,10 +27,14 @@ export function InviteSheet({
   open,
   onClose,
   invitations,
+  circlePoints = [],
+  userId,
 }: {
   open: boolean;
   onClose: () => void;
   invitations: InviteRow[];
+  circlePoints?: CircleMemberPoints[];
+  userId?: string;
 }) {
   const { dragY, dragging, dragHandlers } = useSheetDrag(onClose);
   const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
@@ -124,6 +130,31 @@ export function InviteSheet({
             </div>
           )}
         </section>
+
+        {/* El círculo (PT §6): segunda sección con los puntos de cada quien. ORDENADA POR
+            ANTIGÜEDAD, nunca por puntos (por puntos sería el ranking que dijimos que no es). */}
+        {circlePoints.length > 0 && (
+          <section>
+            <div className="eyebrow" style={{ marginBottom: 3 }}>El círculo</div>
+            <p style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)", margin: "0 0 10px" }}>
+              Por orden de llegada al parche.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {circlePoints.map((m) => {
+                const me = m.id === userId;
+                return (
+                  <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 11, padding: "9px 2px", borderBottom: "1px solid #241A12" }}>
+                    <Avatar avatar={m.avatar} size={34} radius={11} />
+                    <span style={{ flex: 1, minWidth: 0, font: `${me ? 700 : 600} 15px var(--font-sans)`, color: me ? "var(--color-espuma)" : "var(--color-crema)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {me ? "Tú" : m.displayName}
+                    </span>
+                    <span style={{ font: "700 15px var(--font-sans)", color: "var(--color-ambar)", flex: "none" }}>{m.total.toLocaleString("es-CO")}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </div>
   );

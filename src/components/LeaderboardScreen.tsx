@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { InviteSheet, type InviteRow } from "@/components/InviteSheet";
+import type { CircleMemberPoints } from "@/lib/points-queries";
 
 type UnitRow = { userId: string; displayName: string; units: number };
 type VarietyRow = { userId: string; displayName: string; variety: number };
@@ -23,6 +24,7 @@ export function LeaderboardScreen({
   avatarById,
   aloneInCircle,
   invitations,
+  circlePoints,
   autoOpenInvite = false,
 }: {
   boardUnits: UnitRow[];
@@ -32,6 +34,7 @@ export function LeaderboardScreen({
   avatarById: Record<string, string | null>;
   aloneInCircle: boolean;
   invitations: InviteRow[];
+  circlePoints: CircleMemberPoints[];
   autoOpenInvite?: boolean;
 }) {
   const [inviteOpen, setInviteOpen] = useState(autoOpenInvite);
@@ -65,7 +68,7 @@ export function LeaderboardScreen({
         onInvite={() => setInviteOpen(true)}
       />
 
-      <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} invitations={invitations} />
+      <InviteSheet open={inviteOpen} onClose={() => setInviteOpen(false)} invitations={invitations} circlePoints={circlePoints} userId={userId} />
     </main>
   );
 }
