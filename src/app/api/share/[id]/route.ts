@@ -11,7 +11,7 @@ import {
   firstTimeDrink,
   outingNumber,
 } from "@/lib/domain";
-import { FORMAT_LABEL, formatAbv, formatClock, formatDayLong, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, formatClock, formatDayLong, formatSheetDate, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
 import { resolveCardColor, styleColorFor } from "@/lib/colors";
 import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
@@ -196,6 +196,27 @@ async function handleShare(
     ink,
     lastLabel,
   };
+
+  // SC · Tanda 3 · ?meta: JSON liviano (sin render de satori) para el CHROME del sheet — el
+  // encabezado (lugar · #N · fecha), las stats compactas y el color de acento. El sheet lo pide
+  // al abrir para poblar la hoja mientras la IMAGEN se genera en paralelo. Mismo auth/círculo que
+  // la imagen. `defaultFormat`: el caso pobre (una bebida, sin foto) abre en Publicación (menos
+  // lienzo que llenar); el resto en Historia.
+  if (reqUrl.searchParams.has("meta")) {
+    return Response.json({
+      place: data.place,
+      ownerName: data.ownerName,
+      outing,
+      dateShort: formatSheetDate(session.date),
+      total: data.total,
+      duration,
+      single,
+      hasPhoto: !!photoUrl,
+      defaultFormat: single && !photoUrl ? "post" : "story",
+      color,
+      ink,
+    });
+  }
 
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori

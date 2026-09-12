@@ -256,6 +256,16 @@ export function formatDayShort(date: Date): string {
   return `${date.getUTCDate()} ${monthShortFmt.format(date).replace(/\.$/, "")}`;
 }
 
+const wdShortFmt = new Intl.DateTimeFormat("es-CO", { weekday: "short", timeZone: "UTC" });
+
+/** "VIE 28 AGO": día de semana + día + mes, corto y en MAYÚSCULA. Encabezado del sheet de
+ *  compartir (SC · Tanda 3): junto a "#N" identifica la salida mientras se genera la imagen. */
+export function formatSheetDate(date: Date): string {
+  const wd = wdShortFmt.format(date).replace(/\.$/, "");
+  const mo = monthShortFmt.format(date).replace(/\.$/, "");
+  return `${wd} ${date.getUTCDate()} ${mo}`.toUpperCase();
+}
+
 /**
  * Nombre de archivo legible del share-card (S.3 §2): lo primero que ve quien recibe la
  * imagen. "friaday-bar-de-la-85-26-ago.png" (lugar + fecha) o "friaday-26-ago.png" sin
