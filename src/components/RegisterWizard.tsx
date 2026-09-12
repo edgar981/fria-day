@@ -119,7 +119,9 @@ export function RegisterWizard({ initialCode = "" }: { initialCode?: string }) {
           <div style={{ font: "500 16px/1.35 var(--font-sans)", color: "rgba(251,240,213,.85)", margin: "10px 0 28px" }}>
             El parche lleva la cuenta.<br />Nadie más está invitado.
           </div>
-          <div style={{ height: 16, background: "radial-gradient(circle at 50% 0,#FBF0D5 12px,transparent 12.5px) 0 0/26px 16px repeat-x" }} />
+          {/* PT.2: la espuma rebosa hacia ARRIBA (50% 100%), como en toda la app; antes mordía
+              hacia abajo (50% 0). */}
+          <div style={{ height: 16, background: "radial-gradient(circle at 50% 100%,#FBF0D5 12px,transparent 12.5px) 0 0/26px 16px repeat-x" }} />
         </div>
         <div style={{ flex: 1, padding: "26px 26px 0", display: "flex", flexDirection: "column", gap: 20 }}>
           <Progress step={1} total={totalSteps} />

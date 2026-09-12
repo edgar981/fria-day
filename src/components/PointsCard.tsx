@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { FoamStrip } from "@/components/FoamStrip";
 import type { PointsSummary } from "@/lib/points-queries";
 
 /**
@@ -17,12 +18,11 @@ export function PointsCard({ summary }: { summary: PointsSummary }) {
 
   return (
     <div style={{ background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 24, overflow: "hidden" }}>
-      {/* Franja de espuma: la firma de la marca, discreta. */}
-      <div style={{ display: "flex", height: 12, overflow: "hidden" }} aria-hidden>
-        {Array.from({ length: 22 }).map((_, i) => (
-          <span key={i} style={{ width: 24, height: 24, borderRadius: 12, background: "var(--color-espuma)", marginTop: -12, marginLeft: i === 0 ? 0 : -1, flexShrink: 0, opacity: 0.92 }} />
-        ))}
-      </div>
+      {/* Franja de espuma (PT.2): el componente COMPARTIDO — las burbujas rebosan hacia ARRIBA,
+          como en las tarjetas de bebida (antes esta tarjeta tenía una copia inline invertida, con
+          el festón mordiendo hacia abajo). */}
+      <FoamStrip size="md" />
+      <div style={{ height: 8, background: "var(--color-espuma)" }} />
 
       <div style={{ padding: "16px 20px 18px" }}>
         <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".16em", color: "var(--color-tenue)" }}>TUS PUNTOS</div>

@@ -1389,3 +1389,37 @@ cosas: la **duración**, el **«hasta las X»** del pie y el **nivel 3** de la c
 de la franja). Una edición tardía (un check-in agregado días después) distorsiona los tres; el tope
 de ≤20h solo cubre la duración. No se arregla ahora — disparador: si alguien reporta una hora o un
 color que no corresponde a su noche.
+
+## Pasada PT.2 — El festón de la tarjeta de puntos estaba invertido
+
+La tarjeta "TUS PUNTOS" (perfil) dibujaba su franja de espuma con una **copia inline propia**: 22
+`<span>` circulares con `marginTop:-12` dentro de un contenedor `overflow:hidden` → las burbujas
+mordían hacia **ABAJO** (festón de mantel), al revés de las tarjetas de bebida y la ruleta, donde la
+espuma **rebosa hacia ARRIBA**. La regla de marca es una: la espuma rebosa (sube).
+
+**El arreglo (decisión de Edgar: "si es una copia, usar el compartido y borrar la copia").** Se borró
+la copia inline de `PointsCard` y se usa el componente compartido `FoamStrip` (`size="md"`, el mismo
+que `SessionCard`) + una banda de espuma de 8px. Ahora la dirección es correcta **por construcción**:
+es el mismo componente que las bebidas, no una réplica que se pueda desincronizar.
+
+**Barrido de todas las superficies con festón (lo que pidió reportar):**
+- **Correctas (rebosan hacia arriba)** — feed/salida (`SessionCard`), check-ins etiquetados y del
+  dueño (`TaggedCheckInList`, `OwnerCheckInList`), lista de lectura (`CheckInReadList`): todas usan
+  `FoamStrip`. La ruleta (`RouletteBlock`, `RouletteFlow`) usa el gradiente `circle at 50% 100%`
+  (arriba). ✓
+- **Intencional, no se toca** — `SessionDetail` (la "costura de espuma invertida" de la zona social:
+  `circle at 50% 0%` en color oscuro `#191310`, es un divisor, no la firma de espuma; su comentario
+  lo dice). ✓
+- **`CuentaReceipt` (la cuenta)** — tenía la **misma copia inline invertida** que la tarjeta de puntos
+  (14 `span`, `marginTop:-10`, festón "firma de la marca" mordiendo hacia abajo). **Arreglado** igual
+  (decisión de Edgar): borrada la copia, ahora usa `FoamStrip size="md"`. Es tarjeta oscura
+  (`--color-noche`), la espuma crema se ve.
+- **`RegisterWizard` (bienvenida)** — espuma crema al **pie** del header naranja. **Volteada**
+  (decisión de Edgar): `circle at 50% 0` → `50% 100%`, ahora rebosa hacia arriba como el resto. Se dejó
+  su tamaño propio (16px, `#FBF0D5`) — es la espuma grande de bienvenida, no la firma pequeña de las
+  tarjetas; solo se invirtió la dirección.
+
+Verificado por ejecución (Playwright, gate-ana en dev): (1) tarjeta de puntos y una de bebida (feed)
+lado a lado, las dos con la espuma **rebosando hacia arriba**; (2) el recibo (`CuentaReceipt`) y el
+header de bienvenida (`RegisterWizard`), ambos con la espuma hacia arriba tras el arreglo. 154 tests en
+verde.

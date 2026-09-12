@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { FoamStrip } from "@/components/FoamStrip";
 import type { CuentaLine } from "@/lib/points";
 
 /** Cuenta ascendente de 0 a `target` con easeOutCubic en `ms`. */
@@ -67,11 +68,11 @@ export function CuentaReceipt({
           animation: reduced.current ? undefined : "fd-cuenta-pop .28s cubic-bezier(.22,.9,.3,1) both",
         }}
       >
-        {/* Festón de espuma como firma de la marca, discreto. */}
-        <div style={{ display: "flex", height: 10, overflow: "hidden", marginBottom: 12 }} aria-hidden>
-          {Array.from({ length: 14 }).map((_, i) => (
-            <span key={i} style={{ width: 20, height: 20, borderRadius: 10, background: "var(--color-espuma)", marginTop: -10, marginLeft: i === 0 ? 0 : -1, flexShrink: 0, opacity: 0.9 }} />
-          ))}
+        {/* Festón de espuma como firma de la marca, discreto (PT.2): el componente COMPARTIDO,
+            rebosa hacia arriba como las tarjetas de bebida. Antes era una copia inline invertida
+            (festón mordiendo hacia abajo), la misma que tenía la tarjeta de puntos. */}
+        <div style={{ marginBottom: 12 }}>
+          <FoamStrip size="md" />
         </div>
         <div style={{ font: "700 11px var(--font-sans)", letterSpacing: ".18em", textTransform: "uppercase", color: "var(--color-tenue)", marginBottom: 14 }}>
           La cuenta
