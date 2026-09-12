@@ -8,10 +8,11 @@ import {
   drinkingSpanMinutes,
   DURATION_MIN_MINUTES,
   formatDurationLabel,
+  formatBreakdown,
   firstTimeDrink,
   outingNumber,
 } from "@/lib/domain";
-import { FORMAT_LABEL, formatAbv, formatClock, formatDayLong, formatSheetDate, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, formatBreakdownText, formatClock, formatDayLong, formatSheetDate, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
 import { resolveCardColor, styleColorFor } from "@/lib/colors";
 import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
@@ -92,12 +93,16 @@ async function handleShare(
   const checkIns = session.checkIns; // ya en createdAt asc (el orden del recorrido)
   const single = checkIns.length === 1;
 
-  // Duración: ventana real de la noche (min→max de createdAt). Se OMITE si abarca menos
-  // de ~1h — típico del registro retroactivo (todo cargado de una) — sin dejar hueco.
+  // Duración (T5): la ventana real de la noche (min→max de createdAt). Antes se omitía si era
+  // < 1h, pero como la gente registra en TANDAS ese umbral casi nunca dispara y la stat estrella
+  // quedaba ausente. Ahora se MUESTRA aunque sea corta (decisión de Edgar: "así sea 2 minutos");
+  // solo se omite si es 0 (registro instantáneo, sin ventana). El riesgo asumido: puede decir
+  // "5m". La cascada de color y el "hasta las" del titular SIGUEN atados a la ventana real
+  // (hasRealWindow = span ≥ 1h): esas son afirmaciones de titular, la stat es dato preciso.
   const times = checkIns.map((c) => c.createdAt);
   const span = drinkingSpanMinutes(times);
   let duration: ShareData["duration"] = null;
-  if (span >= DURATION_MIN_MINUTES) {
+  if (span >= 1) {
     const ms = times.map((t) => t.getTime());
     duration = {
       value: formatDurationLabel(span),
@@ -174,6 +179,27 @@ async function handleShare(
   // Solo cuando hay ventana real; retroactiva (sin ventana) no muestra hora.
   const lastLabel = hasRealWindow ? `hasta las ${formatClock(last.createdAt)}` : null;
 
+  // T5 · stats propias para LLENAR la story (sobre todo sin foto y con pocas bebidas):
+  // La RULETA — contenido nativo de FriaDay, imposible de copiar. "N rondas · {quién} perdió {n}":
+  // se agrega por perdedor; a empate gana el de la ronda más reciente (rounds vienen desc). Sin
+  // rondas → null (el bloque no se dibuja).
+  let ruleta: ShareData["ruleta"] = null;
+  if (session.rounds.length > 0) {
+    const tally = new Map<string, { name: string; count: number }>();
+    for (const r of session.rounds) {
+      const e = tally.get(r.loserId) ?? { name: r.loser.displayName, count: 0 };
+      e.count++;
+      tally.set(r.loserId, e);
+    }
+    const top = [...tally.values()].sort((a, b) => b.count - a.count)[0];
+    ruleta = { rondas: session.rounds.length, loserName: top.name, losses: top.count };
+  }
+  // Formato: "3 botellas · 1 copa" — solo con MÁS de un formato (con uno es redundante).
+  const fb = formatBreakdown(checkIns.map((c) => ({ format: c.format, quantity: c.quantity })));
+  const formato = fb.length > 1 ? formatBreakdownText(fb) : null;
+  // Bebidas distintas: para "N distintas" cuando el recorrido se trunca (no se ven todas).
+  const distinct = beerIds.length;
+
   const data: ShareData = {
     place: session.placeName,
     dateLabel: formatDayLong(session.date),
@@ -195,6 +221,9 @@ async function handleShare(
     color,
     ink,
     lastLabel,
+    ruleta,
+    formato,
+    distinct,
   };
 
   // SC · Tanda 3 · ?meta: JSON liviano (sin render de satori) para el CHROME del sheet — el
