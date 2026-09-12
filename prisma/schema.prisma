@@ -270,6 +270,11 @@ model SessionPhoto {
   // de la rueda de doce. Se extrae en el CLIENTE (dentro de compressImage, con la imagen ya
   // decodificada en canvas) — nunca en el servidor, que ya tarda ~4s. null = no se pudo extraer.
   color     String?
+  // Pasada SC · Turno 6 (modo foto a sangre): el BRILLO real de la foto (0–1, luminancia percibida
+  // promedio), calculado en el mismo canvas que `color`. El velo del share-card ajusta su alfa con
+  // esto. NO se deriva de `color` (que es el tono ajustado a la rueda, no el brillo). null = foto
+  // vieja (subida antes de T6) o no se pudo extraer → el velo usa un alfa medio de respaldo.
+  luminance Float?
   order     Int      @default(0)
   createdAt DateTime @default(now())
 
