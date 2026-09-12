@@ -13,8 +13,6 @@ import { formatBreakdownText } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
-const monthFmt = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric" });
-
 function StatCard({ value, label }: { value: number; label: string }) {
   return (
     <div style={{ flex: 1, background: "var(--color-barra)", border: "1px solid var(--color-borde)", borderRadius: 20, padding: 15 }}>
@@ -48,14 +46,12 @@ export default async function ProfilePage() {
   }));
   const styles = Object.entries(stats.byStyle).sort((a, b) => b[1] - a[1]);
   const maxStyle = styles.length ? styles[0][1] : 1;
-  const createdAt = (user as { createdAt?: string | Date }).createdAt;
-  const since = createdAt ? `en el parche desde ${monthFmt.format(new Date(createdAt))}` : "en el parche";
 
   return (
     <div className="pb-nav">
       <div className="pb-scroll">
       <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
-        <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} since={since} />
+        <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} />
 
         {/* Los puntos (PT §6): arriba del total histórico, tarjeta oscura para no competir. */}
         <PointsCard summary={points} />
