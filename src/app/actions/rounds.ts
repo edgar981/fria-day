@@ -8,11 +8,6 @@ import { isRouletteDynamicKey, secureRandomInt, pickChallengeKey } from "@/lib/r
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
-// DIAGNÓSTICO RU.4 (temporal): id de instancia calculado UNA vez al cargar el módulo.
-// Si varias rondas comparten esta misma cadena en los logs, cayeron en la MISMA instancia
-// serverless caliente → sirve para ver si el perdedor se "pega" por instancia.
-const RULETA_INSTANCE = Math.random().toString(36).slice(2, 10);
-
 // RU · decisión de Edgar: la ruleta exige ≥2 personas de la app (dueño + etiquetados).
 // No exportado: un módulo "use server" solo puede exportar funciones async.
 const MIN_ROULETTE_PLAYERS = 2;
@@ -95,28 +90,7 @@ export async function spinRound(input: {
       }
 
       // Perdedor uniforme (Web Crypto, sin sesgo de bundling · RU.2).
-      const rngIdx = secureRandomInt(players.length);
-      const loserId = players[rngIdx]!;
-      // DIAGNÓSTICO RU.4 (temporal): log crudo para leer en Vercel. Incluye el valor crudo
-      // del RNG, el orden real de participantes, el índice elegido, el loserId y la instancia.
-      try {
-        const raw = new Uint32Array(3);
-        globalThis.crypto.getRandomValues(raw);
-        console.error("[ruleta-sorteo] " + JSON.stringify({
-          inst: RULETA_INSTANCE,
-          region: process.env.VERCEL_REGION ?? "local",
-          t: Date.now(),
-          session: sessionId,
-          players,
-          n: players.length,
-          rngIdx,
-          loserId,
-          raw: [raw[0], raw[1], raw[2]],
-          mod_n: [raw[0]! % players.length, raw[1]! % players.length, raw[2]! % players.length],
-        }));
-      } catch (e) {
-        console.error("[ruleta-sorteo] log-fail:", e);
-      }
+      const loserId = players[secureRandomInt(players.length)]!;
       // Reto SIN repetir los ya usados de esta dinámica en esta salida (RU.1 · §2).
       const usedRounds = await tx.sessionRound.findMany({
         where: { sessionId, dynamicKey: input.dynamicKey },

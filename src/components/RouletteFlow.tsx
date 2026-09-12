@@ -417,28 +417,38 @@ export function RouletteFlow({
       {phase === "reto" && loser && challenge && (
         <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "2px 18px 22px", animation: "fd-rl-rise .5s cubic-bezier(.2,1.1,.3,1) both" }}>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-            <div style={{ background: "linear-gradient(180deg,#4a3413,#2a1e0e)", borderRadius: 26, overflow: "hidden", border: "1px solid rgba(251,240,213,.14)" }}>
-              <div style={{ height: 8, background: "radial-gradient(circle at 50% 100%,var(--color-espuma) 6px,transparent 6.5px) 0 0/13px 8px repeat-x" }} />
-              <div style={{ height: 10, background: "var(--color-espuma)" }} />
-              <div style={{ padding: "20px 20px 22px" }}>
-                {/* Modo mesa (§8): rota la identidad COMPLETA del perdedor (avatar + etiqueta + nombre). */}
-                <div style={{ display: "flex", alignItems: "center", gap: 11, transform: tableMode ? "rotate(180deg)" : undefined }}>
-                  <Avatar avatar={loser.avatar} size={44} radius={14} />
-                  <div style={{ minWidth: 0 }}>
-                    <div className="eyebrow" style={{ color: "#c9a874" }}>El reto de</div>
-                    <div style={{ font: "800 24px/1.1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 4 }}>{loser.name}</div>
+            {/* UNIDAD DE LECTURA (RU.5): en modo mesa rota COMPLETA — carta (encabezado +
+                avatar + texto + nota) y chips, como un solo bloque para el que lee al
+                frente. Los botones NO rotan (son acciones del que tiene el teléfono). */}
+            <div style={{ transform: tableMode ? "rotate(180deg)" : undefined }}>
+              <div style={{ background: "linear-gradient(180deg,#4a3413,#2a1e0e)", borderRadius: 26, overflow: "hidden", border: "1px solid rgba(251,240,213,.14)" }}>
+                <div style={{ height: 8, background: "radial-gradient(circle at 50% 100%,var(--color-espuma) 6px,transparent 6.5px) 0 0/13px 8px repeat-x" }} />
+                <div style={{ height: 10, background: "var(--color-espuma)" }} />
+                <div style={{ padding: "20px 20px 22px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+                    <Avatar avatar={loser.avatar} size={44} radius={14} />
+                    <div style={{ minWidth: 0 }}>
+                      <div className="eyebrow" style={{ color: "#c9a874" }}>El reto de</div>
+                      <div style={{ font: "800 24px/1.1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 4 }}>{loser.name}</div>
+                    </div>
                   </div>
+                  <div style={{ font: "700 25px/1.22 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 18, textWrap: "pretty" }}>{challenge.text}</div>
+                  <div style={{ font: "400 13.5px/1.5 var(--font-sans)", color: "#c9a874", marginTop: 10 }}>{challenge.note}</div>
                 </div>
-                <div style={{ font: "700 25px/1.22 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 18, textWrap: "pretty" }}>{challenge.text}</div>
-                <div style={{ font: "400 13.5px/1.5 var(--font-sans)", color: "#c9a874", marginTop: 10 }}>{challenge.note}</div>
+              </div>
+              <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ font: "600 12px var(--font-sans)", color: "var(--color-tenue-2)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "7px 12px", whiteSpace: "nowrap" }}>{dynObj?.name}</span>
+                <span style={{ font: "600 12px var(--font-sans)", color: "var(--color-tenue-2)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "7px 12px", whiteSpace: "nowrap" }}>Ronda {roundNumber}</span>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 9, marginTop: 14, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ font: "600 12px var(--font-sans)", color: "var(--color-tenue-2)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "7px 12px", whiteSpace: "nowrap" }}>{dynObj?.name}</span>
-              <span style={{ font: "600 12px var(--font-sans)", color: "var(--color-tenue-2)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "7px 12px", whiteSpace: "nowrap" }}>Ronda {roundNumber}</span>
+            {/* Toggle de modo mesa accesible en la carta (para poder salir · RU.5). NO rota. */}
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 14 }}>
+              <button type="button" onClick={() => setTableMode((v) => !v)} style={{ background: "transparent", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "6px 13px", font: "600 12px var(--font-sans)", color: "var(--color-tenue)", cursor: "pointer" }}>
+                {tableMode ? "Vista normal" : "Modo mesa"}
+              </button>
             </div>
-            {/* Cumplir / Paso (el paso NUNCA penaliza · §6) */}
-            <div style={{ display: "flex", gap: 9, marginTop: 14 }}>
+            {/* Cumplir / Paso (el paso NUNCA penaliza · §6) — acciones, NO rotan. */}
+            <div style={{ display: "flex", gap: 9, marginTop: 12 }}>
               <button type="button" onClick={() => mark("completed")} aria-pressed={outcome === "completed"} style={{ flex: 1, height: 46, borderRadius: 14, cursor: "pointer", font: "700 14px var(--font-sans)", border: outcome === "completed" ? "none" : "1px solid rgba(62,143,107,.42)", background: outcome === "completed" ? "var(--color-botella)" : "transparent", color: outcome === "completed" ? "#241609" : "var(--color-botella)" }}>
                 {outcome === "completed" ? "Cumplido ✓" : "Cumplido"}
               </button>
