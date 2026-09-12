@@ -3,7 +3,7 @@ import { Avatar } from "@/components/Avatar";
 import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
 import { FoamStrip } from "@/components/FoamStrip";
-import { FORMAT_LABEL, formatAbv, relativeDay, joinMeta, formatNoun } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, relativeDay, capitalize, joinMeta, formatNoun } from "@/lib/format";
 import { ReactionBar } from "@/components/ReactionBar";
 import { formatBreakdown } from "@/lib/domain";
 import type { FeedSession } from "@/lib/queries";
@@ -180,7 +180,7 @@ export function SessionCard({
               ) : null}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 3 }}>
-              <span style={{ font: "400 13px var(--font-sans)", color: "var(--color-tenue)" }}>{relativeDay(session.date)}</span>
+              <span style={{ font: "400 13px var(--font-sans)", color: "var(--color-tenue)" }}>{capitalize(relativeDay(session.date))}</span>
               {tagged && (
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(62,143,107,.16)", border: "1px solid rgba(62,143,107,.42)", color: "#6FC79C", font: "600 11.5px var(--font-sans)", borderRadius: 999, padding: "4px 9px" }}>
                   <Icon name="lock" size={12} color="#6FC79C" />

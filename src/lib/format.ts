@@ -106,11 +106,32 @@ export function relativeTime(date: Date, nowMs: number = Date.now()): string {
 }
 
 /** "hoy" / "ayer" / "hace N días" o la fecha, comparando por día UTC. */
-export function relativeDay(date: Date): string {
+// Todo el parche está en Colombia (America/Bogota, UTC-5 sin horario de verano).
+const BOGOTA_OFFSET_MS = 5 * 60 * 60 * 1000;
+
+/** Primera letra en mayúscula (para etiquetas de fecha del feed, B-2). */
+export function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+/**
+ * "hoy" / "ayer" / "hace N días" / la fecha. `now` inyectable para tests.
+ *
+ * B-2: la fecha de la salida se guarda como medianoche UTC del día LOCAL elegido, pero esto
+ * se renderiza en el SERVIDOR (que corre en UTC). Si "hoy" se calculara con el día UTC de
+ * `now`, en la tarde —cuando UTC ya rodó al día siguiente pero en Colombia sigue siendo hoy—
+ * una salida de hoy se vería como "ayer". Por eso "hoy" se calcula en la zona de Bogotá.
+ * La fecha guardada ya ES el día local (medianoche UTC), así que a ELLA no se le aplica el
+ * offset; solo a `now`.
+ */
+export function relativeDay(date: Date, now: Date = new Date()): string {
   const dayMs = 24 * 60 * 60 * 1000;
-  const startOfUTCDay = (d: Date) =>
-    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const diff = Math.round((startOfUTCDay(new Date()) - startOfUTCDay(date)) / dayMs);
+  const bogotaDay = (d: Date) => {
+    const b = new Date(d.getTime() - BOGOTA_OFFSET_MS);
+    return Date.UTC(b.getUTCFullYear(), b.getUTCMonth(), b.getUTCDate());
+  };
+  const storedDay = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  const diff = Math.round((bogotaDay(now) - storedDay) / dayMs);
   if (diff === 0) return "hoy";
   if (diff === 1) return "ayer";
   if (diff > 1 && diff < 7) return `hace ${diff} días`;

@@ -82,3 +82,39 @@ describe("I-3 · relativeTime (tiempo del comentario)", () => {
     expect(older).not.toMatch(/min|h$|^ahora$/);
   });
 });
+
+import { relativeDay, capitalize } from "./format";
+
+describe("B-2 · relativeDay (fecha del feed, zona Colombia)", () => {
+  const stored = (ymd: string) => new Date(`${ymd}T00:00:00.000Z`);
+
+  it("una salida de HOY no se ve como 'ayer' en la tarde (UTC ya rodó, Colombia no)", () => {
+    // Sept 11 8pm Bogotá = Sept 12 01:00 UTC. La salida de hoy (11) debe decir "hoy".
+    expect(relativeDay(stored("2026-09-11"), new Date("2026-09-12T01:00:00Z"))).toBe("hoy");
+  });
+
+  it("temprano en la mañana también dice 'hoy'", () => {
+    // Sept 11 3am Bogotá = Sept 11 08:00 UTC.
+    expect(relativeDay(stored("2026-09-11"), new Date("2026-09-11T08:00:00Z"))).toBe("hoy");
+  });
+
+  it("ayer y hace N días", () => {
+    const now = new Date("2026-09-12T01:00:00Z"); // = Sept 11 8pm Bogotá
+    expect(relativeDay(stored("2026-09-10"), now)).toBe("ayer");
+    expect(relativeDay(stored("2026-09-08"), now)).toBe("hace 3 días");
+  });
+
+  it("más de una semana cae en la fecha absoluta (día correcto por UTC)", () => {
+    const now = new Date("2026-09-20T12:00:00Z");
+    expect(relativeDay(stored("2026-09-01"), now)).toContain("sept");
+  });
+});
+
+describe("capitalize", () => {
+  it("pone la primera letra en mayúscula", () => {
+    expect(capitalize("hoy")).toBe("Hoy");
+    expect(capitalize("ayer")).toBe("Ayer");
+    expect(capitalize("hace 3 días")).toBe("Hace 3 días");
+    expect(capitalize("")).toBe("");
+  });
+});
