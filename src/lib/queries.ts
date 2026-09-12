@@ -34,11 +34,26 @@ async function loadRegisteredDays(): Promise<Set<string>> {
  * Una sola implementación (circleOf), usada por feed, permisos y leaderboard.
  */
 export async function loadCircle(userId: string): Promise<Set<string>> {
-  const rows = await prisma.sessionTag.findMany({
-    where: { taggedUserId: { not: null } },
-    select: { taggedUserId: true, session: { select: { userId: true } } },
-  });
-  const edges = rows.map((r) => ({ ownerId: r.session.userId, taggedUserId: r.taggedUserId as string }));
+  // El círculo es la unión de DOS aristas, ambas simétricas y NO transitivas (Pasada CI):
+  //  1. Salieron juntos — SessionTag (dueño ↔ etiquetado), como en la Pasada C.
+  //  2. Uno invitó al otro — quien creó el código ↔ quien lo redimió (Invitation.usedById).
+  // Así el recién invitado ve las salidas de quien lo invitó aunque aún no haya salido con
+  // nadie del parche. Una sola implementación: feed, permisos, leaderboard y la sección del
+  // círculo la heredan sin tocarse.
+  const [tags, invites] = await Promise.all([
+    prisma.sessionTag.findMany({
+      where: { taggedUserId: { not: null } },
+      select: { taggedUserId: true, session: { select: { userId: true } } },
+    }),
+    prisma.invitation.findMany({
+      where: { usedById: { not: null } },
+      select: { createdById: true, usedById: true },
+    }),
+  ]);
+  const edges = [
+    ...tags.map((r) => ({ ownerId: r.session.userId, taggedUserId: r.taggedUserId as string })),
+    ...invites.map((i) => ({ ownerId: i.createdById, taggedUserId: i.usedById as string })),
+  ];
   return circleOf(userId, edges);
 }
 

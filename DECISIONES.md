@@ -1133,3 +1133,22 @@ para los grandes (variante `kind:"hito"` del share-card, con "Ver" después de c
 pasado, y solo al alcanzarse: al llegar al tope de puntos de fotos sale "Fotos · ya está
 completo" en verde (no bloquea; se pueden subir más, solo no dan más puntos). No hay "2 de 3"
 en ninguna parte.
+
+## Pasada CI — La invitación entra al círculo
+
+**Caso real:** Edgar invitó a un amigo de otra ciudad; el amigo no había salido con nadie del
+parche → su círculo estaba vacío → no veía ninguna salida, ni las de Edgar que le dio el código.
+
+**Cambio:** el círculo (`loadCircle`) pasa a ser la unión de DOS aristas, ambas simétricas y
+**NO transitivas**: (1) salieron juntos (`SessionTag`, como en la Pasada C) y (2) uno invitó al
+otro (`Invitation.createdById ↔ usedById`). El invitado ve las salidas de quien lo invitó; no
+las del resto del parche. Cuando salga con ellos y lo etiqueten, su círculo crece por la vía 1.
+
+**Sin migración:** `Invitation.usedById` ya registra quién redimió cada código (lo escribe
+`registerWithInvite` de forma atómica, y siempre lo ha hecho). La arista sale de datos
+existentes → el amigo de Edgar queda conectado con el merge, sin backfill.
+
+**Una sola implementación:** solo cambió `loadCircle` (agrega las aristas de invitación a las de
+etiqueta antes de `circleOf`, que es puro y no se tocó). Feed, permisos, leaderboard y la sección
+del círculo lo heredan. Verificado por ejecución (WebKit) los 6 casos; los 8 de la Pasada C
+(tests de `circleOf`) intactos.
