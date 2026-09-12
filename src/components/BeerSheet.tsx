@@ -8,6 +8,7 @@ import { Icon } from "@/components/Icon";
 import { BEER_FORMATS, FORMATS_BY_KIND, type BeerFormat, type DrinkKind } from "@/lib/domain";
 import { joinMeta } from "@/lib/format";
 import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
+import { WHEEL } from "@/lib/colors";
 import type { BeerOption } from "@/lib/beer";
 
 const LAST_FORMAT_KEY = "fd:lastFormat";
@@ -50,6 +51,7 @@ export function BeerSheet({
   const [createKind, setCreateKind] = useState<DrinkKind>("CERVEZA");
   const [brewery, setBrewery] = useState("");
   const [style, setStyle] = useState("");
+  const [pickedColor, setPickedColor] = useState<string | null>(null); // SC nivel 1: selector opcional
   const [format, setFormat] = useState<BeerFormat>("BOTELLA");
   const [rating, setRating] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +136,7 @@ export function BeerSheet({
     setBrewery("");
     setStyle("");
     setRating(0);
+    setPickedColor(null);
     setError(null);
   }
   // Cerrar sin agregar CONSERVA el borrador (item A.1-7b): al reabrir sigue lo
@@ -159,6 +162,7 @@ export function BeerSheet({
         brewery: isCoctel ? "" : brewery.trim(),
         style: style.trim(),
         abv: "",
+        color: pickedColor,
       });
       setBusy(false);
       if (!res.ok) {
@@ -319,6 +323,28 @@ export function BeerSheet({
                   <input className="field" style={{ height: 48 }} placeholder="Cervecería *" value={brewery} onChange={(e) => setBrewery(e.target.value)} />
                 )}
                 <input className="field" style={{ height: 48 }} placeholder="Estilo (opcional)" value={style} onChange={(e) => setStyle(e.target.value)} />
+
+                {/* SC nivel 1 · el selector de doce, opcional y saltable. Sin tocar nada → sin
+                    color y la cascada baja al nivel 2 (la foto). */}
+                <div>
+                  <span style={{ display: "block", font: "600 12.5px var(--font-sans)", color: "var(--color-crema)", marginBottom: 8 }}>¿De qué color es? <span style={{ color: "var(--color-tenue-2)", fontWeight: 400 }}>· opcional</span></span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 9 }}>
+                    {WHEEL.map((p) => {
+                      const on = pickedColor === p.hex;
+                      return (
+                        <button
+                          key={p.hex}
+                          type="button"
+                          aria-label={`Color ${p.hex}`}
+                          aria-pressed={on}
+                          onClick={() => setPickedColor(on ? null : p.hex)}
+                          style={{ width: 34, height: 34, borderRadius: 999, background: p.hex, cursor: "pointer", border: on ? "2px solid var(--color-espuma)" : "2px solid transparent", boxShadow: on ? "0 0 0 2px var(--color-noche)" : "none", padding: 0, flex: "none" }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
                 <span style={{ font: "400 12px/1.4 var(--font-sans)", color: "var(--color-tenue-2)" }}>
                   {createKind === "CERVEZA"
                     ? "Solo la cervecería es obligatoria. El resto lo completas después."

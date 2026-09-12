@@ -1152,3 +1152,36 @@ existentes → el amigo de Edgar queda conectado con el merge, sin backfill.
 etiqueta antes de `circleOf`, que es puro y no se tocó). Feed, permisos, leaderboard y la sección
 del círculo lo heredan. Verificado por ejecución (WebKit) los 6 casos; los 8 de la Pasada C
 (tests de `circleOf`) intactos.
+
+## Pasada SC · TANDA 1 — La cascada de color (datos, sin cambio visual)
+
+El color de la share-card sale de una **cascada de tres niveles, todos leídos del ÚLTIMO
+check-in** (decisión del tablero, turno 4): (1) **marca** — el HEX curado del empaque
+(`Beer.color`), "el verde de la Costeñita es SU verde"; (2) **foto** — el tono dominante ya
+ajustado a la rueda de doce (`SessionPhoto.color`); (3) **hora** — la franja horaria; sin
+ventana real, `#N mod 5`. Todo en `src/lib/colors.ts` (puro, testeado).
+
+**Esquema:** `Beer.color` y `SessionPhoto.color`, ambos `String?`.
+
+**La rueda de doce** (aprobada por Edgar): las 5 de la hora (fijas del tablero) + 7 intermedios
+derivados. Ninguna compite con el ámbar de marca `#F2A016`. **Las tintas están FIJADAS** (no se
+calculan en render) por la regla de contraste (L* ≥ 45 → oscura del mismo matiz; < 45 → crema,
+con caída a crema cuando la oscura no llega); **las 12 parejas y las 22 de marca pasan ≥ 4,5:1**.
+Único color ajustado: 3 Cord. Negra `#9A6B3A → #B5863F` (el original no pasaba).
+
+**Nivel 2 en el CLIENTE:** la extracción del tono dominante va dentro de `compressImage`
+(`image.ts`), con la imagen ya decodificada en canvas — nunca en el servidor, que ya tarda ~4s.
+Vota por matiz sobre la rueda; foto gris → null → baja al nivel 3.
+
+**El selector:** al crear una bebida, la rueda de doce con "¿de qué color es?", opcional y
+saltable. Sin tocar nada → sin color → cascada al nivel 2. Un nombre que matchee el mapa igual
+recibe su color de marca.
+
+**Migración:** `scripts/seed-beer-colors.ts` siembra `Beer.color` (idempotente, dry-run por
+defecto). En dev: 48 bebidas → **25 con color de marca, 23 sin color** (variantes/artesanales/
+cócteles → nivel 2). Prod la corre Edgar.
+
+**Ajuste suelto:** en la tarjeta del feed, sin reacciones ya NO se muestra "Nadie ha brindado";
+la zona queda vacía y el botón Brindar se queda.
+
+**Pendiente:** TANDA 2 (la tarjeta con el color y Big Shoulders) y TANDA 3 (el sheet).

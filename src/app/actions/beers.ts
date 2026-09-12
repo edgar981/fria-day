@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { normalizeKey, type DrinkKind } from "@/lib/domain";
 import { beerSchema } from "@/lib/validation";
+import { WHEEL, brandColorFor } from "@/lib/colors";
 
 export type CreateBeerResult =
   | {
@@ -40,6 +41,11 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
   const brewery = parsed.data.brewery && parsed.data.brewery.trim() ? parsed.data.brewery.trim() : null;
   const nameKey = normalizeKey(name);
   const breweryKey = normalizeKey(brewery ?? "");
+  // SC nivel 1: el color elegido en el selector (si es de la rueda), o el de marca si el nombre
+  // matchea el mapa, o null → la cascada baja al nivel 2 (la foto).
+  const wheelHexes = new Set(WHEEL.map((p) => p.hex.toUpperCase()));
+  const pickedColor = parsed.data.color && wheelHexes.has(parsed.data.color.toUpperCase()) ? parsed.data.color.toUpperCase() : null;
+  const color = pickedColor ?? brandColorFor(name);
 
   const existing = await prisma.beer.findUnique({
     where: { nameKey_breweryKey: { nameKey, breweryKey } },
@@ -66,6 +72,7 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
       brewery,
       style: style ? style : null,
       abv: abv === "" || abv == null ? null : abv,
+      color,
       nameKey,
       breweryKey,
       createdById: user.id,

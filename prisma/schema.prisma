@@ -164,6 +164,12 @@ model Beer {
   nameKey    String
   breweryKey String
 
+  // Pasada SC · nivel 1 de la cascada de color: el HEX curado del empaque ("el verde de la
+  // Costeñita es SU verde"). null = sin color de marca → la cascada baja al nivel 2 (la foto).
+  // La tinta NO se guarda: se deriva del color por la regla de contraste (L* ≥ 45 → tinta
+  // oscura del mismo matiz; < 45 → crema), con la excepción del asterisco para las oscuras.
+  color String?
+
   createdById String
   createdBy   User     @relation("BeerCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -260,6 +266,10 @@ model SessionPhoto {
   sessionId String
   session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   url       String
+  // Pasada SC · nivel 2 de la cascada: el tono dominante de la foto YA ajustado al más cercano
+  // de la rueda de doce. Se extrae en el CLIENTE (dentro de compressImage, con la imagen ya
+  // decodificada en canvas) — nunca en el servidor, que ya tarda ~4s. null = no se pudo extraer.
+  color     String?
   order     Int      @default(0)
   createdAt DateTime @default(now())
 

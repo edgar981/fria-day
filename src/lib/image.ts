@@ -7,6 +7,8 @@
  */
 
 /** Lado mayor objetivo tras comprimir. */
+import { dominantWheel } from "@/lib/colors";
+
 export const MAX_SIDE = 1200;
 /** Calidad JPEG. Equilibrio tamaño/nitidez para fotos de bar con poca luz. */
 export const JPEG_QUALITY = 0.82;
@@ -25,6 +27,27 @@ export interface CompressedImage {
   filename: string;
   width: number;
   height: number;
+  /** Pasada SC · nivel 2: el tono dominante ya ajustado a la rueda de doce, o null si la foto
+   *  es demasiado gris. La extracción va AQUÍ (canvas ya decodificado), nunca en el servidor. */
+  color: string | null;
+}
+
+/**
+ * Tono dominante de la imagen ajustado a la rueda (Pasada SC · nivel 2). Vota por matiz: cada
+ * píxel con saturación y luz suficientes suma a la casilla de la rueda más cercana en matiz; gana
+ * la más votada. null si casi no hay píxeles con color (foto gris → la cascada baja al nivel 3).
+ */
+function dominantWheelColor(ctx: CanvasRenderingContext2D, w: number, h: number): string | null {
+  let data: Uint8ClampedArray;
+  try {
+    data = ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return null; // canvas "tainted" u otro fallo: sin color, no romper el flujo
+  }
+  const step = Math.max(1, Math.floor((w * h) / 20000)) * 4; // ~20k muestras
+  const samples: [number, number, number][] = [];
+  for (let i = 0; i < data.length; i += step) samples.push([data[i], data[i + 1], data[i + 2]]);
+  return dominantWheel(samples);
 }
 
 /** Escala (w,h) para que el lado mayor no supere `max`, sin agrandar. */
@@ -64,6 +87,9 @@ export async function compressImage(file: File): Promise<CompressedImage> {
   ctx.drawImage(bitmap, 0, 0, w, h);
   bitmap.close();
 
+  // Nivel 2 (SC): el tono dominante, aquí, con la imagen ya en canvas. Best-effort: si falla, null.
+  const color = dominantWheelColor(ctx, w, h);
+
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", JPEG_QUALITY),
   );
@@ -72,5 +98,5 @@ export async function compressImage(file: File): Promise<CompressedImage> {
     throw new ImageError("La foto sigue muy pesada. Prueba con otra.");
   }
 
-  return { blob, filename: "beer.jpg", width: w, height: h };
+  return { blob, filename: "beer.jpg", width: w, height: h, color };
 }
