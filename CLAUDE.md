@@ -78,6 +78,12 @@ node --env-file=.env --import tsx scripts/clean-passkey-orphans.ts [--apply]
 node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
   --delete <id> --invites-to <id> [--apply]   # borra un usuario reasignando sus
   #   invitaciones Y cervezas (catálogo compartido) a otro, en una transacción
+# Puntos (Pasada PT): backfill retroactivo del ledger. Idempotente (reconcilia; re-correr
+# no duplica). --apply marca lo reconstruido como visto (no dispara "la cuenta" en salidas
+# viejas). --reset borra el ledger antes (SOLO dev: tras reseedear gate, porque el seed
+# recrea salidas con ids nuevos y PointEntry.sessionId no es FK → quedarían huérfanas). La
+# migración inicial a PROD la corre Edgar con --apply (sin --reset, tabla vacía).
+node --env-file=.env --import tsx scripts/backfill-points.ts [--apply] [--reset]
 ```
 
 ## Datos de gate (dev) — para que Edgar revise el preview

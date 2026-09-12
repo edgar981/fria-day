@@ -54,6 +54,7 @@ model User {
   reactions          SessionReaction[]
   comments           SessionComment[]
   roundsLost         SessionRound[] @relation("RoundLoser")
+  pointEntries       PointEntry[]
 
   @@map("user")
 }
@@ -324,6 +325,34 @@ model CheckIn {
   @@index([sessionId])
   @@index([beerId])
   @@map("check_in")
+}
+
+// Sistema de puntos (Pasada PT). LEDGER, no contador: una fila por acción que paga,
+// con los puntos YA con el tope aplicado (efectivos) → el total es SUM(points) y el
+// desglose cuadra solo. Nada se borra nunca ("nada resta"): descalificar/borrar no
+// toca las filas. Idempotencia por @@unique([userId, action, refId]): la misma acción
+// paga una vez. `refId` es la ref estable de la acción (sessionId/roundId/photoId/
+// checkInId/beerId/commentId/reactionId, según `action`). `sessionId` agrupa para la
+// cuenta y los topes por salida. `createdAt` es CUÁNDO ocurrió la acción (no la
+// inserción): así los topes por día y el orden del techo son deterministas y valen
+// igual en vivo que en el backfill retroactivo. `shownAt` = cuándo se mostró en "la
+// cuenta" (null = no visto); la cuenta muestra los null y luego los marca.
+model PointEntry {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String
+  points    Int
+  sessionId String?
+  refId     String
+  createdAt DateTime  @default(now())
+  shownAt   DateTime?
+
+  @@unique([userId, action, refId])
+  @@index([userId])
+  @@index([userId, sessionId])
+  @@index([userId, action, createdAt])
+  @@map("point_entry")
 }
 
 enum BeerFormat {

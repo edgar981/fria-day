@@ -8,6 +8,7 @@ import { sessionSchema, checkInSchema } from "@/lib/validation";
 import { planCheckInAdd, consolidateNewCheckIns, yoTambienCheckIn, isReaction, canAddSessionPhoto, MAX_SESSION_PHOTOS, isValidCommentBody, canDeleteComment, MAX_COMMENT_LENGTH } from "@/lib/domain";
 import { deleteBlobQuietly, deleteBlobsQuietly, isOurBlobUrl } from "@/lib/blob";
 import { loadCircle } from "@/lib/queries";
+import { safeAward, awardSession, awardCheckIn, awardPhoto, awardComment, awardToast } from "@/lib/award-points";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -75,7 +76,15 @@ export async function createSession(input: unknown): Promise<Result<{ id: string
         tags: { create: buildTags(data.tags, userId) },
         checkIns: { create: consolidated },
       },
-      select: { id: true },
+      select: { id: true, checkIns: { select: { id: true, beerId: true, rating: true }, orderBy: { createdAt: "asc" } } },
+    });
+    // Puntos (PT): registrar la salida + cada bebida bajo el techo de 40, en orden de creación.
+    await safeAward(async () => {
+      const at = new Date();
+      await awardSession(prisma, { userId, sessionId: session.id, at });
+      for (const ci of session.checkIns) {
+        await awardCheckIn(prisma, { userId, sessionId: session.id, checkInId: ci.id, beerId: ci.beerId, rating: ci.rating, at });
+      }
     });
     revalidatePath("/");
     return { ok: true, id: session.id };
@@ -195,6 +204,10 @@ export async function addCheckIn(
     });
     checkInId = created.id;
   }
+  // Puntos (PT): registrar la bebida (+ calificar / primera vez) bajo el techo. Idempotente
+  // por checkInId/beerId → una fusión (misma bebida+formato) no re-paga el drink.
+  const resultRating = plan.action === "merge" ? plan.rating : c.rating ?? null;
+  await safeAward(() => awardCheckIn(prisma, { userId, sessionId, checkInId, beerId: c.beerId, rating: resultRating, at: new Date() }));
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   return { ok: true, checkInId };
@@ -234,12 +247,15 @@ export async function updateCheckIn(input: {
 
   const ci = await prisma.checkIn.findUnique({
     where: { id: input.checkInId },
-    select: { sessionId: true, session: { select: { userId: true } } },
+    select: { sessionId: true, beerId: true, session: { select: { userId: true } } },
   });
   if (!ci || ci.session.userId !== userId)
     return { ok: false, error: "No es tu salida" };
 
   await prisma.checkIn.update({ where: { id: input.checkInId }, data: { rating } });
+  // Puntos (PT): si se agregó una calificación, acredítala (idempotente por checkInId; quitarla
+  // NO resta). first_time/drink ya se habrán acreditado al registrar la bebida.
+  await safeAward(() => awardCheckIn(prisma, { userId, sessionId: ci.sessionId, checkInId: input.checkInId, beerId: ci.beerId, rating, at: new Date() }));
   revalidatePath("/");
   revalidatePath(`/sessions/${ci.sessionId}`);
   return { ok: true };
@@ -274,6 +290,8 @@ export async function addSessionPhoto(
     data: { sessionId, url, order: (agg._max.order ?? -1) + 1 },
     select: { id: true },
   });
+  // Puntos (PT): subir una foto (tope 3/salida). El dueño es quien la sube.
+  await safeAward(() => awardPhoto(prisma, { userId, sessionId, photoId: created.id, at: new Date() }));
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   return { ok: true, id: created.id };
@@ -322,6 +340,8 @@ export async function addComment(
     data: { sessionId, userId, body: text },
     select: { id: true, createdAt: true },
   });
+  // Puntos (PT): comentar (tope 5/día). Borrar el comentario NO resta.
+  await safeAward(() => awardComment(prisma, { userId, sessionId, commentId: c.id, at: c.createdAt }));
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   return { ok: true, id: c.id, createdAt: c.createdAt.toISOString() };
@@ -522,6 +542,13 @@ export async function yoTambien(
     return { checkInId: cid, sessionCreated: created, sessionId: target.id };
   });
 
+  // Puntos (PT): la salida es del usuario. Si "Yo también" creó una salida nueva, cuenta como
+  // registrar salida (+50). La bebida copiada suma bajo el techo (sin calificación).
+  await safeAward(async () => {
+    const at = new Date();
+    if (sessionCreated) await awardSession(prisma, { userId, sessionId, at });
+    await awardCheckIn(prisma, { userId, sessionId, checkInId, beerId: src.beerId, rating: null, at });
+  });
   revalidatePath("/");
   revalidatePath(`/sessions/${sessionId}`);
   return { ok: true, checkInId, sessionCreated };
@@ -583,6 +610,8 @@ export async function toggleReaction(sessionId: string, emoji: string): Promise<
   });
   if (!existing) {
     await prisma.sessionReaction.create({ data: { sessionId, userId, emoji } });
+    // Puntos (PT): brindar (tope 10/día). Uno por salida aunque cambie el emoji; quitarlo NO resta.
+    await safeAward(() => awardToast(prisma, { userId, sessionId, at: new Date() }));
   } else if (existing.emoji === emoji) {
     await prisma.sessionReaction.delete({ where: { sessionId_userId: { sessionId, userId } } });
   } else {
