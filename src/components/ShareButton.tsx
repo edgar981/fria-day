@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "@/components/Icon";
 import { useSheetDrag } from "@/lib/useSheetDrag";
+import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
 
 /**
  * Botón "Compartir" de la barra de acciones (Pasada S). Genera la share-card (imagen)
@@ -19,13 +20,17 @@ import { useSheetDrag } from "@/lib/useSheetDrag";
 export function ShareButton({
   sessionId,
   variant = "bar",
-  onAfterOpen,
+  onClose,
 }: {
   sessionId: string;
   // "bar": botón de la barra de acciones (feed). "icon": píldora del header (DS, círculo).
   // "menuItem": fila del menú del dueño (DS). La hoja de compartir es la misma en los tres.
   variant?: "bar" | "icon" | "menuItem";
-  onAfterOpen?: () => void; // cerrar el menú del dueño al abrir la hoja
+  // RU.6 (punto 1): se llama cuando la hoja se CIERRA. El menú del dueño lo usa para cerrarse
+  // junto con la hoja — antes cerraba el menú al ABRIR (onAfterOpen), lo que desmontaba este
+  // botón y su portal en el mismo commit y la hoja no llegaba a verse. Ahora el menú queda
+  // abierto debajo (tapado por la hoja) y se cierra recién cuando la hoja se va.
+  onClose?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<null | "post" | "story">(null);
@@ -37,7 +42,13 @@ export function ShareButton({
   const [ready, setReady] = useState<{ file: File; format: "post" | "story" } | null>(null);
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-  const { dragY, dragging, dragHandlers } = useSheetDrag(() => { if (!busy) setOpen(false); });
+  const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
+  // Cerrar la hoja y avisar al contenedor (p.ej. el menú del dueño) para que se cierre también.
+  function closeSheet() {
+    setOpen(false);
+    onClose?.();
+  }
+  const { dragY, dragging, dragHandlers } = useSheetDrag(() => { if (!busy) closeSheet(); });
 
   function downloadFile(file: File) {
     const url = URL.createObjectURL(file);
@@ -91,13 +102,13 @@ export function ShareButton({
       // Sin compartir nativo (escritorio): descargar. No hay problema de activación aquí.
       downloadFile(file);
       setBusy(null);
-      setOpen(false);
+      closeSheet();
       return;
     }
     try {
       await navigator.share({ files: [file] });
       setBusy(null);
-      setOpen(false);
+      closeSheet();
     } catch (e) {
       setBusy(null);
       // AbortError = la hoja SÍ abrió y el usuario la cerró: cancelación normal (camino rápido,
@@ -116,7 +127,7 @@ export function ShareButton({
     setError(null);
     try {
       await navigator.share({ files: [ready.file] });
-      setOpen(false);
+      closeSheet();
     } catch (e) {
       // Cerró la hoja: el botón sigue ahí para reintentar.
       if (e instanceof Error && e.name === "AbortError") return;
@@ -131,7 +142,6 @@ export function ShareButton({
     setError(null);
     setReady(null);
     setOpen(true);
-    onAfterOpen?.();
     // B-1.2: se retiró el warmup de Neon al abrir la hoja — el cold start (~1.5s) no era el
     // costo dominante (la base caliente ya son ~4s), así que despertar antes no lo movía.
   }
@@ -213,7 +223,7 @@ export function ShareButton({
       {mounted && open &&
         createPortal(
           <div style={{ position: "fixed", inset: 0, zIndex: 85 }} role="dialog" aria-modal="true" aria-label="Compartir salida">
-            <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!busy) setOpen(false); }} style={{ position: "absolute", inset: 0, background: "rgba(10,7,4,.62)" }} />
+            <div onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!busy) closeSheet(); }} style={{ position: "absolute", inset: 0, background: "rgba(10,7,4,.62)" }} />
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
@@ -230,7 +240,7 @@ export function ShareButton({
                 display: "flex",
                 flexDirection: "column",
                 gap: 14,
-                transform: `translateY(${dragY}px)`,
+                transform: sheetEnterTransform(entered, dragY),
                 transition: dragging ? "none" : "transform 0.25s ease",
               }}
             >
@@ -273,7 +283,7 @@ export function ShareButton({
                   <button type="button" className="btn btn-primary" style={{ width: "100%" }} onClick={shareReady}>
                     Compartir imagen
                   </button>
-                  <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} onClick={() => { downloadFile(ready.file); setOpen(false); }}>
+                  <button type="button" className="btn btn-ghost" style={{ width: "100%", height: 52 }} onClick={() => { downloadFile(ready.file); closeSheet(); }}>
                     Descargar
                   </button>
                 </div>

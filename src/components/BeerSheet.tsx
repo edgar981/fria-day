@@ -7,6 +7,7 @@ import { RatingInput } from "@/components/RatingInput";
 import { Icon } from "@/components/Icon";
 import { BEER_FORMATS, FORMATS_BY_KIND, type BeerFormat, type DrinkKind } from "@/lib/domain";
 import { joinMeta } from "@/lib/format";
+import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
 import type { BeerOption } from "@/lib/beer";
 
 const LAST_FORMAT_KEY = "fd:lastFormat";
@@ -59,6 +60,7 @@ export function BeerSheet({
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const drag = useRef({ startY: 0, prevY: 0, prevT: 0, vy: 0, active: false });
+  const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
 
   function onDragStart(e: React.PointerEvent) {
     drag.current = { startY: e.clientY, prevY: e.clientY, prevT: e.timeStamp, vy: 0, active: true };
@@ -200,7 +202,7 @@ export function BeerSheet({
           gap: 14,
           maxHeight: "88dvh",
           overflowY: "auto",
-          transform: `translateY(${dragY}px)`,
+          transform: sheetEnterTransform(entered, dragY),
           transition: dragging ? "none" : "transform 0.25s ease",
         }}
       >

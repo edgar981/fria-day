@@ -348,7 +348,7 @@ export function SessionDetail(props: {
             onClick={(e) => e.stopPropagation()}
             style={{ position: "absolute", top: "calc(env(safe-area-inset-top) + 60px)", right: 16, width: 200, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 16, boxShadow: "0 14px 34px rgba(0,0,0,.5)", overflow: "hidden", padding: "6px 0" }}
           >
-            <ShareButton sessionId={sessionId} variant="menuItem" onAfterOpen={() => setMenuOpen(false)} />
+            <ShareButton sessionId={sessionId} variant="menuItem" onClose={() => setMenuOpen(false)} />
             <button
               type="button"
               onClick={enterEdit}
