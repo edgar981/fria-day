@@ -24,9 +24,6 @@ export const beerSchema = z
     abv: z
       .union([z.coerce.number().min(0).max(60), z.literal("")])
       .optional(),
-    // Pasada SC · nivel 1: color de la rueda elegido en el selector (opcional/saltable).
-    // Se valida contra la rueda en createBeer; aquí solo su forma.
-    color: z.string().trim().optional().nullable(),
   })
   .refine(
     (d) => d.kind === "COCTEL" || !!(d.brewery && d.brewery.trim()),

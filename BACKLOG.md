@@ -320,3 +320,15 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   solo esta tarjeta (y el botón "Ver" que la abre).
 - **Disparador:** va **después de unos ajustes al sistema de puntos** que Edgar hará primero
   (decisión de Edgar, 2026-09-12). Retomar cuando esos ajustes estén.
+
+## `Beer.style` como lista cerrada (Pasada SC.1)
+
+- **Qué:** hoy `Beer.style` es texto libre. Con SC.1 el color de la tarjeta (nivel 2) se deriva
+  del estilo por un mapa de palabra clave, que ya lo maneja bien. Pero una **lista cerrada** de
+  estilos comunes mejoraría el catálogo, la **búsqueda por estilo** que ya existe, y haría el
+  mapa estilo→color trivial (sin normalización ni "IPA" vs "India Pale Ale").
+- **Estado:** en dev hay 26 estilos distintos en 44/45 cervezas, con redundancias ("Lager negra"
+  vs "Stout", "Trigo" vs "Wheat Ale" vs "Weissbier" vs "Witbier"). El mapa por keyword las cubre.
+- **Alcance:** es su propia pasada — una lista curada de estilos + un dropdown (o combo con
+  "otro") al crear la bebida + migrar los valores libres existentes a la lista. Decisión de Edgar
+  (2026-09-12): se queda texto libre por ahora; anotado aquí para retomar.

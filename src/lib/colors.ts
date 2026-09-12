@@ -61,10 +61,36 @@ export const BRAND_SEED: readonly { key: string; hex: string }[] = [
   { key: "corona", hex: "#F5D34B" }, { key: "heineken", hex: "#1E7A3C" }, { key: "stella", hex: "#C8102E" }, { key: "modelo", hex: "#D9B44A" }, { key: "guinness", hex: "#C8A04A" },
 ];
 
-/** El color de marca sembrado para un nombre de bebida, o null (→ cascada al nivel 2). */
+/** El color de marca sembrado para un nombre de bebida, o null (→ cascada al nivel 2, estilo). */
 export function brandColorFor(beerName: string): string | null {
   const n = beerName.toLowerCase();
   for (const b of BRAND_SEED) if (n.includes(b.key)) return b.hex;
+  return null;
+}
+
+const stripAccents = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+
+/**
+ * Mapa ESTILO → tono de la rueda (Pasada SC.1 · nivel 2). Reemplaza al selector: el color se
+ * deriva del estilo, dato que el catálogo ya quiere. Por palabra clave (sin acentos, substring),
+ * ORDENADO por especificidad: "lager negra" cae en oscura antes que "lager" en dorada. La rueda
+ * no tiene negro/café → las oscuras usan índigo (decisión de Edgar). Un estilo fuera del mapa (o
+ * vacío, como los cócteles) → null → la cascada baja al nivel 3 (la foto).
+ */
+const STYLE_MAP: readonly [string, string][] = [
+  ["negra", "#5B54C8"], ["stout", "#5B54C8"], ["porter", "#5B54C8"], ["oscura", "#5B54C8"], ["black", "#5B54C8"],
+  ["roja", "#CE2F2F"], ["red", "#CE2F2F"],
+  ["sour", "#D15C86"], ["rose", "#D15C86"], ["rosad", "#D15C86"], ["fruit", "#D15C86"], ["frut", "#D15C86"],
+  ["ipa", "#FF6B35"], ["pale ale", "#FF6B35"], ["apa", "#FF6B35"], ["amber", "#FF6B35"], ["ambar", "#FF6B35"], ["saison", "#FF6B35"], ["strong", "#FF6B35"],
+  ["pilsn", "#F2A016"], ["pilsen", "#F2A016"], ["lager", "#F2A016"], ["blonde", "#F2A016"], ["golden", "#F2A016"], ["dorada", "#F2A016"], ["rubia", "#F2A016"], ["honey", "#F2A016"], ["miel", "#F2A016"],
+  ["weiss", "#F2A016"], ["wit", "#F2A016"], ["trigo", "#F2A016"], ["wheat", "#F2A016"], ["blanca", "#F2A016"], ["sin alcohol", "#F2A016"],
+];
+
+/** El tono de la rueda para un estilo de cerveza, o null (→ cascada al nivel 3). */
+export function styleColorFor(style: string | null | undefined): string | null {
+  if (!style || !style.trim()) return null;
+  const n = stripAccents(style);
+  for (const [k, hex] of STYLE_MAP) if (n.includes(stripAccents(k))) return hex;
   return null;
 }
 
@@ -172,17 +198,19 @@ export function hourColor(at: Date): ColorPair {
 }
 
 /**
- * La cascada completa: brand → foto → hora (→ `#N mod 5` sin ventana real). Todo del último
- * check-in. Devuelve el par color/tinta que pinta la tarjeta.
+ * La cascada completa (SC.1, CUATRO niveles): marca → estilo → foto → hora (→ `#N mod 5` sin
+ * ventana real). Todo del último check-in. Devuelve el par color/tinta que pinta la tarjeta.
  */
 export function resolveCardColor(input: {
   brandColor?: string | null;
+  styleColor?: string | null;
   photoColor?: string | null;
   lastCheckInAt?: Date | null;
   hasRealWindow?: boolean;
   outingNumber: number;
 }): ColorPair {
   if (input.brandColor) return { hex: input.brandColor, ink: inkFor(input.brandColor) };
+  if (input.styleColor) return { hex: input.styleColor, ink: inkFor(input.styleColor) };
   if (input.photoColor) return { hex: input.photoColor, ink: inkFor(input.photoColor) };
   if (input.hasRealWindow && input.lastCheckInAt) return hourColor(input.lastCheckInAt);
   return HOUR_PAIRS[((input.outingNumber % 5) + 5) % 5]; // respaldo #N mod 5

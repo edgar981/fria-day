@@ -1185,3 +1185,22 @@ cócteles → nivel 2). Prod la corre Edgar.
 la zona queda vacía y el botón Brindar se queda.
 
 **Pendiente:** TANDA 2 (la tarjeta con el color y Big Shoulders) y TANDA 3 (el sheet).
+
+## Pasada SC.1 — El color se deriva del estilo, no de un selector
+
+Se quitó la pregunta "¿De qué color es?" (la rueda de doce al crear una bebida): nadie piensa
+una cerveza como un color. En su lugar el color sale del **estilo**, dato que el catálogo ya
+quiere. **La cascada pasa a CUATRO niveles:** (1) marca — `Beer.color` (HEX del empaque, sin
+cambios); (2) **estilo** — NUEVO, `styleColorFor(Beer.style)` mapea el estilo a un tono de la
+rueda; (3) foto; (4) hora (→ `#N mod 5`).
+
+**El mapa estilo→color** es por palabra clave (minúsculas + sin acentos + substring), ordenado
+por especificidad ("Lager negra" cae en oscura antes que "Lager" en dorada). Un estilo fuera del
+mapa, vacío, o un **cóctel** (sin estilo) → null → baja al nivel 3. Las **oscuras** (porter/
+stout/negra) van a **índigo** `#5B54C8` (la rueda no tiene negro/café — decisión de Edgar). Usa
+5 tonos (brasa, ámbar, índigo, rosa, rojo), el rango real de color de una cerveza.
+
+`Beer.color` se queda (guarda solo la marca); el color de estilo NO se persiste, se deriva en la
+cascada. `Beer.style` sigue **texto libre** (lista cerrada anotada al backlog). Verificado: el
+selector ya no aparece; el mapa y la cascada de 4 niveles con tests; ejecutada sobre datos reales
+(Septimazo IPA → nivel 2 brasa; Coffee Stout → nivel 2 índigo; Mojito → nivel 3).

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { WHEEL, BRAND_SEED, brandColorFor, inkFor, contrastRatio, snapToWheel, hourColor, resolveCardColor, rgbToHsl, dominantWheel } from "./colors";
+import { WHEEL, BRAND_SEED, brandColorFor, styleColorFor, inkFor, contrastRatio, snapToWheel, hourColor, resolveCardColor, rgbToHsl, dominantWheel } from "./colors";
 
 const hexToRgb = (h: string) => [0, 2, 4].map((i) => parseInt(h.replace("#", "").slice(i, i + 2), 16));
 
@@ -75,22 +75,47 @@ describe("nivel 3 · hora (Bogotá)", () => {
   });
 });
 
-describe("la cascada resuelve los tres niveles + respaldo", () => {
+describe("nivel 2 · estilo → color (SC.1)", () => {
+  it("mapea los estilos comunes al tono correcto", () => {
+    expect(styleColorFor("IPA")).toBe("#FF6B35"); // cobriza
+    expect(styleColorFor("American Pale Ale")).toBe("#FF6B35");
+    expect(styleColorFor("Lager")).toBe("#F2A016"); // dorada
+    expect(styleColorFor("Pilsner")).toBe("#F2A016");
+    expect(styleColorFor("Weissbier")).toBe("#F2A016");
+    expect(styleColorFor("Sour")).toBe("#D15C86"); // rosada
+    expect(styleColorFor("Rosé")).toBe("#D15C86");
+  });
+  it("las oscuras van a índigo (la rueda no tiene negro)", () => {
+    expect(styleColorFor("Porter")).toBe("#5B54C8");
+    expect(styleColorFor("Stout")).toBe("#5B54C8");
+    expect(styleColorFor("Lager negra")).toBe("#5B54C8"); // 'negra' gana a 'lager'
+  });
+  it("estilo fuera del mapa, vacío o cóctel (sin estilo) → null (baja al nivel 3)", () => {
+    expect(styleColorFor("Cerveza saborizada")).toBeNull();
+    expect(styleColorFor("Mono bandido")).toBeNull();
+    expect(styleColorFor("")).toBeNull();
+    expect(styleColorFor(null)).toBeNull();
+  });
+});
+
+describe("la cascada de CUATRO niveles + respaldo (SC.1)", () => {
   const t = new Date(Date.UTC(2026, 8, 12, 4, 0)); // 11 p.m. Bogotá
   it("nivel 1 gana: color de marca", () => {
-    expect(resolveCardColor({ brandColor: "#1E7A4B", photoColor: "#CE2F2F", lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#1E7A4B");
+    expect(resolveCardColor({ brandColor: "#1E7A4B", styleColor: "#FF6B35", photoColor: "#CE2F2F", lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#1E7A4B");
   });
-  it("sin marca → nivel 2: la foto", () => {
-    expect(resolveCardColor({ brandColor: null, photoColor: "#CE2F2F", lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#CE2F2F");
+  it("sin marca → nivel 2: el estilo (antes que la foto)", () => {
+    expect(resolveCardColor({ brandColor: null, styleColor: "#FF6B35", photoColor: "#CE2F2F", lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#FF6B35");
   });
-  it("sin marca ni foto → nivel 3: la hora del último check-in", () => {
-    expect(resolveCardColor({ brandColor: null, photoColor: null, lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#3E8F6B");
+  it("sin marca ni estilo → nivel 3: la foto", () => {
+    expect(resolveCardColor({ brandColor: null, styleColor: null, photoColor: "#CE2F2F", lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#CE2F2F");
+  });
+  it("sin marca, estilo ni foto → nivel 4: la hora del último check-in", () => {
+    expect(resolveCardColor({ brandColor: null, styleColor: null, photoColor: null, lastCheckInAt: t, hasRealWindow: true, outingNumber: 3 }).hex).toBe("#3E8F6B");
   });
   it("sin ventana real → respaldo #N mod 5", () => {
-    expect(resolveCardColor({ brandColor: null, photoColor: null, lastCheckInAt: t, hasRealWindow: false, outingNumber: 7 }).hex).toBe(WHEEL[7 % 5].hex);
+    expect(resolveCardColor({ brandColor: null, styleColor: null, photoColor: null, lastCheckInAt: t, hasRealWindow: false, outingNumber: 7 }).hex).toBe(WHEEL[7 % 5].hex);
   });
   it("la tinta viene emparejada con el color", () => {
-    const r = resolveCardColor({ brandColor: "#3A6FD8", outingNumber: 1 });
-    expect(r.ink).toBe("#FBFCFF");
+    expect(resolveCardColor({ styleColor: "#5B54C8", outingNumber: 1 }).ink).toBe(inkFor("#5B54C8"));
   });
 });
