@@ -62,9 +62,9 @@ describe("desglose (§8) — de dónde salieron", () => {
     expect(lines.find((l) => l.key === "bebidas")!.points).toBe(156); // 18+48+90
     expect(lines.find((l) => l.key === "social")!.points).toBe(24); // 12+12
   });
-  it("la frase de la ética cierra el desglose", () => {
-    expect(desgloseEthos(214, 428, 49, 2450)).toBe("214 bebidas dieron 428 puntos. 49 salidas dieron 2.450. La app te paga por salir, no por tomar.");
-    expect(desgloseEthos(1, 2, 1, 50)).toBe("1 bebida dio 2 puntos. 1 salida dio 50. La app te paga por salir, no por tomar.");
+  it("la frase cierra el desglose con solo los números (PT.1: sin moraleja)", () => {
+    expect(desgloseEthos(214, 428, 49, 2450)).toBe("214 bebidas: 428 puntos. 49 salidas: 2.450.");
+    expect(desgloseEthos(1, 2, 1, 50)).toBe("1 bebida: 2 puntos. 1 salida: 50.");
   });
 });
 

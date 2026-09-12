@@ -1268,3 +1268,23 @@ propia tarea. Verificado por ejecución (Playwright, dev): la secuencia de gener
 post en el caso pobre), preview real en la caja, cambio de proporción al alternar, caché con 0
 requests al volver, y las stats/encabezado del meta. El camino de escritorio (sin compartir nativo)
 descarga la imagen; el estado de error se revisó por código (mismo mapeo honesto de RU.6.2).
+
+## Pasada PT.1 — Dos correcciones en el desglose de puntos
+
+Dos ajustes de copy/UI sobre el sistema de puntos (Pasada PT):
+
+1. **El cierre del desglose ya no usa "pagar".** "La app te paga por salir, no por tomar" afirmaba,
+   leído literal, que la app da plata — y "pagar" en la app ya es dinero (los retos de la ruleta:
+   "pagas un cuarto de la ronda"). Se dejó **solo los números** (decisión de Edgar): "N bebidas: X
+   puntos. M salidas: Y." El contraste bebidas vs salidas se ve sin moraleja — la regla de la
+   Pasada T (breve gana). Cambia `desgloseEthos` y su test.
+
+2. **Fuera la línea del próximo hito en el perfil.** "Cuatro salidas más" traducía el hito a
+   salidas pero no lo nombraba → un acertijo (y los hitos hoy son números redondos sin nombre). Se
+   quitó de `PointsCard` la línea EN SALIDAS y su barra; la tarjeta queda con el **número y el
+   ritmo** (más los chips de hitos alcanzados y el desglose). El cálculo (`nextSalidas`,
+   `nextHitoPoints`, `hitoEnSalidas`, con sus tests) se queda: la línea **vuelve cuando los hitos
+   tengan nombre** (anotado en BACKLOG).
+
+Verificado por ejecución (perfil de Ana en dev): la tarjeta sin la línea/barra, y el desglose
+cerrando con "3 bebidas: 52 puntos. 2 salidas: 100.". tsc y 154 tests en verde.
