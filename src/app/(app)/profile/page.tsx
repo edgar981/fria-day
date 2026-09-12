@@ -111,7 +111,7 @@ export default async function ProfilePage() {
           </section>
         )}
 
-        <AccountAccess email={userEmail} hasPassword={credentialCount > 0} passkeys={passkeys} />
+        <AccountAccess userId={user.id} email={userEmail} hasPassword={credentialCount > 0} passkeys={passkeys} />
 
         <div style={{ marginTop: 4 }}>
           <LogoutButton />

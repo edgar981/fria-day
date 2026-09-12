@@ -101,6 +101,17 @@ export const auth = betterAuth({
         // se revierte el usuario y se aborta (nada de sesión a medias). Si esto lanza,
         // el plugin no persiste la passkey ni crea sesión.
         async afterVerification({ ctx, user, context }) {
+          // Un usuario YA existente agregando una passkey ("Agregar passkey a este
+          // dispositivo" en el perfil): el plugin llama a este hook igual que en el alta
+          // passkey-first, pero aquí NO hay invitación que reclamar ni usuario que crear
+          // — la passkey se registra al usuario de la sesión (targetUserId = user.id ya
+          // resuelto por el plugin). Sin este corte se exigía un código y se lanzaba
+          // "Ese código acaba de ser usado…", dejando addPasskey roto con 500 (verificado).
+          // El alta passkey-first crea el usuario MÁS ABAJO, así que aquí aún no existe:
+          // "ya existe" ⇒ es un add-passkey, no un alta.
+          const already = await prisma.user.findUnique({ where: { id: user.id }, select: { id: true } });
+          if (already) return;
+
           const { code, avatar } = parseContext(context);
           const displayName = (user.displayName ?? user.name ?? "Anónimo").trim() || "Anónimo";
 

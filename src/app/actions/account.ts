@@ -97,3 +97,57 @@ export async function setAccountPassword(
   revalidatePath("/profile");
   return { ok: true };
 }
+
+/**
+ * Cambia (ROTA) la contraseña de un usuario ya autenticado, SIN pedir la anterior
+ * (RC · punto 1). Para quien tiene passkey y olvidó la contraseña pero sigue dentro:
+ * no puede usar changePassword (exige la actual) y auth.api.setPassword LANZA
+ * PASSWORD_ALREADY_SET si ya hay una (verificado en el fuente de Better Auth).
+ *
+ * Rotamos con el context de Better Auth: su MISMO hasher + updateAccount, tal como
+ * changePassword por dentro, pero sin exigir la contraseña actual. Atómico (un solo
+ * update), sin ventana en la que la credencial quede borrada.
+ *
+ * NOTA de seguridad: el FaceID que pide la UI antes de llamar aquí es un step-up de
+ * CLIENTE (authClient.signIn.passkey refresca la sesión). Better Auth no permite atar
+ * una ceremonia de passkey a esta operación sin endpoints propios, así que el servidor
+ * autoriza por la SESIÓN válida. Evaluado y aceptado (RC · punto 1): el step-up de
+ * cliente cubre el caso real (teléfono desbloqueado en mano), el servidor confía en la
+ * sesión. Si algún día hace falta blindaje de servidor, es un endpoint propio aparte.
+ */
+export async function changeAccountPassword(
+  password: string,
+  expectedUserId: string,
+): Promise<{ ok: true } | { ok: false; error: string; code?: "session_switched" }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: "Inicia sesión de nuevo" };
+  // GUARD de identidad (RC.1): el step-up FaceID usa signIn.passkey, que es un LOGIN y
+  // cambia la sesión a quien asertó. Si en el dispositivo hay passkeys de dos cuentas y
+  // se asertó otra, la sesión ahora es de esa otra cuenta. Rotar aquí le cambiaría la
+  // contraseña a la cuenta EQUIVOCADA. Comparamos contra el id capturado por el cliente
+  // ANTES de la ceremonia: si no coinciden, abortamos sin tocar nada (el cliente cierra
+  // la sesión y manda a login). Verificado por ejecución (RC.1). El servidor es la
+  // compuerta real; verify-authentication del plugin no compara con la sesión previa.
+  if (user.id !== expectedUserId) {
+    return { ok: false, error: "La sesión cambió de cuenta. Vuelve a entrar.", code: "session_switched" };
+  }
+  if (typeof password !== "string" || password.length < 8) {
+    return { ok: false, error: "La contraseña necesita mínimo 8 caracteres" };
+  }
+  try {
+    const ctx = await auth.$context;
+    const account = await ctx.internalAdapter.findCredentialAccount(user.id);
+    if (!account || !account.password) {
+      // No hay contraseña que rotar (llegó por un camino inesperado): cae al alta
+      // normal, que ENLAZA la credencial. setPassword sí funciona cuando no existe.
+      await auth.api.setPassword({ body: { newPassword: password }, headers: await headers() });
+    } else {
+      const passwordHash = await ctx.password.hash(password);
+      await ctx.internalAdapter.updateAccount(account.id, { password: passwordHash });
+    }
+  } catch {
+    return { ok: false, error: "No se pudo cambiar la contraseña" };
+  }
+  revalidatePath("/profile");
+  return { ok: true };
+}

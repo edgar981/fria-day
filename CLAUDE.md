@@ -129,6 +129,27 @@ Chromium de verdad funcionan. Escribir un script `.cjs` con `chromium.launch()`
 y ejecutarlo con `node`. Si el navegador no está en caché: `npx playwright
 install chromium`.
 
+### Gatear rutas con passkey en el preview (RC.1)
+
+Las passkeys están atadas al **dominio** (rpID): la passkey de producción de Edgar
+(`fria-day.vercel.app`) NO sirve en un preview (dominio distinto). Para gatear un
+flujo que pide passkey en el preview:
+
+1. Entra al preview con **correo + contraseña** de una cuenta de gate (`gate-ana@…`).
+   Si la cuenta aún no tiene contraseña, pónsela primero desde **Perfil → Cuenta y
+   acceso** (necesita un correo de recuperación antes).
+2. En **Perfil → Cuenta y acceso → "Agregar passkey a este dispositivo"**, registra
+   una passkey NUEVA contra el dominio del preview.
+3. Prueba ahí el flujo con passkey (FaceID/Touch ID reales del dispositivo).
+
+Para verificar flujos de passkey **por ejecución headless**, Playwright expone
+autenticadores virtuales por CDP: `client.send("WebAuthn.enable")` +
+`addVirtualAuthenticator({ protocol:"ctap2", transport:"internal", hasResidentKey:true,
+hasUserVerification:true, isUserVerified:true, automaticPresenceSimulation:true })`.
+Registran y asertan credenciales sin hardware; así se ejerció el caso de dos cuentas
+con passkey en el mismo dispositivo (RC.1). Requiere rpID = `localhost`
+(`BETTER_AUTH_URL=http://localhost:3000` en dev).
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # This is NOT the Next.js you know
