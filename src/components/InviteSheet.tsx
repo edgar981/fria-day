@@ -6,6 +6,7 @@ import { ShareCodeButton } from "@/components/ShareCodeButton";
 import { QrCode } from "@/components/QrCode";
 import { formatDay } from "@/lib/format";
 import { useSheetDrag } from "@/lib/useSheetDrag";
+import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
 
 export interface InviteRow {
   id: string;
@@ -30,6 +31,7 @@ export function InviteSheet({
   invitations: InviteRow[];
 }) {
   const { dragY, dragging, dragHandlers } = useSheetDrag(onClose);
+  const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
 
   useEffect(() => {
     if (!open) return;
@@ -62,7 +64,7 @@ export function InviteSheet({
           display: "flex",
           flexDirection: "column",
           gap: 16,
-          transform: `translateY(${dragY}px)`,
+          transform: sheetEnterTransform(entered, dragY),
           transition: dragging ? "none" : "transform 0.25s ease",
         }}
       >

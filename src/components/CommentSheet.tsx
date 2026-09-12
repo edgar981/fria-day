@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { loadSessionComments } from "@/app/actions/sessions";
 import { SessionComments } from "@/components/SessionComments";
+import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
 
 /**
  * Hoja inferior para comentar desde el feed sin salir del feed (I-3.1 §3). Sube con la
@@ -36,6 +37,7 @@ export function CommentSheet({
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
   const drag = useRef({ startY: 0, prevY: 0, prevT: 0, vy: 0, active: false });
+  const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
 
   useEffect(() => setMounted(true), []);
 
@@ -112,7 +114,7 @@ export function CommentSheet({
           borderRadius: "30px 30px 0 0",
           display: "flex",
           flexDirection: "column",
-          transform: `translateY(${dragY}px)`,
+          transform: sheetEnterTransform(entered, dragY),
           transition: dragging ? "none" : "transform 0.25s ease",
         }}
       >

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/Icon";
 import { useSheetDrag } from "@/lib/useSheetDrag";
+import { useSheetEnter, sheetEnterTransform } from "@/lib/useSheetEnter";
 import { ROULETTE_DYNAMICS } from "@/lib/roulette";
 
 // Mismos umbrales que el gesto de reacciones (I-1): tap corto, hold a 400ms, y un
@@ -27,6 +28,7 @@ export function RouletteMenu() {
   const gesture = useRef({ x: 0, y: 0, moved: false, held: false, endedAt: 0 });
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { dragY, dragging, dragHandlers } = useSheetDrag(() => setOpen(false));
+  const entered = useSheetEnter(open); // RU.6 · punto 4: entrada con easing
 
   useEffect(() => setMounted(true), []);
   useEffect(() => { router.prefetch("/sessions/new"); }, [router]);
@@ -34,7 +36,15 @@ export function RouletteMenu() {
 
   function goNew() { router.push("/sessions/new"); }
   function openMenu() { setOpen(true); }
-  function pickDynamic(key: string) { setOpen(false); router.push(`/ruleta?dyn=${key}`); }
+  function pickDynamic(key: string) {
+    // RU.6 · punto 3: igual que el selector de reacciones (I-1), soltar el hold NO elige.
+    // El click sintético que el release dispara sobre la dinámica bajo el dedo cae dentro de
+    // SYNTH_CLICK_MS de `endedAt` → se ignora. Un tap posterior (deliberado) sí elige. En
+    // ratón/escritorio `endedAt` es 0, así que el click normal pasa.
+    if (Date.now() - gesture.current.endedAt < SYNTH_CLICK_MS) return;
+    setOpen(false);
+    router.push(`/ruleta?dyn=${key}`);
+  }
 
   function onTouchStart(e: React.TouchEvent) {
     const t = e.touches[0];
@@ -121,11 +131,15 @@ export function RouletteMenu() {
                 background: "var(--color-noche)",
                 borderTop: "1px solid var(--color-borde)",
                 borderRadius: "22px 22px 0 0",
-                padding: "12px 16px calc(env(safe-area-inset-bottom,0px) + 18px)",
+                // RU.6 · punto 3: zona muerta inferior — la hoja se abre por un hold sobre el
+                // "+" (abajo-centro), así que el dedo queda sobre esa franja al soltar. Con ~64px
+                // de respiro ninguna dinámica cae bajo el dedo (medido: ~19px de aire sobre la
+                // última); el resto lo cubre la guarda de click sintético en pickDynamic.
+                padding: "12px 16px calc(env(safe-area-inset-bottom,0px) + 64px)",
                 display: "flex",
                 flexDirection: "column",
                 gap: 12,
-                transform: `translateY(${dragY}px)`,
+                transform: sheetEnterTransform(entered, dragY),
                 transition: dragging ? "none" : "transform 0.25s ease",
               }}
             >

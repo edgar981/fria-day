@@ -1041,3 +1041,32 @@ auto-share falla porque la ventana expiró, la imagen ya generada se guarda y se
 salida). Regla para futuro: **cualquier flujo generar-luego-compartir en iOS debe separar la
 generación lenta del `share()`** con un toque fresco; no se puede `await` varios segundos y luego
 llamar a `share()`.
+
+## RU.6 — Compartir desde el detalle, gesto del "+" y entrada de las hojas
+
+**Punto 1 · Compartir no funcionaba desde el detalle del DUEÑO (regresión de DS).** El
+`ShareButton` del menú del dueño (`variant="menuItem"`) vivía **dentro** de `{menuOpen && (…)}`
+y cerraba el menú al ABRIR (`onAfterOpen → setMenuOpen(false)`): en el mismo commit React
+desmontaba el subárbol del menú —con el botón y su portal— así que el `setOpen(true)` se
+descartaba y la hoja nunca aparecía. Confirmado por ejecución: feed (`bar`) y detalle de
+no-dueño (`icon`) funcionaban; solo el dueño caía en el camino roto. **Fix:** `ShareButton`
+recibe `onClose` en vez de `onAfterOpen`; el menú queda abierto **debajo** de la hoja (tapado)
+y se cierra cuando la hoja se cierra. Regla: **una hoja disparada desde un menú no debe cerrar
+ese menú al abrir** (lo desmonta); cerrarlo al terminar.
+
+**Punto 3 · El hold del "+" elegía dinámica al soltar.** La hoja de dinámicas es inferior:
+sus ítems quedaban justo bajo el dedo y `pickDynamic` no filtraba el click sintético del
+release. Se aplica el patrón del selector de reacciones (I-1): (1) **guarda de click
+sintético** — se ignora el click dentro de `SYNTH_CLICK_MS` (600 ms) de `endedAt`, así soltar
+NO elige y un tap posterior sí; (2) **zona muerta inferior** (~64px de respiro) para que
+ninguna dinámica quede bajo el dedo (medido: ~19px de aire sobre la última). Verificado con
+toques sintéticos: hold abre → soltar no navega → tap elige.
+
+**Punto 4 · Entrada de las hojas (decisión de Edgar: unificar todas).** Hallazgo: **ninguna**
+hoja deslizaba al entrar —ni la de bebida, la referencia— todas aparecían de golpe (solo tenían
+`transition` para el arrastre). Se agrega un deslizamiento de entrada (100%→0 con easing) a
+**todas** (`BeerSheet`, `CommentSheet`, `InviteSheet`, `ShareButton`, `RouletteMenu`) vía un
+hook compartido `useSheetEnter(open)` + `sheetEnterTransform(entered, dragY)`. Reusa la MISMA
+transición que ya tenían (sin keyframe), y arranca en `translateY(100%)` cambiando a `0` un
+frame después de abrir (rAF) — así no pisa el `translateY(dragY)` del gesto (la trampa de
+RU.5). Se reinicia al cerrar para volver a deslizar en la próxima apertura.
