@@ -343,3 +343,14 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   tarjetas del feed (la query del feed no trae aún esos campos).
 - **Alcance:** su propia pasada — decidir la dosis de color en el feed (franja fina vs cabecera),
   traer el color en la query del feed, y no competir con la legibilidad del contenido.
+
+## Hitos con nombre — y con eso, la línea del próximo hito (Pasada PT.1)
+
+- **Qué:** darles **nombre y sentido** a los hitos. Hoy son números redondos (1.000, 5.000, y de
+  ahí cada 5.000) sin nombre propio, así que traducirlos a salidas ("Cuatro salidas más para
+  llegar a 500") es un acertijo: no dice a QUÉ se llega.
+- **Estado:** en PT.1 se quitó del perfil la **línea/barra del próximo hito** (la tarjeta quedó con
+  el número y el ritmo). El cálculo sigue en `points-queries` (`nextSalidas`, `nextHitoPoints`,
+  `lastHitoPoints`) y `hitoEnSalidas` con sus tests — listo para volver.
+- **Cuándo vuelve la línea:** cuando los hitos tengan nombre. Ahí la línea del próximo hito
+  (texto + barra en `PointsCard`) se re-activa nombrando el destino, no un número pelado.

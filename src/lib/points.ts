@@ -180,12 +180,13 @@ export function buildDesglose(byAction: Partial<Record<PointAction, number>>): D
 const nf = (n: number) => n.toLocaleString("es-CO");
 
 /**
- * La frase que cierra el desglose y resume la ética (§8): "N bebidas dieron X puntos. M salidas
- * dieron Y. La app te paga por salir, no por tomar." bebidas = grupo de bebidas (registrar +
- * calificar + primera vez), salidas = registrar salida, coherente con las líneas de arriba.
+ * La frase que cierra el desglose (§8): SOLO los números, el contraste se ve sin moraleja (regla de
+ * la Pasada T). "N bebidas: X puntos. M salidas: Y." bebidas = grupo de bebidas (registrar +
+ * calificar + primera vez), salidas = registrar salida, coherente con las líneas de arriba. (PT.1:
+ * se quitó "La app te paga por salir, no por tomar" — "pagar" en la app es dinero, ver los retos.)
  */
 export function desgloseEthos(bebidasCount: number, bebidasPoints: number, salidasCount: number, salidasPoints: number): string {
-  const b = bebidasCount === 1 ? "bebida dio" : "bebidas dieron";
-  const s = salidasCount === 1 ? "salida dio" : "salidas dieron";
-  return `${nf(bebidasCount)} ${b} ${nf(bebidasPoints)} puntos. ${nf(salidasCount)} ${s} ${nf(salidasPoints)}. La app te paga por salir, no por tomar.`;
+  const b = bebidasCount === 1 ? "bebida" : "bebidas";
+  const s = salidasCount === 1 ? "salida" : "salidas";
+  return `${nf(bebidasCount)} ${b}: ${nf(bebidasPoints)} puntos. ${nf(salidasCount)} ${s}: ${nf(salidasPoints)}.`;
 }

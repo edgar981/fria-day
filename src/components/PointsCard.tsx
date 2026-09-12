@@ -5,10 +5,10 @@ import type { PointsSummary } from "@/lib/points-queries";
 
 /**
  * Los puntos en el perfil (Pasada PT · §6, §8). Tarjeta OSCURA con franja de espuma (no el
- * degradado ámbar, para no competir con el total histórico que va debajo). Tres piezas: el
- * número, el ritmo (puntos por salida) y el próximo hito EN SALIDAS ("Dos salidas más"). Debajo,
- * "De dónde salieron" despliega el desglose (mayor a menor) y cierra con la frase de la ética.
- * El número solo sube: aquí nunca hay nada que presione (§2).
+ * degradado ámbar, para no competir con el total histórico que va debajo). El número y el ritmo
+ * (puntos por salida); debajo, los chips de hitos alcanzados y "De dónde salieron", que despliega
+ * el desglose (mayor a menor) y cierra con los números del contraste. El número solo sube: aquí
+ * nunca hay nada que presione (§2). PT.1: se quitó la línea/barra del próximo hito (ver el código).
  */
 export function PointsCard({ summary }: { summary: PointsSummary }) {
   const [open, setOpen] = useState(false);
@@ -27,22 +27,13 @@ export function PointsCard({ summary }: { summary: PointsSummary }) {
       <div style={{ padding: "16px 20px 18px" }}>
         <div style={{ font: "700 11px/1 var(--font-sans)", letterSpacing: ".16em", color: "var(--color-tenue)" }}>TUS PUNTOS</div>
         <div style={{ font: "800 44px/1 var(--font-display)", letterSpacing: "-.02em", color: "var(--color-espuma)", marginTop: 8 }}>{nf(summary.total)}</div>
-        <div style={{ font: "500 13.5px var(--font-sans)", color: "var(--color-tenue)", marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
-          <span>{ritmoLabel}</span>
-          {summary.nextSalidas && (
-            <>
-              <span aria-hidden style={{ opacity: 0.5 }}>·</span>
-              <span style={{ color: "var(--color-ambar)", fontWeight: 600 }}>{summary.nextSalidas}</span>
-            </>
-          )}
+        {/* PT.1: solo el número y el ritmo. La línea del próximo hito EN SALIDAS ("Dos salidas
+            más") y su barra se quitaron: traducían el hito a salidas sin nombrarlo, y los hitos
+            hoy son números redondos sin nombre → un acertijo. Vuelven cuando los hitos tengan
+            nombre (ver BACKLOG). El cálculo (summary.nextSalidas/nextHitoPoints) se queda listo. */}
+        <div style={{ font: "500 13.5px var(--font-sans)", color: "var(--color-tenue)", marginTop: 8 }}>
+          {ritmoLabel}
         </div>
-
-        {/* La barra del próximo hito (§6: "una barra y una frase en salidas"). */}
-        {summary.nextHitoPoints != null && (
-          <div aria-hidden style={{ height: 6, borderRadius: 99, background: "var(--color-barra-alta)", overflow: "hidden", marginTop: 12 }}>
-            <div style={{ height: "100%", borderRadius: 99, background: "var(--color-ambar)", width: `${Math.max(2, Math.min(100, Math.round(((summary.total - summary.lastHitoPoints) / (summary.nextHitoPoints - summary.lastHitoPoints)) * 100)))}%` }} />
-          </div>
-        )}
 
         {/* Chips de hitos alcanzados, en orden (§9: el único historial). */}
         {summary.hitos.length > 0 && (
