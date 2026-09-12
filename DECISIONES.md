@@ -1152,3 +1152,88 @@ existentes → el amigo de Edgar queda conectado con el merge, sin backfill.
 etiqueta antes de `circleOf`, que es puro y no se tocó). Feed, permisos, leaderboard y la sección
 del círculo lo heredan. Verificado por ejecución (WebKit) los 6 casos; los 8 de la Pasada C
 (tests de `circleOf`) intactos.
+
+## Pasada SC · TANDA 1 — La cascada de color (datos, sin cambio visual)
+
+El color de la share-card sale de una **cascada de tres niveles, todos leídos del ÚLTIMO
+check-in** (decisión del tablero, turno 4): (1) **marca** — el HEX curado del empaque
+(`Beer.color`), "el verde de la Costeñita es SU verde"; (2) **foto** — el tono dominante ya
+ajustado a la rueda de doce (`SessionPhoto.color`); (3) **hora** — la franja horaria; sin
+ventana real, `#N mod 5`. Todo en `src/lib/colors.ts` (puro, testeado).
+
+**Esquema:** `Beer.color` y `SessionPhoto.color`, ambos `String?`.
+
+**La rueda de doce** (aprobada por Edgar): las 5 de la hora (fijas del tablero) + 7 intermedios
+derivados. Ninguna compite con el ámbar de marca `#F2A016`. **Las tintas están FIJADAS** (no se
+calculan en render) por la regla de contraste (L* ≥ 45 → oscura del mismo matiz; < 45 → crema,
+con caída a crema cuando la oscura no llega); **las 12 parejas y las 22 de marca pasan ≥ 4,5:1**.
+Único color ajustado: 3 Cord. Negra `#9A6B3A → #B5863F` (el original no pasaba).
+
+**Nivel 2 en el CLIENTE:** la extracción del tono dominante va dentro de `compressImage`
+(`image.ts`), con la imagen ya decodificada en canvas — nunca en el servidor, que ya tarda ~4s.
+Vota por matiz sobre la rueda; foto gris → null → baja al nivel 3.
+
+**El selector:** al crear una bebida, la rueda de doce con "¿de qué color es?", opcional y
+saltable. Sin tocar nada → sin color → cascada al nivel 2. Un nombre que matchee el mapa igual
+recibe su color de marca.
+
+**Migración:** `scripts/seed-beer-colors.ts` siembra `Beer.color` (idempotente, dry-run por
+defecto). En dev: 48 bebidas → **25 con color de marca, 23 sin color** (variantes/artesanales/
+cócteles → nivel 2). Prod la corre Edgar.
+
+**Ajuste suelto:** en la tarjeta del feed, sin reacciones ya NO se muestra "Nadie ha brindado";
+la zona queda vacía y el botón Brindar se queda.
+
+**Pendiente:** TANDA 2 (la tarjeta con el color y Big Shoulders) y TANDA 3 (el sheet).
+
+## Pasada SC.1 — El color se deriva del estilo, no de un selector
+
+Se quitó la pregunta "¿De qué color es?" (la rueda de doce al crear una bebida): nadie piensa
+una cerveza como un color. En su lugar el color sale del **estilo**, dato que el catálogo ya
+quiere. **La cascada pasa a CUATRO niveles:** (1) marca — `Beer.color` (HEX del empaque, sin
+cambios); (2) **estilo** — NUEVO, `styleColorFor(Beer.style)` mapea el estilo a un tono de la
+rueda; (3) foto; (4) hora (→ `#N mod 5`).
+
+**El mapa estilo→color** es por palabra clave (minúsculas + sin acentos + substring), ordenado
+por especificidad ("Lager negra" cae en oscura antes que "Lager" en dorada). Un estilo fuera del
+mapa, vacío, o un **cóctel** (sin estilo) → null → baja al nivel 3. Las **oscuras** (porter/
+stout/negra) van a **índigo** `#5B54C8` (la rueda no tiene negro/café — decisión de Edgar). Usa
+5 tonos (brasa, ámbar, índigo, rosa, rojo), el rango real de color de una cerveza.
+
+`Beer.color` se queda (guarda solo la marca); el color de estilo NO se persiste, se deriva en la
+cascada. `Beer.style` sigue **texto libre** (lista cerrada anotada al backlog). Verificado: el
+selector ya no aparece; el mapa y la cascada de 4 niveles con tests; ejecutada sobre datos reales
+(Septimazo IPA → nivel 2 brasa; Coffee Stout → nivel 2 índigo; Mojito → nivel 3).
+
+## Pasada SC · TANDA 2 — El rediseño de la tarjeta (color + Big Shoulders)
+
+La share-card se rehace con la composición del tablero: el **color de la cascada** pintado y
+**Big Shoulders Display** (mayúsculas, "el registro de la carta impresa"). Tres estados por DATO:
+
+- **Con foto** y **sin foto (varias bebidas)** — fondo oscuro `#070B16` + **banda de color**
+  arriba (FriaDay + lugar + fecha en la tinta), y en el cuerpo la foto (si hay) y el recorrido en
+  crema con flechas del color; la mejor de la noche en un recuadro con borde del color; métricas
+  con la `#N` en el color.
+- **Una sola bebida sin foto** (incluye el **caso pobre** retroactivo) — fondo **a todo color**,
+  tinta emparejada, el nombre gigante, y un **pie invertido** (fondo = la tinta) con las métricas.
+  Robusto para las 12 parejas: el contraste color/tinta es simétrico, así el color se lee sobre la
+  tinta y viceversa; cuando la tinta es clara (azul, violeta…) el pie sale claro con texto oscuro.
+
+**El texto cambió** (decisión del turno 4): `arrancó {inicio}` → **`hasta las {último check-in}`**,
+solo cuando hay ventana real; retroactiva (sin ventana) no muestra hora. El color y la hora se
+leen del **último** check-in, un solo criterio que explicar.
+
+**Big Shoulders es variable; satori (0.25, el bundle de `@vercel/og` de Next 16) NO interpola
+ejes** — una fuente variable se renderiza en su master por defecto (fino). Se verificó rasterizando
+un probe: hacen falta **instancias estáticas**. Se embeben **700 y 800** (woff v1, subconjunto
+latin, ~17,3 KB c/u → **~35 KB** al bundle de fuentes); cubren las mayúsculas acentuadas (Á É Í Ó Ú Ñ).
+Syne (la display de la v2) salió; Outfit 400/700 se queda para el texto de apoyo.
+
+`getSessionDetail` ahora trae `Beer.color` y `SessionPhoto.color` (la cascada los necesita). El par
+color/tinta llega resuelto desde la ruta (`resolveCardColor`); la tarjeta solo deriva tonos de
+apoyo (acento suave, barra apagada, pie) del par. Verificado por ejecución sobre datos reales de
+dev (nivel 1 marca: BBC Cajicá `#D79A2B`, Corona `#F5D34B`; nivel 4 hora: Mojito 1:15 am → azul;
+respaldo `#N mod 5`: Cuba Libre → brasa; con foto + story), más el render local de los tres estados.
+
+> El feed también se vuelve una línea de tiempo con temperatura (una franja de color por salida)
+> según el tablero — queda para una pasada aparte (anotado en el backlog).

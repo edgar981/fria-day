@@ -125,7 +125,8 @@ export async function getSessionDetail(id: string, viewerId: string) {
       },
       checkIns: {
         include: {
-          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true } },
+          // SC: `color` es el hex de MARCA curado (nivel 1 de la cascada del share-card).
+          beer: { select: { id: true, name: true, brewery: true, style: true, abv: true, color: true } },
         },
         orderBy: { createdAt: "asc" },
       },
@@ -134,7 +135,8 @@ export async function getSessionDetail(id: string, viewerId: string) {
         orderBy: { createdAt: "asc" },
       }, // Pasada R / I-1.2
       // I-2: fotos de la salida, en orden de subida (carrusel del detalle + share-card).
-      photos: { select: { id: true, url: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
+      // SC: `color` es el tono dominante de la foto ya ajustado a la rueda (nivel 3 de la cascada).
+      photos: { select: { id: true, url: true, color: true }, orderBy: [{ order: "asc" }, { createdAt: "asc" }] },
       // I-3: lista PLANA de comentarios con autor, más viejos primero.
       comments: {
         select: { id: true, body: true, createdAt: true, roundId: true, user: { select: { id: true, displayName: true, avatar: true } } },

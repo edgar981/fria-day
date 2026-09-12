@@ -320,3 +320,26 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   solo esta tarjeta (y el botón "Ver" que la abre).
 - **Disparador:** va **después de unos ajustes al sistema de puntos** que Edgar hará primero
   (decisión de Edgar, 2026-09-12). Retomar cuando esos ajustes estén.
+
+## `Beer.style` como lista cerrada (Pasada SC.1)
+
+- **Qué:** hoy `Beer.style` es texto libre. Con SC.1 el color de la tarjeta (nivel 2) se deriva
+  del estilo por un mapa de palabra clave, que ya lo maneja bien. Pero una **lista cerrada** de
+  estilos comunes mejoraría el catálogo, la **búsqueda por estilo** que ya existe, y haría el
+  mapa estilo→color trivial (sin normalización ni "IPA" vs "India Pale Ale").
+- **Estado:** en dev hay 26 estilos distintos en 44/45 cervezas, con redundancias ("Lager negra"
+  vs "Stout", "Trigo" vs "Wheat Ale" vs "Weissbier" vs "Witbier"). El mapa por keyword las cubre.
+- **Alcance:** es su propia pasada — una lista curada de estilos + un dropdown (o combo con
+  "otro") al crear la bebida + migrar los valores libres existentes a la lista. Decisión de Edgar
+  (2026-09-12): se queda texto libre por ahora; anotado aquí para retomar.
+
+## El feed como "línea de tiempo con temperatura" (Pasada SC · Tanda 2)
+
+- **Qué:** el tablero del rediseño (Tanda 2) previó que el **feed** también use el color de la
+  cascada — cada salida lleva su propia franja/cabecera de color, y dos salidas seguidas se leen
+  como dos temperaturas. Hoy el color de la cascada solo vive en el share-card.
+- **Estado:** SC.2 dejó la cascada (`resolveCardColor`) y `getSessionDetail` trayendo
+  `Beer.color`/`SessionPhoto.color`. La lógica de color es reutilizable; falta llevarla a las
+  tarjetas del feed (la query del feed no trae aún esos campos).
+- **Alcance:** su propia pasada — decidir la dosis de color en el feed (franja fina vs cabecera),
+  traer el color en la query del feed, y no competir con la legibilidad del contenido.

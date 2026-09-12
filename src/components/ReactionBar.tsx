@@ -423,10 +423,9 @@ export function ReactionBar({
   // --- Layout del feed (I-1.2 / 1a): display + barra de tres acciones. ---
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-      {/* --- Display 1a: racimo de emojis (en círculos) + avatares + texto (sin tally) --- */}
-      {total === 0 ? (
-        <span style={{ font: "500 13px var(--font-sans)", color: "var(--color-tenue)" }}>Nadie ha brindado</span>
-      ) : (
+      {/* --- Display 1a: racimo de emojis (en círculos) + avatares + texto (sin tally). Ajuste SC:
+          sin reacciones NO se muestra nada aquí (antes "Nadie ha brindado"); el botón Brindar queda. --- */}
+      {total > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
           {clusterCircles}
           {avatars}

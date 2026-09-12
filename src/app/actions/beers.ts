@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { normalizeKey, type DrinkKind } from "@/lib/domain";
 import { beerSchema } from "@/lib/validation";
+import { brandColorFor } from "@/lib/colors";
 
 export type CreateBeerResult =
   | {
@@ -40,6 +41,9 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
   const brewery = parsed.data.brewery && parsed.data.brewery.trim() ? parsed.data.brewery.trim() : null;
   const nameKey = normalizeKey(name);
   const breweryKey = normalizeKey(brewery ?? "");
+  // SC nivel 1: solo el color de MARCA (el del empaque). El nivel 2 (estilo) NO se guarda aquí:
+  // se deriva de Beer.style en la cascada (SC.1). Sin marca → null → cascada al estilo/foto/hora.
+  const color = brandColorFor(name);
 
   const existing = await prisma.beer.findUnique({
     where: { nameKey_breweryKey: { nameKey, breweryKey } },
@@ -66,6 +70,7 @@ export async function createBeer(input: unknown): Promise<CreateBeerResult> {
       brewery,
       style: style ? style : null,
       abv: abv === "" || abv == null ? null : abv,
+      color,
       nameKey,
       breweryKey,
       createdById: user.id,

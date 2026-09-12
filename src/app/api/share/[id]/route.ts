@@ -11,10 +11,11 @@ import {
   firstTimeDrink,
   outingNumber,
 } from "@/lib/domain";
-import { FORMAT_LABEL, formatAbv, formatDayLong, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
+import { FORMAT_LABEL, formatAbv, formatClock, formatDayLong, formatTimeWindow, joinMeta, shareFileName } from "@/lib/format";
+import { resolveCardColor, styleColorFor } from "@/lib/colors";
 import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
-import { SYNE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
+import { BIG_SHOULDERS_700, BIG_SHOULDERS_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
 // Node runtime (no edge): usamos Prisma + auth por cookie. ImageResponse (next/og)
 // funciona en Node. Nada de esto consume la cuota de Optimización de Imágenes de
@@ -152,7 +153,26 @@ async function handleShare(
   const rated = checkIns.filter((c) => c.rating != null);
   const bestCi = rated.length ? rated.reduce((a, b) => ((b.rating ?? 0) > (a.rating ?? 0) ? b : a)) : null;
   // I-2: la foto es de la salida (primera de SessionPhoto), ya no del check-in.
-  const photoUrl = session.photos.find((p) => isOurBlobUrl(p.url))?.url ?? null;
+  const photo = session.photos.find((p) => isOurBlobUrl(p.url)) ?? null;
+  const photoUrl = photo?.url ?? null;
+
+  // SC · Tanda 2: el color de la cascada se lee del ÚLTIMO check-in (createdAt asc → el último
+  // del arreglo). marca (Beer.color) → estilo (styleColorFor) → foto (SessionPhoto.color, ya
+  // ajustado a la rueda) → hora del último check-in → respaldo #N mod 5. La tinta viene
+  // emparejada. `hasRealWindow` = hay ventana (misma regla que la duración).
+  const last = checkIns[checkIns.length - 1];
+  const hasRealWindow = span >= DURATION_MIN_MINUTES;
+  const { hex: color, ink } = resolveCardColor({
+    brandColor: last.beer.color ?? null,
+    styleColor: styleColorFor(last.beer.style),
+    photoColor: photo?.color ?? null,
+    lastCheckInAt: last.createdAt,
+    hasRealWindow,
+    outingNumber: outing,
+  });
+  // El texto cambió (decisión del tablero): "arrancó {inicio}" → "hasta las {último check-in}".
+  // Solo cuando hay ventana real; retroactiva (sin ventana) no muestra hora.
+  const lastLabel = hasRealWindow ? `hasta las ${formatClock(last.createdAt)}` : null;
 
   const data: ShareData = {
     place: session.placeName,
@@ -172,13 +192,20 @@ async function handleShare(
     })),
     photoUrl,
     single,
+    color,
+    ink,
+    lastLabel,
   };
 
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
   // 500). Embebidas funciona igual en local, preview y prod.
+  // SC · Tanda 2: Big Shoulders Display en instancias ESTÁTICAS 700/800 (satori 0.25 no
+  // interpola ejes variables → una variable saldría en su master fino). Syne salió (era la
+  // display de la v2). Outfit 400/700 se queda para el texto de apoyo.
   const fonts = [
-    { name: "Syne", data: SYNE_800, weight: 800 as const, style: "normal" as const },
+    { name: "Big Shoulders Display", data: BIG_SHOULDERS_700, weight: 700 as const, style: "normal" as const },
+    { name: "Big Shoulders Display", data: BIG_SHOULDERS_800, weight: 800 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_400, weight: 400 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_700, weight: 700 as const, style: "normal" as const },
   ];

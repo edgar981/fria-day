@@ -222,6 +222,11 @@ export function formatTimeWindow(start: Date, end: Date): string {
   return `${clockLabel(start)} – ${clockLabel(end)}`;
 }
 
+/** Una sola hora en reloj de Bogotá ("5:30 am"). Para el "hasta las …" de la share-card (SC). */
+export function formatClock(d: Date): string {
+  return clockLabel(d);
+}
+
 /**
  * El parche en la share-card: hasta 3 nombres tal cual ("Caro, Edgar y Vale"); con
  * más, dos nombres y el resto resumido ("Vale, Edgar y 2 más"). Sin el dueño (va como

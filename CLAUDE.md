@@ -84,6 +84,8 @@ node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
 # recrea salidas con ids nuevos y PointEntry.sessionId no es FK → quedarían huérfanas). La
 # migración inicial a PROD la corre Edgar con --apply (sin --reset, tabla vacía).
 node --env-file=.env --import tsx scripts/backfill-points.ts [--apply] [--reset]
+# Colores de marca (Pasada SC · nivel 1): siembra Beer.color del catálogo (idempotente).
+node --env-file=.env --import tsx scripts/seed-beer-colors.ts [--apply]
 ```
 
 ## Datos de gate (dev) — para que Edgar revise el preview
