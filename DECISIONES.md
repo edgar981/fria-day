@@ -1361,3 +1361,31 @@ condicional (≥1h) y además acotada a una noche plausible (**≤ 20h**): un sp
 Verificado por render (card real): modo foto CLARA/oscura/gente/respaldo (la clara, la que decide el
 sistema, queda legible con velo .46); modo color rico/pobre; story y 4:5; ningún texto en la zona 2;
 y un render REAL contra dev (foto a sangre + el tope de duración). tsc, 154 tests y build en verde.
+
+## Pasada SC · tanda 2.1 — Modo color al tablero (6b) + Bricolage Grotesque
+
+**Modo color** (sin foto) no había aplicado la dirección 6b: usaba una BANDA de color sobre fondo
+oscuro con recorrido horizontal y recuadros (ruleta, "la mejor"). El 6b es una composición propia:
+**el color es el héroe** — fondo a TODO color, todo en la **tinta emparejada** (una sola tinta, la
+jerarquía la hacen tamaño y peso: un segundo tono más claro no pasaría 4,5:1), el lugar grande en
+**minúscula**, el **recorrido VERTICAL** (un trago por línea, que llena la altura), el **highlight
+inline** (primera vez / la mejor — se queda, es la línea que más conversación genera; decisión de
+Edgar), parche y stats. Se **quitó el recuadro de la ruleta** (el recorrido vertical llena el hueco);
+la ruleta/formato/distinct quedan calculados en la ruta pero sin dibujar (reversible). El caso pobre
+va igual: a todo color, tinta, sin el pie invertido.
+
+**Bricolage Grotesque** reemplaza a Big Shoulders **solo en el share-card** (la app sigue con Syne +
+Outfit — no se tocó `layout.tsx` ni `globals.css`). Es variable y satori no interpola → instancia
+estática; la composición usa **un solo peso (800)**, así que el bundle de fuentes **baja de ~35 KB
+(Big Shoulders 700+800) a ~26 KB**. Title Case en los tragos, minúscula en marca y lugar, tracking
+negativo. El recorrido HORIZONTAL del modo foto bajó a **50px** (Bricolage es ~2× más ancha que la
+condensada): con nombres largos reales y 3 ítems el bloque queda a 2 líneas y **NO toca la zona 2**
+(los 640px donde la foto respira) — verificado con overlay; no hizo falta cortar a 2.
+
+## Nota (SC · Turno 6) — `createdAt` no es la hora de la bebida
+
+`createdAt` mide cuándo se REGISTRÓ un check-in, no cuándo se tomó. El mismo dato alimenta tres
+cosas: la **duración**, el **«hasta las X»** del pie y el **nivel 3** de la cascada de color (la hora
+de la franja). Una edición tardía (un check-in agregado días después) distorsiona los tres; el tope
+de ≤20h solo cubre la duración. No se arregla ahora — disparador: si alguien reporta una hora o un
+color que no corresponde a su noche.

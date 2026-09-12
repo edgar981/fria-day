@@ -16,7 +16,7 @@ import { FORMAT_LABEL, formatAbv, formatBreakdownText, formatClock, formatDayLon
 import { resolveCardColor, styleColorFor } from "@/lib/colors";
 import { renderShareCard, renderFontProbe, type ShareData } from "./card";
 import { avatarImg } from "./avatars";
-import { BIG_SHOULDERS_700, BIG_SHOULDERS_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
+import { BRICOLAGE_800, OUTFIT_400, OUTFIT_700 } from "./fonts";
 
 // Node runtime (no edge): usamos Prisma + auth por cookie. ImageResponse (next/og)
 // funciona en Node. Nada de esto consume la cuota de Optimización de Imágenes de
@@ -257,12 +257,11 @@ async function handleShare(
   // Fuentes EMBEBIDAS (S.1): sin fetch en runtime. El fetch al mismo origen fallaba en
   // previews con Deployment Protection (devolvía el HTML del SSO en vez del woff → satori
   // 500). Embebidas funciona igual en local, preview y prod.
-  // SC · Tanda 2: Big Shoulders Display en instancias ESTÁTICAS 700/800 (satori 0.25 no
-  // interpola ejes variables → una variable saldría en su master fino). Syne salió (era la
-  // display de la v2). Outfit 400/700 se queda para el texto de apoyo.
+  // SC · tanda 2.1: Bricolage Grotesque en instancia ESTÁTICA 800 (satori 0.25 no interpola ejes
+  // variables). La composición usa un solo peso → un peso en vez de los dos de Big Shoulders.
+  // Outfit 400/700 se queda para el texto de apoyo (eyebrows, meta, subetiquetas).
   const fonts = [
-    { name: "Big Shoulders Display", data: BIG_SHOULDERS_700, weight: 700 as const, style: "normal" as const },
-    { name: "Big Shoulders Display", data: BIG_SHOULDERS_800, weight: 800 as const, style: "normal" as const },
+    { name: "Bricolage Grotesque", data: BRICOLAGE_800, weight: 800 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_400, weight: 400 as const, style: "normal" as const },
     { name: "Outfit", data: OUTFIT_700, weight: 700 as const, style: "normal" as const },
   ];
