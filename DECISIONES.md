@@ -1616,3 +1616,24 @@ Verificado por ejecución (WebKit, gate-ana en dev): un chip "Con" de usuario (B
 de texto libre ("el primo de Dani", sembrado en el gate) no abre perfil; el racimo abre la hoja (dos
 filas: Tú + Beto) y desde ahí se llega al perfil. Los 8 casos de PA siguen intactos (no se tocó
 esquema, `loadCircle` ni las acciones). 164 tests en verde.
+
+## Pasada SC.4 — La flecha del recorrido no se veía como flecha
+
+En la story real la flecha entre bebidas salía como un muñón, no como flecha.
+
+**La causa NO era la hipótesis** (que Bricolage no incluyera → y satori no hiciera fallback). Verificado
+por render: el glifo `→` (U+2192) **sí existe** en Bricolage y se dibuja bien; también `· × + " " – — #`
+en Bricolage y en Outfit. La flecha del recorrido **ya se dibujaba como forma**, no como carácter:
+barra + un triángulo hecho con el truco de bordes CSS (un `div` 0×0 con `border-left` sólido y
+top/bottom transparentes). **satori no rasteriza ese triángulo** → salía solo la barra = el muñón.
+
+**El arreglo.** La flecha se dibuja con un `<svg>` inline (una `<rect>` para la barra + un `<path>` para
+la cabeza), que satori sí dibuja, y **escala con el tamaño del texto** del recorrido. Igual en story y
+en 4:5. Verificado por ejecución (render directo de `photoCard`): la flecha correcta con 2 y con 5
+bebidas, en story y 4:5.
+
+**Barrido de caracteres no alfanuméricos (lo que pidió revisar).** Todos los que USA la tarjeta se
+dibujan bien: `→` (ya no se usa como glifo, pero renderiza), `·` (eyebrow/meta, Outfit), `+` ("+N" del
+recorrido, Bricolage), `#` ("#N" de la salida, Bricolage), comillas y guiones. El ÚNICO que se rompe es
+`↗` (U+2197): en Bricolage Y en Outfit cae a un emoji de color (azul) — pero **no se usa** en la
+tarjeta. Anotado como riesgo si algún día se mete. 164 tests en verde.
