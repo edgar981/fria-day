@@ -114,7 +114,7 @@ const CATALOG: CatalogItem[] = [
 type Drink = { beer: string; fmt: BeerFormat; qty: number; rating: number | null; at?: [number, number] };
 type React = { by: string; emoji: string }; // by = key de user; emoji = clave de reacción (RK): brindis/fuego/risa/baba/corazon/fiesta
 type Comment = { by: UserKey; body: string }; // I-3: comentarios de gate
-type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; drinks: Drink[]; reactions: React[]; comments?: Comment[] };
+type SessionSpec = { owner: UserKey; daysAgo: number; place: string; tags: UserKey[]; freeTags?: string[]; drinks: Drink[]; reactions: React[]; comments?: Comment[] };
 
 // Reacciones repartidas para ejercitar los estados del pie de brindis y las reglas del
 // racimo (I-1.5), VIENDO EL FEED COMO ANA:
@@ -163,6 +163,8 @@ const SESSIONS: SessionSpec[] = [
   },
   {
     owner: "caro", daysAgo: 1, place: "Andrés Carne de Res", tags: ["ana", "beto"],
+    // PA.1: una compañía de TEXTO LIBRE (sin app) para gatear el chip inerte junto a los tocables.
+    freeTags: ["el primo de Dani"],
     drinks: [
       { beer: "Póker", fmt: "BOTELLA", qty: 1, rating: 3 },
       { beer: "Margarita", fmt: "COPA", qty: 2, rating: 5 }, // cóctel qty > 1
@@ -263,7 +265,7 @@ async function main() {
         userId: uid[s.owner],
         date: dayUTC(s.daysAgo),
         placeName: s.place,
-        tags: { create: s.tags.map((t) => ({ taggedUserId: uid[t] })) },
+        tags: { create: [...s.tags.map((t) => ({ taggedUserId: uid[t] })), ...(s.freeTags ?? []).map((ft) => ({ freeText: ft }))] },
         checkIns: {
           create: s.drinks.map((d) => ({
             beerId: beerId[d.beer],
