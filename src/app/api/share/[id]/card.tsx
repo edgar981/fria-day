@@ -134,7 +134,9 @@ function arrow(color: string, key: string, size: number): ReactElement {
   const headW = Math.round(h * 0.62);
   const barEnd = w - headW;
   return (
-    <div key={key} style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: Math.round(size * 0.32), marginRight: Math.round(size * 0.32), paddingBottom: Math.round(size * 0.22) }}>
+    // alignSelf center: en la fila (alineada por baseline) la flecha se centra a la MITAD de la
+    // altura del texto, no en el fondo (SC.4 · ajuste).
+    <div key={key} style={{ display: "flex", alignItems: "center", alignSelf: "center", flex: "none", marginLeft: Math.round(size * 0.32), marginRight: Math.round(size * 0.32) }}>
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
         <rect x="0" y={y - barH / 2} width={barEnd + 1} height={barH} fill={color} />
         <path d={`M${barEnd} ${y - h * 0.42} L${w} ${y} L${barEnd} ${y + h * 0.42} Z`} fill={color} />
