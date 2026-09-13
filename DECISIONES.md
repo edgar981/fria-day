@@ -1675,3 +1675,11 @@ Verificado por ejecución (render del set completo, sprite real): los 16 a 18/24
 el racimo superpuesto a 18px; los 4 nuevos junto a los que se quedan; ningún usuario de dev con avatar
 roto (0 retiradas tras reasignar). El share-card rasteriza desde el mismo `SPRITE`/`resolveAvatar`, así
 que hereda los cambios. 164 tests en verde. El conteo de prod lo corrió Edgar (0 iguanas).
+
+## Pasada SC.5 — La firma de la story
+
+En el header de la tarjeta, "PRIVADO · POR INVITACIÓN" pasa a **"EL PARCHE LLEVA LA CUENTA"** (la firma
+de la marca). Mismo tratamiento: mayúsculas, tracking abierto, tamaño 22, misma posición (derecha, con
+`justify-content: space-between` contra "friaday") — lo que funcionaba era el peso visual balanceando a
+"friaday", no el texto. Aplica a ambos formatos y a los dos modos (color y foto). Verificado por
+ejecución (render story y 4:5): de ancho comparable, no desborda ni empuja "friaday". 164 tests en verde.

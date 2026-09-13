@@ -197,7 +197,7 @@ function brandHeader(ink: string): ReactElement {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flex: "none" }}>
       {disp("friaday", 40, ink, { letterSpacing: -1.4 })}
-      {eyebrow("PRIVADO · POR INVITACIÓN", ink, 22)}
+      {eyebrow("EL PARCHE LLEVA LA CUENTA", ink, 22)}
     </div>
   );
 }
