@@ -45,7 +45,7 @@ export function LeaderboardScreen({
         <div>
           <h1 style={{ font: "800 28px/1 var(--font-display)", letterSpacing: "-.02em", margin: 0 }}>El parche</h1>
           <p style={{ font: "400 13.5px/1.4 var(--font-sans)", color: "var(--color-tenue)", margin: "7px 0 0" }}>
-            El ranking de tu círculo · solo salidas propias
+            El ranking de tu círculo
           </p>
         </div>
         <button
