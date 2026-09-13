@@ -10,7 +10,7 @@ export const AVATAR_KEYS = [
   "chucha",
   "armadillo",
   "condor",
-  "iguana",
+  "firulais",
   "oso-andino",
   // Pasada de ajustes: 6 fauna más (el parche crece y las variantes se agotaban).
   "perezoso",
@@ -38,14 +38,14 @@ export const AVATAR_META: Record<AvatarKey, AvatarMeta> = {
   chucha: { symbol: "av-chucha", bg: "#6E3A1E", label: "Chucha" },
   armadillo: { symbol: "av-armadillo", bg: "#7A5C2E", label: "Armadillo" },
   condor: { symbol: "av-condor", bg: "#5C4A3A", label: "Cóndor" },
-  iguana: { symbol: "av-iguana", bg: "#3A6B4A", label: "Iguana" },
+  firulais: { symbol: "av-firulais", bg: "#7B4F2C", label: "Firulais" },
   "oso-andino": { symbol: "av-oso", bg: "#4A3524", label: "Oso andino" },
   perezoso: { symbol: "av-perezoso", bg: "#6B5A3A", label: "Perezoso" },
   delfin: { symbol: "av-delfin", bg: "#A85A6E", label: "Delfín" },
   colibri: { symbol: "av-colibri", bg: "#2E7D6B", label: "Colibrí" },
   babilla: { symbol: "av-babilla", bg: "#45542B", label: "Babilla" },
   venado: { symbol: "av-venado", bg: "#9C6B3A", label: "Venado" },
-  tortuga: { symbol: "av-tortuga", bg: "#3E6B47", label: "Tortuga" },
+  tortuga: { symbol: "av-tortuga", bg: "#3E8F6B", label: "Tortuga" },
 };
 
 export const ANON_META: AvatarMeta = {

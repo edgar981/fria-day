@@ -1637,3 +1637,41 @@ dibujan bien: `→` (ya no se usa como glifo, pero renderiza), `·` (eyebrow/met
 recorrido, Bricolage), `#` ("#N" de la salida, Bricolage), comillas y guiones. El ÚNICO que se rompe es
 `↗` (U+2197): en Bricolage Y en Outfit cae a un emoji de color (azul) — pero **no se usa** en la
 tarjeta. Anotado como riesgo si algún día se mete. 164 tests en verde.
+
+## Pasada AV — Avatares rediseñados para el racimo de 18px
+
+El diagnóstico del tablero: cuatro avatares ponían su identidad en el detalle interior o en una vista
+de perfil, y a 18px (el racimo de reacciones, donde se ven el 90% de las veces) no quedaba nada. Cuatro
+reglas: cara frontal siempre; la identidad en el borde (rompe el contorno con algo ≥5px en la caja de
+48); trazo mínimo 2.4; tres valores (crema, crema-sombra, tinta) — el color del campo no distingue.
+
+**Iguana → Firulais (migración completa, decisión de Edgar).** La iguana era de perfil y sin rasgo que
+la delatara de frente; sale del set entero (símbolo `av-iguana`, `AVATAR_META`, `AVATAR_KEYS`). Edgar
+verificó que **nadie en producción la tenía**, así que no hubo migración de datos allá; en dev la tenía
+Caro (gate) y se reasignó en el seed a `firulais` (dato de prueba, no script). Entra **Firulais** (perro
+mestizo, campo pardo `#7B4F2C`): la única cara frontal ASIMÉTRICA del set —una oreja parada, otra
+caída—, que es lo que lo hace reconocible a 18px y superpuesto. `scripts/count-avatars.ts` (solo
+lectura) quedó para dimensionar esto; tras reasignar, dev tiene 0 usuarios con clave retirada.
+
+**Perezoso, babilla y tortuga redibujados** (del tablero, `av2-*`): el perezoso lleva la identidad en la
+masa (antifaz que ocupa media cara, excepción declarada a la regla del borde); la babilla es un hocico
+frontal apaisado con dos bultos de ojos sobre el borde y banda de dientes; la tortuga, caparazón que
+llena la caja con la cabeza montada SOBRE el borde (la separa de la media-cúpula del armadillo).
+
+**Recentrado (9 símbolos).** Seis del set intacto (venado, armadillo, colibrí, cóndor, delfín, tucán) y
+tres nuevos estaban descentrados 1–3.5u en la caja de 48; a 18px eso desalinea el racimo. Se corrige con
+un `<g transform="translate(…)">` que envuelve el contenido de cada símbolo (no toca ni una coordenada
+del dibujo). En los nuevos el transform viene en el símbolo; en los intactos se agregó el wrapper.
+
+**Fondos verdes (decisión de Edgar).** Al salir la iguana quedaban dos verdes cercanos; la tortuga pasa
+de `#3E6B47` al **botella `#3E8F6B`** del sistema, para no confundirse con la capibara `#2F6B4F` en el
+mismo racimo.
+
+**Lo que NO se hizo** (a BACKLOG): control de colisión de avatares (el nudge iría en el registro, donde
+el círculo es una sola persona; con disparador: si una colisión confunde de verdad) y el redibujo de
+**delfín y armadillo** (mismo defecto de perfil; Edgar los acepta por ahora, sin disparador).
+
+Verificado por ejecución (render del set completo, sprite real): los 16 a 18/24/46/72 en una captura +
+el racimo superpuesto a 18px; los 4 nuevos junto a los que se quedan; ningún usuario de dev con avatar
+roto (0 retiradas tras reasignar). El share-card rasteriza desde el mismo `SPRITE`/`resolveAvatar`, así
+que hereda los cambios. 164 tests en verde. El conteo de prod lo corrió Edgar (0 iguanas).

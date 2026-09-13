@@ -411,3 +411,21 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   correcto, pero nunca ves cómo te ven los demás (identidad, dos números, sin tu consumo).
 - **Disparador:** si alguien pregunta "¿qué ven los demás de mí?" o al construir onboarding/privacidad.
   Requiere una vista de solo-lectura de tu propia ficha (o un toggle en `/profile`).
+
+## Control de colisión de avatares (Pasada AV)
+
+- **Qué:** al registrarse, preferir un avatar LIBRE en el círculo (arrancar en uno que nadie de tu
+  parche use, en vez de anónimo); cuando el círculo supera el tamaño del set, permitir repetidos.
+- **Disparador:** si una colisión (dos personas con el mismo animal en el feed) genera confusión real.
+- **Por qué esperar:** el nudge se aplicaría en el registro, donde el círculo del nuevo usuario es una
+  sola persona (quien lo invitó) — casi no hay de dónde elegir — y es lógica nueva en el wizard de
+  registro, el flujo más frágil de la app. Además el avatar se edita desde Perfil, así que una
+  colisión cuesta un toque. Se agrandó el set (16) para que además sea menos probable.
+
+## Delfín y armadillo — mismo defecto de legibilidad a 18px (Pasada AV)
+
+- **Qué:** los dos están de perfil y sin cara a tamaño chico (la misma enfermedad que se les trató a
+  babilla y tortuga). El delfín es una mancha crema alargada; el armadillo, media cúpula con la cara a
+  la izquierda en dos puntos.
+- **Disparador:** ninguno por ahora — Edgar los acepta con su defecto. Rehacerlos (cara frontal, las 4
+  reglas del tablero de avatares) si más adelante quiere subir la barra de consistencia del set.

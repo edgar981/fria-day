@@ -78,7 +78,7 @@ function solidPng(w: number, h: number, body: [number, number, number], band: [n
 const USERS = [
   { key: "ana", email: "gate-ana@friaday.test", password: "***REDACTED***", displayName: "Ana", avatar: "capibara" },
   { key: "beto", email: "gate-beto@friaday.test", password: "***REDACTED***", displayName: "Beto", avatar: "condor" },
-  { key: "caro", email: "gate-caro@friaday.test", password: "***REDACTED***", displayName: "Caro", avatar: "iguana" },
+  { key: "caro", email: "gate-caro@friaday.test", password: "***REDACTED***", displayName: "Caro", avatar: "firulais" }, // Pasada AV: la iguana salió del set; Caro pasa a firulais
 ] as const;
 type UserKey = (typeof USERS)[number]["key"];
 
