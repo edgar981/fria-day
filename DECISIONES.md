@@ -1593,3 +1593,26 @@ solicitante (los solicitantes del gate son usuarios solo-display, sin login) —
 de datos + los tests puros. La fuga del rechazo silencioso (el botón vuelve a los 15 días) queda a
 BACKLOG con su disparador (decisión de Edgar), junto con la hoja de brindis, el aviso de solicitud
 entrante y ver tu propia ficha.
+
+## Pasada PA.1 — Los caminos de descubrimiento
+
+De los tres caminos de PA, dos llevaban solo a gente ya en el círculo (cabecera de la tarjeta, fila de
+la Tabla) y uno a alguien fuera (autor de comentario). El caso que motivó la pasada —ver a alguien
+etiquetado en la salida de un amigo y agregarlo— no tenía por dónde. Se habilitan los dos que faltaban:
+
+**1 · Chips "Con": los usuarios se vuelven tocables.** El argumento original (mezclar usuarios con
+texto libre enseña una regla falsa) se cae porque la distinción YA es visible: el usuario tiene avatar,
+el texto libre no — el avatar es la señal. En `SessionCard`/`CompanionChips`, el chip con `taggedUser`
+abre `/u/[id]` (vía `PersonLink`, por estar dentro del Link de la tarjeta); el de `freeText` sigue
+inerte "como hoy" (span plano → un tap lo trata como parte de la tarjeta y va al detalle, no a un
+perfil). Solo el editor de compañía del detalle queda como está (es edición, no descubrimiento).
+
+**2 · La hoja "Quiénes brindaron" (tablero 1b), que PA difirió.** El racimo de avatares del pie pasa de
+adorno a tocable: abre `ReactorsSheet` con cada quien y la reacción que dejó, TU fila primero, y
+avatar+nombre abren su perfil. Se renderiza por `createPortal` al body para que sus enlaces NO queden
+anidados en el Link de la tarjeta. Sin líneas de estado (regla Pasada T).
+
+Verificado por ejecución (WebKit, gate-ana en dev): un chip "Con" de usuario (Beto) abre `/u/[id]`; el
+de texto libre ("el primo de Dani", sembrado en el gate) no abre perfil; el racimo abre la hoja (dos
+filas: Tú + Beto) y desde ahí se llega al perfil. Los 8 casos de PA siguen intactos (no se tocó
+esquema, `loadCircle` ni las acciones). 164 tests en verde.

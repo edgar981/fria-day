@@ -96,10 +96,12 @@ function CompanionChips({ tags, viewerId }: { tags: Tag[]; viewerId: string }) {
       <span style={{ font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>Con</span>
       {tags.map((t) =>
         t.taggedUser ? (
-          <span key={t.id} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "3px 9px 3px 4px", font: "500 12.5px var(--font-sans)" }}>
+          // PA.1: los chips que son USUARIOS abren su perfil (el avatar es la señal); los de texto
+          // libre siguen inertes. PersonLink por estar dentro del Link de la tarjeta.
+          <PersonLink key={t.id} href={profileHref(t.taggedUser.id, viewerId)} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "var(--color-barra-alta)", border: "1px solid var(--color-borde)", borderRadius: 999, padding: "3px 9px 3px 4px", font: "500 12.5px var(--font-sans)" }}>
             <Avatar avatar={t.taggedUser.avatar} size={20} radius={6} />
             {t.taggedUser.id === viewerId ? "tú" : t.taggedUser.displayName}
-          </span>
+          </PersonLink>
         ) : (
           <span key={t.id} style={{ display: "inline-flex", alignItems: "center", background: "transparent", border: "1px dashed #4A3A28", borderRadius: 999, padding: "5px 10px", font: "400 12.5px var(--font-sans)", color: "var(--color-tenue)" }}>
             {t.freeText}

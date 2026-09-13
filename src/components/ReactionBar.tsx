@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toggleReaction } from "@/app/actions/sessions";
 import { REACTIONS, REACTION_LABEL, rankClusterEmojis, reactionPile, type Reaction } from "@/lib/domain";
 import { Avatar } from "@/components/Avatar";
+import { ReactorsSheet } from "@/components/ReactorsSheet";
 import { Icon } from "@/components/Icon";
 import { ReactionGlyph } from "@/components/ReactionGlyph";
 import { ShareButton } from "@/components/ShareButton";
@@ -103,6 +104,7 @@ export function ReactionBar({
 }) {
   const router = useRouter();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [reactorsOpen, setReactorsOpen] = useState(false); // PA.1: hoja "Quiénes brindaron"
   const [draft, setDraft] = useState(""); // borrador de la hoja del feed (se conserva al cerrar)
 
   // Comentar (I-3.1): en el feed abre una hoja inferior (comentar sin salir del feed);
@@ -263,13 +265,23 @@ export function ReactionBar({
   // Avatares: el propio SIEMPRE primero (anillo ámbar) + los más recientes (I-1.5).
   // flex:none para que en la fila social NO se encoja: sin esto los avatares con margen
   // negativo se solapaban con la píldora "Brindaste" cuando el espacio apretaba (RU.1 · §6).
+  // PA.1: el racimo es tocable → abre "Quiénes brindaron". Dentro del Link de la tarjeta (feed):
+  // stopPropagation para no navegar al detalle. Solo se renderiza con total > 0.
   const avatars = (
-    <span style={{ display: "inline-flex", alignItems: "center", flex: "none" }}>
+    <span
+      role="button"
+      tabIndex={0}
+      aria-label="Ver quiénes brindaron"
+      onClick={(e) => { e.stopPropagation(); e.preventDefault(); setReactorsOpen(true); }}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setReactorsOpen(true); } }}
+      style={{ display: "inline-flex", alignItems: "center", flex: "none", cursor: "pointer" }}
+    >
       {pile.visible.map((r, i) => (
         <RingAvatar key={r.userId} reactor={r} viewerId={viewer.id} overlap={i > 0} />
       ))}
     </span>
   );
+  const reactorsSheet = <ReactorsSheet open={reactorsOpen} onClose={() => setReactorsOpen(false)} reactors={entries} viewerId={viewer.id} />;
 
   // El botón Brindar: MISMA lógica de gestos en ambos layouts; solo cambia el estilo.
   // feed → acción de la barra (flex:1, transparente); social → píldora en línea (tablero).
@@ -415,6 +427,7 @@ export function ReactionBar({
           </div>
         )}
         {selectorPortal}
+        {reactorsSheet}
       </div>
     );
   }
@@ -456,6 +469,7 @@ export function ReactionBar({
       )}
 
       {selectorPortal}
+        {reactorsSheet}
     </div>
   );
 }
