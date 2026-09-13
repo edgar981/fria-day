@@ -375,3 +375,39 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
 - **Por qué esperar:** el problema real (Pasada L) era de **normalización**, no de descubrimiento;
   el historial del círculo (~20 bares) basta y no hace falta Google Places ni una tabla. Una
   entidad `Place` es peso muerto hasta que exista una vista que la aproveche.
+
+## La fuga del rechazo silencioso (Pasada PA)
+
+- **Qué:** el botón de la ficha ajena vuelve a "Agregar al parche" a los 15 días de un rechazo. Un
+  solicitante que mire el perfil justo después ve el cambio y **deduce** el rechazo — lo que el diseño
+  del rechazo silencioso quería evitar.
+- **Disparador:** si alguien reporta que "se dio cuenta" de que lo rechazaron, o si el parche crece a
+  un tamaño donde revisar el perfil de alguien cada dos semanas deja de ser un caso raro.
+- **Por qué esperar:** hoy revisar el mismo perfil justo al cruzar el día 15 es un caso rarísimo (ocho
+  personas, dos solicitudes al año). Arreglarlo (p. ej. mostrar "enviada" para siempre a quien pidió,
+  o difuminar la fecha exacta del re-intento) agrega estado sin problema real que resuelva.
+
+## Hoja "Quiénes brindaron" — la pila de avatares tocable (Pasada PA)
+
+- **Qué:** hoy los avatares del brindis en el feed son adorno. Un tap abriría una hoja con cada quien
+  y la reacción que dejó (orden cronológico, tu fila primero), y cada nombre/avatar abre su perfil —
+  el cuarto camino al perfil ajeno del tablero (1b).
+- **Disparador:** su propia pasada. Se dejó fuera de PA (que ya tocaba esquema, `loadCircle` y
+  aislamiento) por ser UI nueva y autocontenida; sin ella la pila sigue de adorno y no se rompe nada.
+  Los otros tres caminos (cabecera de la tarjeta, autor de comentario, fila de la Tabla) ya dan
+  descubrimiento.
+
+## Aviso de que llegó una solicitud (Pasada PA)
+
+- **Qué:** hoy la tarjeta de "quieren entrar" solo se ve si entras a tu perfil — sin badge en la barra
+  (decisión de PA: no es una alarma). Falta un aviso activo cuando llega una solicitud.
+- **Disparador:** cuando exista notificación push, o si alguien reporta que se enteró tarde de una
+  solicitud. Para ocho personas y dos solicitudes al año, ver la tarjeta al entrar al perfil puede
+  bastar.
+
+## Ver tu propia ficha como la ven los demás (Pasada PA)
+
+- **Qué:** tocar tu propio avatar te lleva a `/profile` (tu panel completo), no a tu ficha ajena. Es lo
+  correcto, pero nunca ves cómo te ven los demás (identidad, dos números, sin tu consumo).
+- **Disparador:** si alguien pregunta "¿qué ven los demás de mí?" o al construir onboarding/privacidad.
+  Requiere una vista de solo-lectura de tu propia ficha (o un toggle en `/profile`).

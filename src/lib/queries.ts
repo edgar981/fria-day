@@ -18,6 +18,7 @@ import {
   type SessionData,
   type UserRef,
 } from "@/lib/domain";
+import { relationState, type RelationState } from "@/lib/requests";
 
 /** Set `${userId}|${dayKey}` de TODAS las salidas propias (emparejamiento fecha↔usuario). */
 async function loadRegisteredDays(): Promise<Set<string>> {
@@ -34,13 +35,15 @@ async function loadRegisteredDays(): Promise<Set<string>> {
  * Una sola implementación (circleOf), usada por feed, permisos y leaderboard.
  */
 export async function loadCircle(userId: string): Promise<Set<string>> {
-  // El círculo es la unión de DOS aristas, ambas simétricas y NO transitivas (Pasada CI):
+  // El círculo es la unión de TRES aristas, todas simétricas y NO transitivas (Pasadas CI y PA):
   //  1. Salieron juntos — SessionTag (dueño ↔ etiquetado), como en la Pasada C.
   //  2. Uno invitó al otro — quien creó el código ↔ quien lo redimió (Invitation.usedById).
+  //  3. Se agregaron a mano — JoinRequest ACEPTADA (solicitante ↔ destinatario), Pasada PA. Solo
+  //     `accepted` cuenta: una solicitud pendiente NO da acceso a nada.
   // Así el recién invitado ve las salidas de quien lo invitó aunque aún no haya salido con
-  // nadie del parche. Una sola implementación: feed, permisos, leaderboard y la sección del
-  // círculo la heredan sin tocarse.
-  const [tags, invites] = await Promise.all([
+  // nadie del parche. Una sola implementación: feed, permisos, leaderboard, sugerencias de lugar
+  // y la sección del círculo la heredan sin tocarse.
+  const [tags, invites, requests] = await Promise.all([
     prisma.sessionTag.findMany({
       where: { taggedUserId: { not: null } },
       select: { taggedUserId: true, session: { select: { userId: true } } },
@@ -49,10 +52,15 @@ export async function loadCircle(userId: string): Promise<Set<string>> {
       where: { usedById: { not: null } },
       select: { createdById: true, usedById: true },
     }),
+    prisma.joinRequest.findMany({
+      where: { status: "accepted" },
+      select: { requesterId: true, recipientId: true },
+    }),
   ]);
   const edges = [
     ...tags.map((r) => ({ ownerId: r.session.userId, taggedUserId: r.taggedUserId as string })),
     ...invites.map((i) => ({ ownerId: i.createdById, taggedUserId: i.usedById as string })),
+    ...requests.map((r) => ({ ownerId: r.requesterId, taggedUserId: r.recipientId })),
   ];
   return circleOf(userId, edges);
 }
@@ -409,4 +417,77 @@ export async function getMyInvitations(userId: string) {
     },
     orderBy: { createdAt: "desc" },
   });
+}
+
+// ---- Pasada PA · perfil ajeno y solicitudes ----
+
+export interface ForeignProfile {
+  id: string;
+  displayName: string;
+  avatar: string | null;
+  createdAt: Date;
+  points: number;
+  salidasCount: number;
+  relation: RelationState; // decide la acción de la ficha
+}
+
+/**
+ * La FICHA de otra persona (Pasada PA · §1): identidad + dos números + la relación (para la acción).
+ * SOLO agregados: puntos totales y conteo de salidas. NADA de sesiones, check-ins, racha ni total
+ * histórico — el consumo de otro no se muestra, y esto vale igual dentro o fuera del círculo. `null`
+ * si no existe. `viewerId` decide `relation` (self/circle/sent/addable).
+ */
+export async function getForeignProfile(targetId: string, viewerId: string): Promise<ForeignProfile | null> {
+  const target = await prisma.user.findUnique({
+    where: { id: targetId },
+    select: { id: true, displayName: true, avatar: true, createdAt: true },
+  });
+  if (!target) return null;
+
+  const [ptsAgg, salidasCount, circle, request] = await Promise.all([
+    prisma.pointEntry.aggregate({ where: { userId: targetId }, _sum: { points: true } }),
+    prisma.session.count({ where: { userId: targetId } }),
+    loadCircle(viewerId),
+    prisma.joinRequest.findUnique({
+      where: { requesterId_recipientId: { requesterId: viewerId, recipientId: targetId } },
+      select: { status: true, respondedAt: true },
+    }),
+  ]);
+
+  return {
+    ...target,
+    points: ptsAgg._sum.points ?? 0,
+    salidasCount,
+    relation: relationState({ isSelf: targetId === viewerId, inCircle: circle.has(targetId), request, now: new Date() }),
+  };
+}
+
+export interface PendingRequest {
+  requestId: string;
+  id: string;
+  displayName: string;
+  avatar: string | null;
+  createdAt: Date;
+  points: number;
+}
+
+/** Las solicitudes pendientes que RECIBIÓ el usuario (Pasada PA · §3), más antigua primero. */
+export async function getPendingRequests(viewerId: string): Promise<PendingRequest[]> {
+  const reqs = await prisma.joinRequest.findMany({
+    where: { recipientId: viewerId, status: "pending" },
+    select: { id: true, requester: { select: { id: true, displayName: true, avatar: true, createdAt: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (reqs.length === 0) return [];
+  const ids = reqs.map((r) => r.requester.id);
+  const grouped = await prisma.pointEntry.groupBy({ by: ["userId"], where: { userId: { in: ids } }, _sum: { points: true } });
+  const pts = new Map(grouped.map((g) => [g.userId, g._sum.points ?? 0]));
+  return reqs.map((r) => ({
+    requestId: r.id,
+    id: r.requester.id,
+    displayName: r.requester.displayName,
+    avatar: r.requester.avatar,
+    createdAt: r.requester.createdAt,
+    points: pts.get(r.requester.id) ?? 0,
+  }));
 }

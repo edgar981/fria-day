@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { PersonLink } from "@/components/PersonLink";
+import { profileHref } from "@/lib/profile-link";
 import { Icon } from "@/components/Icon";
 import { Glasses, RatingCell } from "@/components/Glasses";
 import { FoamStrip } from "@/components/FoamStrip";
@@ -169,12 +171,15 @@ export function SessionCard({
     >
       {tagged && <div style={{ height: 4, background: "var(--color-botella)" }} />}
       <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 11 }}>
-        {/* Cabecera */}
+        {/* Cabecera. El avatar y el nombre del dueño abren su perfil (Pasada PA · camino 1a);
+            el resto de la tarjeta sigue navegando al detalle. */}
         <div style={{ display: "flex", alignItems: "flex-start", gap: 11 }}>
-          <Avatar avatar={user.avatar} size={40} radius={13} />
+          <PersonLink href={profileHref(user.id, viewerId)} style={{ display: "flex", flex: "none" }}>
+            <Avatar avatar={user.avatar} size={40} radius={13} />
+          </PersonLink>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ font: "600 17px/1.2 var(--font-sans)" }}>
-              {isOwner ? "Tú" : user.displayName}
+              <PersonLink href={profileHref(user.id, viewerId)}>{isOwner ? "Tú" : user.displayName}</PersonLink>
               {session.placeName ? (
                 <span style={{ color: "var(--color-tenue)", fontWeight: 400 }}> · {session.placeName}</span>
               ) : null}

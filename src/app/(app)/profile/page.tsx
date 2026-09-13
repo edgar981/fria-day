@@ -1,9 +1,10 @@
 import { getAuthenticatorName } from "@better-auth/passkey";
 import { requireUser } from "@/lib/session";
-import { getProfile } from "@/lib/queries";
+import { getProfile, getPendingRequests } from "@/lib/queries";
 import { getPointsSummary } from "@/lib/points-queries";
 import { prisma } from "@/lib/prisma";
 import { PointsCard } from "@/components/PointsCard";
+import { RequestsCard } from "@/components/RequestsCard";
 import { BottomNav } from "@/components/BottomNav";
 import { ProfileAvatarEditor } from "@/components/ProfileAvatarEditor";
 import { AccountAccess } from "@/components/AccountAccess";
@@ -28,6 +29,7 @@ export default async function ProfilePage() {
   // solo las métricas personales (stats, breakdown propio, racha).
   const { stats, breakdown, streak } = await getProfile(user.id);
   const points = await getPointsSummary(user.id);
+  const pendingRequests = await getPendingRequests(user.id);
   const [passkeyRows, credentialCount] = await Promise.all([
     prisma.passkey.findMany({
       where: { userId: user.id },
@@ -52,6 +54,9 @@ export default async function ProfilePage() {
       <div className="pb-scroll">
       <main style={{ padding: "calc(18px + env(safe-area-inset-top)) 18px 0", display: "flex", flexDirection: "column", gap: 18 }}>
         <ProfileAvatarEditor displayName={user.displayName} avatar={user.avatar ?? null} />
+
+        {/* Solicitudes pendientes (Pasada PA · §3): entre el nombre y los puntos, SOLO si hay. */}
+        {pendingRequests.length > 0 && <RequestsCard requests={pendingRequests} />}
 
         {/* Los puntos (PT §6): arriba del total histórico, tarjeta oscura para no competir. */}
         <PointsCard summary={points} />

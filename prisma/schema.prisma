@@ -55,6 +55,9 @@ model User {
   comments           SessionComment[]
   roundsLost         SessionRound[] @relation("RoundLoser")
   pointEntries       PointEntry[]
+  // Pasada PA: la tercera vía al parche (agregar a mano, con aceptación).
+  sentRequests     JoinRequest[] @relation("JoinRequestRequester")
+  receivedRequests JoinRequest[] @relation("JoinRequestRecipient")
 
   @@map("user")
 }
@@ -144,6 +147,28 @@ model Invitation {
   createdAt   DateTime  @default(now())
 
   @@map("invitation")
+}
+
+// Pasada PA — la tercera arista del círculo: agregar a alguien "a mano". A diferencia de
+// SessionTag (salieron juntos) e Invitation (uno invitó al otro), que son HECHOS, esta es
+// unilateral y requiere ACEPTACIÓN: aceptar es abrirle tu feed. Al aceptar es simétrica (cada
+// uno entra al círculo del otro, vía loadCircle leyendo status=accepted). Rechazar es silencioso
+// (respondedAt + status=rejected); el solicitante puede volver a pedir, pero no antes de 15 días.
+// Una fila por par ordenado (requester→recipient): re-pedir reusa la fila. Pendiente = sin acceso.
+model JoinRequest {
+  id          String    @id @default(cuid())
+  requesterId String
+  requester   User      @relation("JoinRequestRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("JoinRequestRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  status      String    @default("pending") // pending | accepted | rejected
+  createdAt   DateTime  @default(now())
+  respondedAt DateTime?
+
+  @@unique([requesterId, recipientId])
+  @@index([recipientId])
+  @@index([requesterId])
+  @@map("join_request")
 }
 
 model Beer {

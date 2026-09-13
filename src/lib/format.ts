@@ -114,6 +114,17 @@ export function capitalize(s: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
+/** Antigüedad en la app, grano grueso (Pasada PA): "Hace {timeOnApp} en FriaDay". */
+export function timeOnApp(date: Date, now: Date = new Date()): string {
+  const days = Math.floor((now.getTime() - date.getTime()) / 86400000);
+  if (days < 1) return "menos de un día";
+  if (days < 30) return `${days} día${days === 1 ? "" : "s"}`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} mes${months === 1 ? "" : "es"}`;
+  const years = Math.floor(days / 365);
+  return `${years} año${years === 1 ? "" : "s"}`;
+}
+
 /**
  * "hoy" / "ayer" / "hace N días" / la fecha. `now` inyectable para tests.
  *
