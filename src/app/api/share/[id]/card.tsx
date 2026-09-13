@@ -122,12 +122,25 @@ function fitSize(text: string, table: [number, number][]): number {
   return table[table.length - 1][1];
 }
 
-// Flecha del recorrido (satori no garantiza el glifo →): barra + triángulo en el color.
-function arrow(color: string, key: string, small: boolean): ReactElement {
+// Flecha del recorrido, dibujada SIN depender de la fuente (SC.4). Antes era barra + un triángulo
+// hecho con el truco de bordes CSS (0×0 + border-left): satori NO rasteriza ese triángulo → salía
+// solo la barra ("muñón"). Ahora es un <svg> inline (barra + cabeza en un path), que satori sí
+// dibuja, y escala con el tamaño del texto del recorrido. Igual en story y 4:5.
+function arrow(color: string, key: string, size: number): ReactElement {
+  const h = Math.max(12, Math.round(size * 0.4)); // alto de la flecha, proporcional al texto
+  const w = Math.round(h * 2.1);
+  const barH = Math.max(3, Math.round(h * 0.26));
+  const y = h / 2;
+  const headW = Math.round(h * 0.62);
+  const barEnd = w - headW;
   return (
-    <div key={key} style={{ display: "flex", alignItems: "center", flex: "none", marginLeft: small ? 16 : 20, marginRight: small ? 16 : 20, paddingBottom: small ? 12 : 16 }}>
-      <div style={{ width: small ? 22 : 28, height: small ? 5 : 6, background: color }} />
-      <div style={{ width: 0, height: 0, borderLeft: `${small ? 11 : 14}px solid ${color}`, borderTop: `${small ? 7 : 9}px solid transparent`, borderBottom: `${small ? 7 : 9}px solid transparent` }} />
+    // alignSelf center: en la fila (alineada por baseline) la flecha se centra a la MITAD de la
+    // altura del texto, no en el fondo (SC.4 · ajuste).
+    <div key={key} style={{ display: "flex", alignItems: "center", alignSelf: "center", flex: "none", marginLeft: Math.round(size * 0.32), marginRight: Math.round(size * 0.32) }}>
+      <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`}>
+        <rect x="0" y={y - barH / 2} width={barEnd + 1} height={barH} fill={color} />
+        <path d={`M${barEnd} ${y - h * 0.42} L${w} ${y} L${barEnd} ${y + h * 0.42} Z`} fill={color} />
+      </svg>
     </div>
   );
 }
@@ -163,7 +176,7 @@ function recorridoBlock(names: string[], size: number, small: boolean, p: Palett
   const ls = -size * 0.04;
   const nodes: ReactNode[] = [];
   shown.forEach((n, i) => {
-    if (i > 0) nodes.push(arrow(p.color, `a${i}`, small));
+    if (i > 0) nodes.push(arrow(p.color, `a${i}`, size));
     nodes.push(
       <div key={`n${i}`} style={{ display: "flex", fontFamily: DISP, fontWeight: 800, fontSize: size, lineHeight: 1.14, letterSpacing: ls, color: textColor, flex: "none" }}>{n}</div>,
     );
