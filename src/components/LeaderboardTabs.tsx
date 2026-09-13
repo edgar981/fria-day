@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Avatar } from "@/components/Avatar";
+import { profileHref } from "@/lib/profile-link";
 
 type UnitRow = { userId: string; displayName: string; units: number };
 type VarietyRow = { userId: string; displayName: string; variety: number };
@@ -93,12 +95,16 @@ export function LeaderboardTabs({
           const me = row.userId === userId;
           const barColor = me || i === 0 ? "var(--color-ambar)" : "#8A5E1E";
           return (
-            <div
+            // Cada fila abre el perfil de esa persona (Pasada PA · camino 1d).
+            <Link
               key={row.userId}
+              href={profileHref(row.userId, userId)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 11,
+                textDecoration: "none",
+                color: "var(--color-crema)",
                 ...(me ? { background: "#1F1811", border: "1px solid #4A3A28", borderRadius: 16, padding: "8px 11px", margin: "0 -11px" } : null),
               }}
             >
@@ -113,7 +119,7 @@ export function LeaderboardTabs({
                 </span>
               </span>
               <span style={{ font: "700 16px var(--font-display)", color: me ? "var(--color-ambar)" : "var(--color-tenue)", flex: "none" }}>{row.value}</span>
-            </div>
+            </Link>
           );
         })}
       </div>

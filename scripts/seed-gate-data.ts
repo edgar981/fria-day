@@ -316,6 +316,21 @@ async function main() {
     }
   }
 
+  // Pasada PA — solicitudes pendientes: ana ve "quieren entrar" en su perfil. Eli y Gabo están
+  // FUERA del círculo de ana (no salieron juntos ni se invitaron), así que su solicitud es real.
+  // Idempotente: restablece a pendiente (el seed es un reset a estado conocido; deshace pruebas).
+  const PENDING: [string, string][] = [["eli", "ana"], ["gabo", "ana"]];
+  for (const [from, to] of PENDING) {
+    await prisma.joinRequest.upsert({
+      where: { requesterId_recipientId: { requesterId: uid[from], recipientId: uid[to] } },
+      update: { status: "pending", respondedAt: null },
+      create: { requesterId: uid[from], recipientId: uid[to], status: "pending" },
+    });
+  }
+  // Limpia cualquier solicitud que Code haya creado en su verificación (ana→otros): el gate
+  // queda solo con las pendientes sembradas arriba.
+  await prisma.joinRequest.deleteMany({ where: { requesterId: uid.ana } });
+
   // Reporte del estado final.
   const counts = await Promise.all(
     USERS.map(async (u) => {
@@ -325,8 +340,9 @@ async function main() {
   );
   const totalR = await prisma.sessionReaction.count({ where: { userId: { in: Object.values(uid) } } });
   const totalC = await prisma.sessionComment.count({ where: { userId: { in: Object.values(uid) } } });
+  const totalReq = await prisma.joinRequest.count({ where: { recipientId: uid.ana, status: "pending" } });
   console.log("✓ Seed de gate aplicado.");
-  console.log(`  ${counts.join(" · ")} · reacciones: ${totalR} · comentarios: ${totalC}`);
+  console.log(`  ${counts.join(" · ")} · reacciones: ${totalR} · comentarios: ${totalC} · solicitudes pendientes a Ana: ${totalReq}`);
   console.log(
     photosUploaded > 0
       ? `  Fotos: ${photosUploaded} subidas a "Bar de la 85" (carrusel + visor)`

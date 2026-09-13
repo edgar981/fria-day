@@ -4,7 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addComment, deleteComment } from "@/app/actions/sessions";
 import { MAX_COMMENT_LENGTH, isValidCommentBody, canDeleteComment } from "@/lib/domain";
+import Link from "next/link";
 import { relativeTime } from "@/lib/format";
+import { profileHref } from "@/lib/profile-link";
 import { Avatar } from "@/components/Avatar";
 
 /**
@@ -173,10 +175,13 @@ export function SessionComments({
             const canDelete = !c.pending && canDeleteComment({ authorId: c.user.id, viewerId: viewer.id });
             return (
               <div key={c.id} style={{ display: "flex", gap: 10, opacity: c.pending ? 0.6 : 1 }}>
-                <Avatar avatar={c.user.avatar} size={32} radius={10} />
+                {/* Avatar y nombre abren el perfil del autor (Pasada PA · camino 1c); el cuerpo no. */}
+                <Link href={profileHref(c.user.id, viewer.id)} style={{ display: "flex", flex: "none", textDecoration: "none" }}>
+                  <Avatar avatar={c.user.avatar} size={32} radius={10} />
+                </Link>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ font: "600 14px var(--font-sans)", color: "var(--color-crema)" }}>{mine ? "Tú" : c.user.displayName}</span>
+                    <Link href={profileHref(c.user.id, viewer.id)} style={{ font: "600 14px var(--font-sans)", color: "var(--color-crema)", textDecoration: "none" }}>{mine ? "Tú" : c.user.displayName}</Link>
                     <span style={{ font: "400 12px var(--font-sans)", color: "var(--color-tenue-2)" }}>{c.pending ? "enviando…" : relativeTime(new Date(c.createdAt))}</span>
                     {canDelete && (
                       <button

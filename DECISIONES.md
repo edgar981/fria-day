@@ -1534,3 +1534,62 @@ Verificado por ejecución (WebKit, gate-ana en dev): la barra con "Tabla" a 320 
 overflow); el `AvatarPicker` con los 6 nuevos junto a los 10 viejos en la misma captura; el subtítulo
 de la Tabla sin "solo salidas propias". Las 2 líneas de copy fuera del código (grep). tsc y 154 tests
 en verde.
+
+## Pasada PA — Perfil ajeno y solicitudes (la tercera vía al parche)
+
+La tercera arista del círculo: además de "salieron juntos" (SessionTag) y "uno invitó al otro"
+(Invitation), ahora se puede **agregar a mano**, con aceptación. Y la pantalla donde se llega: el
+perfil de otra persona.
+
+**El perfil ajeno es una FICHA, no tu panel recortado** (`/u/[id]`, componente `ForeignProfile`).
+Muestra identidad (avatar, nombre, "Hace X en FriaDay"), la **acción** arriba, y dos números:
+**SUS PUNTOS** (la tarjeta oscura con espuma, reusada) y **N salidas registradas** (marcas de conteo,
+trunca a 4). SOLO agregados — el server (`getForeignProfile`) trae puntos y conteo, NADA de sesiones,
+check-ins, racha ni total histórico: el consumo de otro no se muestra, y vale igual dentro o fuera del
+círculo. Sin líneas que expliquen el vacío (regla Pasada T; se omiten TODAS las anotaciones del
+tablero). Tocar tu propio id te lleva a `/profile`.
+
+**Estados de la acción** (los decide el server, lógica pura testeada en `lib/requests.ts`): fuera del
+círculo → "Agregar al parche"; en el círculo → sin botón, chip verde "En tu parche" junto al nombre (el
+hueco es la señal); pendiente → bloque "Solicitud enviada" (mismo alto, no retirable).
+
+**Esquema + `loadCircle`.** Tabla `JoinRequest` (requester, recipient, status, fechas, `@@unique` por
+par). Migración `20260913010148_join_request` aplicada a dev (tabla vacía, 0 filas al crear).
+`loadCircle` gana una tercera arista — `JoinRequest` con `status: accepted` → arista simétrica — **en un
+solo lugar**: feed, permisos, Tabla y sugerencias de lugar la heredan sin tocarse. **Solo aceptadas**
+cuentan: una pendiente no da acceso a nada.
+
+**Reglas de las solicitudes** (`actions/requests.ts`): requiere aceptación; aceptar es simétrico
+(ambos entran al círculo del otro); rechazar es silencioso (el otro no se entera); no se puede volver a
+pedir antes de **15 días** de un rechazo (y durante ese tiempo el solicitante sigue viendo "enviada",
+por eso es silencioso); no se puede **retirar** una enviada. Nunca "seguir": es "Agregar al parche".
+
+**Las pendientes** (`RequestsCard` en `/profile`, arriba, SOLO si hay): tarjeta de borde claro (no
+ámbar, no punto rojo) → hoja "Quieren entrar" con Aceptar / Rechazar por persona. **Sin badge en la
+barra.** Sin pendientes, la zona no existe.
+
+**Caminos al perfil** (los del tablero): cabecera de la tarjeta del feed (dueño, vía `PersonLink` para
+no anidar `<a>`), autor de comentario y fila de la Tabla. Los chips **"Con" NO** son camino (el tablero
+tiene razón: mezclar usuarios con etiquetas de texto libre enseña una regla falsa; decisión de Edgar).
+La hoja "Quiénes brindaron" (pila de brindis tocable) se **dejó fuera** — UI nueva y autocontenida, a
+BACKLOG; sin ella la pila sigue de adorno.
+
+**"El círculo" se eliminó de la hoja de invitar** (`InviteSheet`): la Tabla ya lista el parche y cada
+fila abre un perfil; los puntos de cada quien viven en su perfil. La hoja vuelve a una sola cosa:
+generar y pasar un código. Se quitó el prop `circlePoints` y su cómputo (`getCirclePoints`, ahora sin
+uso, se dejó exportada).
+
+**Verificación (los 8 casos).** WebKit (gate-ana/beto en dev): caso 5 (perfil en círculo → "En tu
+parche", sin botón), 6 (perfil fuera → agregados, sin historial), 7 (sin pendientes → sin zona; y el
+positivo: ana con dos pendientes), 1-UI ("Agregar" → "Solicitud enviada"), 2-UI/2-círculo (aceptar →
+chip + Eli entra a la Tabla). Los invariantes de aislamiento por la capa de datos (autoritativa): caso
+1 (ana→fabio pendiente → fabio NO en el círculo de ana ni viceversa), caso 2 (eli aceptado → mutuo),
+caso 3 (gabo rechazado → fuera del círculo, silencioso), caso 4 (rechazo en enfriamiento → no re-pide).
+Caso 8: los tests de Pasada C y CI intactos. 164 tests (10 nuevos de `lib/requests`). El seed de gate
+siembra 2 solicitudes pendientes a Ana (Eli y Gabo, fuera de su círculo).
+
+**Sin verificar por ejecución:** el caso 3 y 4 a nivel de UI con un **segundo login real** del
+solicitante (los solicitantes del gate son usuarios solo-display, sin login) — se cubrieron por la capa
+de datos + los tests puros. La fuga del rechazo silencioso (el botón vuelve a los 15 días) queda a
+BACKLOG con su disparador (decisión de Edgar), junto con la hoja de brindis, el aviso de solicitud
+entrante y ver tu propia ficha.
