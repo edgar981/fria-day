@@ -1722,3 +1722,37 @@ la config marca un `.env.prod` y un token falso, no da falsos positivos en el re
 de prueba con un secreto falso en una rama desechable **hizo fallar el CI** (rama borrada después).
 
 Sin hook de pre-commit: se salta con `--no-verify` y da falsa sensación de seguridad; el CI no se salta.
+
+## Pasada SEC.4 — Rate limiting en el WAF de Vercel (lo publica Edgar)
+
+FriaDay es de **cinco personas**, no una app pública: los umbrales protegen contra abuso (credential
+stuffing, fuerza bruta de códigos, martilleo del generador de imágenes), no contra tráfico masivo. Un
+umbral pensado para miles de usuarios no protege nada aquí. Las reglas se **stagean** con
+`vercel firewall rules add` y se activan con `vercel firewall publish --yes`. **Ojo: los contadores del
+WAF son por REGIÓN** — con N regiones sirviendo, el tope global efectivo es ~N× el configurado; para un
+parche casi todo en una región el efecto es chico, y un atacante desde una IP pega mayormente en una
+región, así que el límite por-región igual lo atrapa.
+
+**Estrategia:** publicar primero en `log` (no bloquea, solo registra), mirar el dashboard unos días, y
+recién ahí pasar a `deny`. Señal de umbral MUY BAJO: aciertos de tráfico legítimo (IPs de Edgar/el
+parche, en horarios normales) → subir el límite. Señal de que funciona: aciertos solo de IPs
+desconocidas, con tasa alta o geografías raras → seguro pasar a `deny`.
+
+Reglas propuestas (umbral · razón):
+- **`/api/auth/sign-in`** — 10 req / 60s por IP. Ningún humano inicia sesión 10 veces por minuto; el
+  credential stuffing sí. Es el crítico (cuentas reales).
+- **`/register` (POST)** — 15 req / 60s por IP. Registrarse es raro (una vez); 15/min es holgado para
+  una persona y ataja la fuerza bruta del código de invitación (además el espacio es 31^7).
+- **`/api/share`** — 30 req / 60s por IP. Compartir dispara 2–4 llamadas; 30/min deja el uso real y
+  frena a quien martille el generador de imágenes (CPU/costo).
+
+**Para que Edgar complete al publicar** (en tres meses nadie recuerda haber configurado esto):
+
+| Endpoint | Umbral (req/ventana) | Acción publicada | Fecha `log` | Fecha `log`→`deny` |
+| --- | --- | --- | --- | --- |
+| /api/auth/sign-in | ___ / 60s | log · deny | ______ | ______ |
+| /register (POST) | ___ / 60s | log · deny | ______ | ______ |
+| /api/share | ___ / 60s | log · deny | ______ | ______ |
+
+Comandos literales: ver el reporte de SEC.4 (o `vercel firewall rules list`). WAF y force-push/Support
+los hace Edgar (su cuenta de Vercel); Code no los ejecuta.
