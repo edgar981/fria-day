@@ -4,8 +4,8 @@
 //
 // Ejecutar:  npm run db:seed
 //
-// NOTA: los usuarios de prueba usan credenciales conocidas (ver más abajo).
-// Para producción real, cámbialas o bórralas. Ver DECISIONES.md.
+// NOTA (Pasada SEC): la contraseña de los usuarios de prueba NO vive en el repo —
+// se toma de la env `SEED_PASSWORD` (fuera del repo). Sin ella, el seed no corre.
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { PrismaClient } from "@prisma/client";
@@ -65,8 +65,13 @@ async function ensureBeer(
 async function main() {
   console.log("→ Sembrando FriaDay…");
 
-  const anaId = await ensureUser("ana@friaday.test", "***REDACTED***", "Ana");
-  const betoId = await ensureUser("beto@friaday.test", "***REDACTED***", "Beto");
+  const SEED_PASSWORD = process.env.SEED_PASSWORD;
+  if (!SEED_PASSWORD) {
+    console.error("Falta la env SEED_PASSWORD: la contraseña de los usuarios de prueba NO vive en el repo (Pasada SEC). Ponla en tu .env.");
+    process.exit(2);
+  }
+  const anaId = await ensureUser("ana@friaday.test", SEED_PASSWORD, "Ana");
+  const betoId = await ensureUser("beto@friaday.test", SEED_PASSWORD, "Beto");
   console.log("  usuarios: Ana, Beto");
 
   const clubId = await ensureBeer(anaId, "Club Colombia Dorada", "Bavaria", "Lager", 4.7);
@@ -116,9 +121,9 @@ async function main() {
 
   console.log("\n✓ Seed listo.");
   console.log("──────────────────────────────────────────────");
-  console.log("Usuarios de prueba (cámbialos/bórralos en prod real):");
-  console.log("  Ana  · ana@friaday.test  · ***REDACTED***");
-  console.log("  Beto · beto@friaday.test · ***REDACTED***");
+  console.log("Usuarios de prueba (contraseña: env SEED_PASSWORD, fuera del repo):");
+  console.log("  Ana  · ana@friaday.test");
+  console.log("  Beto · beto@friaday.test");
   console.log("Códigos de invitación LIBRES para registrarte:");
   for (const c of codes) console.log("  " + c);
   console.log("──────────────────────────────────────────────");

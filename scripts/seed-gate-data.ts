@@ -74,11 +74,14 @@ function solidPng(w: number, h: number, body: [number, number, number], band: [n
   return Buffer.concat([sig, pngChunk("IHDR", ihdr), pngChunk("IDAT", zlib.deflateSync(raw)), pngChunk("IEND", Buffer.alloc(0))]);
 }
 
-// Credenciales de gate — DOCUMENTADAS (no ***REDACTED***). Se reportan en cada pasada.
+// Cuentas de gate: los correos son `.test` (no de personas reales); la CONTRASEÑA NO vive en el
+// repo (Pasada SEC) — se toma de la env `SEED_PASSWORD`, que Edgar tiene fuera del repo. Ver
+// CLAUDE.md · Datos de gate.
+const SEED_PASSWORD = process.env.SEED_PASSWORD ?? "";
 const USERS = [
-  { key: "ana", email: "gate-ana@friaday.test", password: "***REDACTED***", displayName: "Ana", avatar: "capibara" },
-  { key: "beto", email: "gate-beto@friaday.test", password: "***REDACTED***", displayName: "Beto", avatar: "condor" },
-  { key: "caro", email: "gate-caro@friaday.test", password: "***REDACTED***", displayName: "Caro", avatar: "firulais" }, // Pasada AV: la iguana salió del set; Caro pasa a firulais
+  { key: "ana", email: "gate-ana@friaday.test", displayName: "Ana", avatar: "capibara" },
+  { key: "beto", email: "gate-beto@friaday.test", displayName: "Beto", avatar: "condor" },
+  { key: "caro", email: "gate-caro@friaday.test", displayName: "Caro", avatar: "firulais" }, // Pasada AV: Caro pasa a firulais (la iguana salió del set)
 ] as const;
 type UserKey = (typeof USERS)[number]["key"];
 
@@ -230,7 +233,7 @@ async function ensureBeer(createdById: string, b: CatalogItem): Promise<string> 
 async function main() {
   if (!APPLY) {
     console.log("(dry-run) Dejaría dev con el estado de GATE:");
-    console.log(`  Usuarios (${USERS.length}): ${USERS.map((u) => `${u.email} / ${u.password}`).join("  ·  ")}`);
+    console.log(`  Usuarios (${USERS.length}): ${USERS.map((u) => u.email).join("  ·  ")} — contraseña: env SEED_PASSWORD`);
     console.log(`  Catálogo asegurado: ${CATALOG.length} bebidas (${CATALOG.filter((c) => c.kind === "COCTEL").length} cócteles)`);
     console.log(`  Salidas: ${SESSIONS.length} en varias fechas, con etiquetas cruzadas (círculo completo)`);
     console.log(`  Reacciones: ${SESSIONS.reduce((n, s) => n + s.reactions.length, 0)} (pie de brindis: estados 0 / 1 / pocos / +N)`);
@@ -243,7 +246,11 @@ async function main() {
   }
 
   const uid: Record<string, string> = {};
-  for (const u of USERS) uid[u.key] = await ensureUser(u.email, u.password, u.displayName);
+  if (!SEED_PASSWORD) {
+    console.error("Falta la env SEED_PASSWORD: las contraseñas de las cuentas de gate NO viven en el repo (Pasada SEC). Ponla en tu .env y vuelve a correr.");
+    process.exit(2);
+  }
+  for (const u of USERS) uid[u.key] = await ensureUser(u.email, SEED_PASSWORD, u.displayName);
   // Avatares de los usuarios de gate (I-1.3): sin esto quedan como anónimo punteado y
   // no se aprecia el anillo ámbar del pie. ensureUser (signUpEmail) no los pone, así
   // que se fijan aquí (idempotente).
@@ -350,8 +357,8 @@ async function main() {
       ? `  Fotos: ${photosUploaded} subidas a "Bar de la 85" (carrusel + visor)`
       : "  Fotos: OMITIDAS (sin BLOB_PREV_READ_WRITE_TOKEN en el entorno)",
   );
-  console.log("  Credenciales:");
-  for (const u of USERS) console.log(`    ${u.displayName}: ${u.email} / ${u.password}`);
+  console.log("  Cuentas de gate (contraseña: env SEED_PASSWORD, fuera del repo):");
+  for (const u of USERS) console.log(`    ${u.displayName}: ${u.email}`);
   await prisma.$disconnect();
 }
 
