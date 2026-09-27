@@ -46,8 +46,8 @@ Desde la Pasada P.2 hay **dos ramas de Neon** (branching):
 - Cambios en la **config de Neon** o en las **env de Vercel** los hace **Edgar**, no
   Code. Cualquier mutación en prod (borrar cuentas, limpiar huérfanos) se entrega
   como script/dry-run para que Edgar la corra; Code no la ejecuta contra prod.
-- Las cuentas de prueba (`ana@`, `beto@`) existen en **dev** con contraseña propia
-  (NO `***REDACTED***`, que está en el repo público). En prod, ver DECISIONES.md · P.2.
+- Las cuentas de prueba (`ana@`, `beto@`, `gate-*@`) existen en **dev** con la contraseña de
+  la env `SEED_PASSWORD` (fuera del repo, Pasada SEC). En prod, ver DECISIONES.md · P.2.
 
 ## ⚠️ Flujo de ramas (permanente, sin excepciones)
 
@@ -100,10 +100,13 @@ Las **reacciones** están repartidas para ejercitar los 4 estados del pie de bri
 etiquetas → solo avatares de reacción; no aparecen en círculo/leaderboard/feed).
 **Idempotente** (`--apply`; correrlo dos veces no duplica).
 
-**Credenciales (documentadas, no `***REDACTED***`):**
-- Ana — `gate-ana@friaday.test` / `***REDACTED***`
-- Beto — `gate-beto@friaday.test` / `***REDACTED***`
-- Caro — `gate-caro@friaday.test` / `***REDACTED***`
+**Cuentas de gate (la contraseña NO vive en el repo — Pasada SEC):**
+- Ana — `gate-ana@friaday.test`
+- Beto — `gate-beto@friaday.test`
+- Caro — `gate-caro@friaday.test`
+- La contraseña de las tres es la env **`SEED_PASSWORD`**, que Edgar tiene fuera del repo (gestor
+  de contraseñas / env de Vercel). El seed la lee de ahí; sin ella no corre. Para reportar el gate
+  en cada pasada, Code lista los correos y dice "contraseña: `SEED_PASSWORD`" — nunca el valor.
 
 **Proceso al cerrar una pasada:** Code limpia los datos **específicos de su verificación**
 (usa cuentas SEPARADAS: `beto@friaday.test`, etc.), pero **deja el seed de gate en pie**.

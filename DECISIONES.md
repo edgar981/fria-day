@@ -537,9 +537,9 @@ creó Edgar y pegó las URLs.
 
 ### 3 · Cuentas de prueba
 
-- **En dev**: `ana@`/`beto@` con contraseña cambiada (ya no `***REDACTED***`, que está en
-  el repo público). Verificado por ejecución: la nueva entra, la vieja no. Las
-  contraseñas se le pasaron a Edgar por chat.
+- **En dev**: `ana@`/`beto@` con contraseña cambiada (ya no la vieja del seed, que estuvo
+  en el repo). Verificado por ejecución: la nueva entra, la vieja no. Las contraseñas se le
+  pasaron a Edgar por chat. (Pasada SEC: hoy el seed las toma de la env `SEED_PASSWORD`.)
 - **En prod (decisión de Edgar, sin ejecutar):**
   - **Beto**: sin check-ins, sin salidas, sin invitaciones creadas; solo aparece
     etiquetado en 1 salida (esa etiqueta se borra con él). Seguro de borrar.
@@ -979,12 +979,9 @@ Si un futuro major de `pg` lo rompe, añadir `uselibpqcompat=true` a las URLs. (
 
 ## ⚠️ Usuarios de prueba del seed (SEGURIDAD)
 
-El repo es **público**. El seed crea 2 usuarios con credenciales **conocidas**:
-
-- `ana@friaday.test` / `***REDACTED***`
-- `beto@friaday.test` / `***REDACTED***`
-
-Cualquiera que lea el repo las conoce. **Antes de usar la app en serio con tus
+El repo va a ser **público**. El seed crea 2 usuarios de prueba (`ana@friaday.test`,
+`beto@friaday.test`); su contraseña sale de la env **`SEED_PASSWORD`** (Pasada SEC), **no**
+del repo, así que leer el código no la revela. **Antes de usar la app en serio con tus
 amigos, borra o cambia estos usuarios.** Los secretos reales (`DATABASE_URL`,
 `BETTER_AUTH_SECRET`) NO están en el repo: viven solo en `.env` (gitignored) y en
 las env vars de Vercel.
@@ -1683,3 +1680,21 @@ de la marca). Mismo tratamiento: mayúsculas, tracking abierto, tamaño 22, mism
 `justify-content: space-between` contra "friaday") — lo que funcionaba era el peso visual balanceando a
 "friaday", no el texto. Aplica a ambos formatos y a los dos modos (color y foto). Verificado por
 ejecución (render story y 4:5): de ancho comparable, no desborda ni empuja "friaday". 164 tests en verde.
+
+## Pasada SEC — Listo para repo público (credenciales fuera del repo)
+
+Preparación para hacer el repo público. Lo accionable de esta pasada: las contraseñas de las cuentas
+de prueba/gate salen del repo. Antes vivían en `CLAUDE.md`, `README.md`, `DECISIONES.md` y en el código
+de los seeds (`prisma/seed.ts`, `scripts/seed-gate-data.ts`). Ahora **el seed las toma de la env
+`SEED_PASSWORD`** (fuera del repo; Edgar la tiene en su gestor/env de Vercel); sin ella el seed no corre.
+Los correos siguen documentados (`gate-ana@friaday.test`, etc.) porque son `.test`, no de personas
+reales. Para reportar el gate, Code lista los correos y dice "contraseña: `SEED_PASSWORD`", nunca el
+valor. `.env.example` gana `SEED_PASSWORD=` (placeholder). El `.gitignore` ya cubría `.env.*` con
+`!.env.example` desde el commit que sacó `.env.prod`; la auditoría, el plan de purga del historial
+(`.env.prod` en `7f24267`) y el reporte de exposición (entropía del código de invitación, ausencia de
+rate limiting, `?debug` gateado) se entregaron a Edgar para decisión — la purga NO se ejecuta desde Code.
+
+**Pendiente de Edgar** (no lo hace Code): la purga del historial (elegir `git filter-repo`+force-push
+vs repo nuevo, y pedir a GitHub Support la limpieza de commits huérfanos), y decidir si se agrega rate
+limiting. Nota: las cuentas de gate que YA existen en dev conservan su contraseña vieja (ensureUser es
+idempotente, no la resetea); si Edgar quiere que usen `SEED_PASSWORD`, resetearlas una vez.

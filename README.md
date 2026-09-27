@@ -89,6 +89,6 @@ check-ins propios aparece con 0 en el leaderboard**.
 
 ## Usuarios de prueba (¡cámbialos en prod!)
 
-El seed crea `ana@friaday.test` / `beto@friaday.test`, password `***REDACTED***`, y
-2 códigos de invitación (se imprimen al correr `npm run db:seed`). Ver
-[DECISIONES.md](DECISIONES.md) para la nota de seguridad.
+El seed crea `ana@friaday.test` / `beto@friaday.test` (la contraseña sale de la env
+`SEED_PASSWORD`, no del repo) y 2 códigos de invitación (se imprimen al correr
+`npm run db:seed`). Ver [DECISIONES.md](DECISIONES.md) para la nota de seguridad.
