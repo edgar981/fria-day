@@ -1,0 +1,25 @@
+# gitleaks — escaneo de secretos de FriaDay (Pasada SEC.3).
+# Corre en CI (.github/workflows/gitleaks.yml): diff en PRs, historia completa en push a main.
+title = "FriaDay"
+
+[extend]
+# Todas las reglas por defecto de gitleaks (connection strings, API keys, tokens, alta entropía…).
+useDefault = true
+
+# El caso que se coló (SEC): un .env.prod commiteado. El .gitignore de entonces esperaba
+# ".env.production" y el nombre abreviado no lo atrapó, y ninguna regla de CONTENIDO lo marcó.
+# Esta regla lo atrapa por RUTA: cualquier archivo de entorno versionado es un hallazgo, matchee
+# o no su contenido. .env.example queda excluido por el allowlist de abajo.
+[[rules]]
+id = "committed-dotenv-file"
+description = "Archivo de entorno commiteado (.env / .env.*)"
+path = '''(^|/)\.env(\.[^/]*)?$'''
+
+[allowlist]
+description = "Falsos positivos aceptados — solo placeholders/ejemplos, ningún secreto real."
+# .env.example tiene placeholders (USER:PASSWORD@ep-xxxx, 'cambia-esto-…'): no es un secreto.
+paths = ['''(^|/)\.env\.example$''']
+# Los ids de PRODUCCIÓN (endpoint de Neon como guardarraíl "no toques prod") y el correo de git
+# de Edgar NO son secretos (sin credenciales no sirven); las reglas por defecto no los marcan, y
+# se dejan a propósito. Si alguna regla futura los marcara, se añaden aquí como regex, nunca un
+# secreto real.

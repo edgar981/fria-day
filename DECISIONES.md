@@ -1698,3 +1698,27 @@ rate limiting, `?debug` gateado) se entregaron a Edgar para decisión — la pur
 vs repo nuevo, y pedir a GitHub Support la limpieza de commits huérfanos), y decidir si se agrega rate
 limiting. Nota: las cuentas de gate que YA existen en dev conservan su contraseña vieja (ensureUser es
 idempotente, no la resetea); si Edgar quiere que usen `SEED_PASSWORD`, resetearlas una vez.
+
+## Pasada SEC.3 — gitleaks en CI (prevención tras la fuga de .env.prod)
+
+**Qué pasó.** `.env.prod` (con `DATABASE_URL`/`DIRECT_URL` de producción) se commiteó y quedó en el
+historial; el repo se preparó para hacerse público con el archivo dentro. El `.gitignore` de entonces
+tenía `.env`, `.env*.local` y **`.env.production`** — pero el archivo se llamó `.env.prod` (abreviado),
+que ningún patrón cubría, así que git no lo ignoró.
+
+**Qué se hizo.**
+- Secretos **rotados** por Edgar: Neon (cadenas de conexión), `BETTER_AUTH_SECRET`, tokens de Blob.
+- `.gitignore` corregido a `.env.*` con `!.env.example` (cubre `.env.prod` y cualquier variante).
+- **Historial purgado** con `git filter-repo --invert-paths --path .env.prod` (+ redacción de las
+  contraseñas de prueba viejas); force-push por Edgar y limpieza de huérfanos por GitHub Support.
+- Contraseñas de prueba/gate fuera del repo (env `SEED_PASSWORD`, Pasada SEC/SEC.2).
+
+**Qué lo previene: gitleaks en CI** (`.github/workflows/gitleaks.yml` + `.gitleaks.toml`). Corre en
+cada PR (escanea el diff) y en cada push a main (historia completa), y **falla el build** si detecta un
+secreto. Usa las reglas por defecto de gitleaks (connection strings, API keys, tokens, alta entropía)
+**más** una regla por RUTA que marca cualquier `.env*` commiteado — justo el caso que se coló, que no
+dependía del contenido. `.env.example` está en el allowlist (placeholders). Verificado por ejecución:
+la config marca un `.env.prod` y un token falso, no da falsos positivos en el repo real, y un commit
+de prueba con un secreto falso en una rama desechable **hizo fallar el CI** (rama borrada después).
+
+Sin hook de pre-commit: se salta con `--no-verify` y da falsa sensación de seguridad; el CI no se salta.
