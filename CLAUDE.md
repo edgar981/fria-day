@@ -73,6 +73,9 @@ npm test         # vitest (lógica de dominio pura)
 npm run db:seed  # datos mínimos
 # Datos de GATE para dev (dry-run por defecto; ver "## Datos de gate"):
 node --env-file=.env --import tsx scripts/seed-gate-data.ts [--apply]
+# Reset COMPLETO de las cuentas de prueba/gate de dev (borra @friaday.test + reseedea con
+# SEED_PASSWORD, en un comando). Dry-run por defecto; aborta si apunta a prod (SEC.2):
+node --env-file=.env --import tsx scripts/reset-gate.ts [--apply]
 # Mantención (dry-run por defecto; apunta al .env que cargues):
 node --env-file=.env --import tsx scripts/clean-passkey-orphans.ts [--apply]
 node --env-file=.env --import tsx scripts/delete-user-reassign-invites.ts \
