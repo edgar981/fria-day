@@ -1756,3 +1756,26 @@ Reglas propuestas (umbral · razón):
 
 Comandos literales: ver el reporte de SEC.4 (o `vercel firewall rules list`). WAF y force-push/Support
 los hace Edgar (su cuenta de Vercel); Code no los ejecuta.
+
+## Pasada FRIADAY-TIER1-1 — Reglas para los slices despachados (2026-10-10)
+
+FriaDay empieza a recibir slices despachados por un orquestador. Se agregaron a `CLAUDE.md` dos
+secciones nuevas, después de «Reglas de dominio»: **`## Tier 1 (slices de dos etapas)`**, con la
+frase que el orquestador parsea (`Tier 1 slices run in...`, 21 rutas) y una tabla en castellano de
+qué cubre cada grupo; y **`## Slices despachados por el orquestador`**, que fija el gate de un
+worker despachado (`npx prisma generate`, `npx tsc --noEmit`, `npm test` — nada más de «Comandos»
+ni «Verificación»), que no mergea ni empuja, y que no vuelve a fijar la identidad de git. También se
+agregó `.scratch/` a `.gitignore` (archivos de usar y tirar de los slices).
+
+La frase de Tier 1 lista las rutas que escriben en `User`, `AuthSession`, `Account`, `Verification`,
+`Passkey`, `Invitation` o `JoinRequest`. Medido con:
+
+```
+grep -rlE "(prisma|tx)\.(user|authSession|account|verification|passkey|invitation|joinRequest)\.(create|update|delete|upsert|createMany|updateMany|deleteMany)" src scripts prisma | sort
+```
+
+Dio los mismos 11 archivos que la medición previa a este slice: `prisma/seed.ts`,
+`scripts/clean-passkey-orphans.ts`, `scripts/delete-user-reassign-invites.ts`,
+`scripts/reset-gate.ts`, `scripts/seed-gate-data.ts`, `src/app/actions/account.ts`,
+`src/app/actions/auth.ts`, `src/app/actions/invites.ts`, `src/app/actions/profile.ts`,
+`src/app/actions/requests.ts`, `src/lib/auth.ts` — los 11 están en la frase. Sin drift.

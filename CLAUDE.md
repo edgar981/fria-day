@@ -128,6 +128,43 @@ entre al preview sin buscarlas.
 
 `src/lib/domain.ts` es lógica pura testeada — no romper los tests al tocarlo.
 
+## Tier 1 (slices de dos etapas)
+
+Tier 1 slices run in a separate read-only session first, then a second stage that writes only after the go, over these surfaces: prisma/schema.prisma, prisma/migrations/, prisma/seed.ts, src/lib/auth.ts, src/lib/auth-client.ts, src/lib/session.ts, src/proxy.ts, src/app/api/auth/, src/app/actions/auth.ts, src/app/actions/account.ts, src/app/actions/profile.ts, src/app/actions/invites.ts, src/app/actions/requests.ts, src/lib/requests.ts, src/lib/blob.ts, src/app/api/blob/, scripts/reset-gate.ts, scripts/seed-gate-data.ts, scripts/delete-user-reassign-invites.ts, scripts/clean-passkey-orphans.ts and scripts/clean-orphan-blobs.ts.
+
+| Superficie | Rutas |
+| --- | --- |
+| Esquema, migraciones y seed | `prisma/schema.prisma`, `prisma/migrations/`, `prisma/seed.ts` |
+| Auth y acceso (Better Auth, passkeys, contraseña, correo de recuperación, la guardia de rutas) | `src/lib/auth.ts`, `src/lib/auth-client.ts`, `src/lib/session.ts`, `src/proxy.ts`, `src/app/api/auth/`, `src/app/actions/auth.ts`, `src/app/actions/account.ts`, `src/app/actions/profile.ts` |
+| Invitaciones y entrada al círculo (códigos, solicitudes de parche y su enfriamiento) | `src/app/actions/invites.ts`, `src/app/actions/requests.ts`, `src/lib/requests.ts` |
+| Vercel Blob (fotos) | `src/lib/blob.ts`, `src/app/api/blob/` |
+| Scripts que borran o crean cuentas, invitaciones, passkeys o fotos | `scripts/reset-gate.ts`, `scripts/seed-gate-data.ts`, `scripts/delete-user-reassign-invites.ts`, `scripts/clean-passkey-orphans.ts`, `scripts/clean-orphan-blobs.ts` |
+
+`src/app/actions/profile.ts` está porque `updateAvatar` escribe en `User`; si Edgar decide que un
+cambio de avatar no es Tier 1, sale de la lista por decisión suya, no por un slice. **Regla de
+ubicación:** una escritura nueva a `User`, `AuthSession`, `Account`, `Verification`, `Passkey`,
+`Invitation` o `JoinRequest` fuera de estas rutas hace que el orquestador **bloquee todo despacho**
+hasta que alguien la clasifique (entra a la frase, o Edgar la excluye).
+
+## Slices despachados por el orquestador
+
+- Su gate es `npx prisma generate`, `npx tsc --noEmit` y `npm test`. Nada más.
+- **No son suyos**, aunque este archivo los nombre en otras secciones: `npm run build` (corre
+  `prisma migrate deploy` contra la base de `.env`), `next build`, `npm run dev`, Playwright contra
+  la app, `prisma migrate`, `prisma db`, `db:seed` y cualquier `node --env-file=.env scripts/...`.
+  El build y la verificación visual los hace el orquestador; el preview de `pasada/revision` lo
+  revisa Edgar. Las secciones «Verificación» y «Comandos» siguen valiendo para una sesión de
+  trabajo con Edgar al lado, que es para lo que se escribieron: para un slice despachado manda
+  esta sección.
+- **La identidad de git ya está fijada** en la config local y el orquestador la mide antes de
+  despachar (y otra vez antes de mergear, sobre cada commit): un slice despachado no corre
+  `git config`.
+- El worker **no mergea ni empuja**: commitea en su rama `slice/<id>`, que nunca sale de este disco.
+  El orquestador mergea a `pasada/revision` y empuja **sólo** esa rama (su preview es donde mira
+  Edgar); una migración no se empuja sin Edgar; `main` se mueve sólo con su «sí» explícito, como
+  ya dice «Flujo de ramas».
+- Los archivos de usar y tirar van en `.scratch/`, en la raíz, que está ignorado.
+
 ## Verificación
 
 Preferir **evidencia de ejecución** sobre razonar desde la arquitectura. En este
