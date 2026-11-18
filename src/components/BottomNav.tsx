@@ -36,16 +36,15 @@ function TabInner({ item, active }: { item: Item; active: boolean }) {
         flexDirection: "column",
         alignItems: "center",
         gap: 3,
-        color: on ? "var(--color-ambar)" : "var(--color-tenue)",
-        // 11px: al pasar "Leaderboard" → "Tabla" (pasada de ajustes), la etiqueta más larga
-        // es ahora "Catálogo" (~44px) y a 320px (iPhone SE) sobran ~17px en el 1fr, así que se
-        // volvió a 11px sin el tracking apretado. whiteSpace:nowrap: nunca parte en dos líneas.
-        font: `${on ? 700 : 500} 11px var(--font-sans)`,
+        color: on ? "var(--color-ambar)" : "#8a8a8a",
+        // 10.5px / 600 (rediseño): cabe de sobra en el 1fr a 320px. whiteSpace:nowrap:
+        // nunca parte en dos líneas.
+        font: "600 10.5px var(--font-sans)",
         whiteSpace: "nowrap",
         transition: "color .1s ease",
       }}
     >
-      <Icon name={item.icon} size={23} />
+      <Icon name={item.icon} size={22} />
       {item.label}
     </span>
   );
@@ -64,29 +63,30 @@ export function BottomNav() {
   return (
     <nav
       style={{
-        // En FLUJO (último hijo flex de .pb-nav, que es 100dvh): se ancla al fondo
-        // real del contenedor. Ya no es position:fixed → no deja franja bajo la
-        // barra en iOS standalone. Ver DECISIONES · P-plan-B.
-        flex: "none",
-        // El "+" sobresale 9px por encima de la barra (marginTop:-22). Al salir de
-        // position:fixed/z-index:40, la barra perdió su contexto de apilado y en iOS
-        // el scroller hermano (.pb-scroll, overflow:auto → capa de composición)
-        // ocluía ese saliente. position:relative + z-index devuelve el apilado por
-        // ENCIMA del scroller sin sacarla del flujo. Ver DECISIONES · B.1.
-        position: "relative",
+        // Flotante (rediseño): position:absolute DENTRO de .pb-nav (que es relative y
+        // 100dvh), anclada al contenedor y NUNCA al viewport (position:fixed deja la
+        // franja bajo la barra en iOS standalone: G.1, P-plan-B). El z-index mantiene
+        // la barra por ENCIMA del scroller hermano (.pb-scroll, capa de composición en
+        // iOS: B.1). Va centrada porque .app-shell mide como máximo 440px.
+        position: "absolute",
+        left: 14,
+        right: 14,
+        bottom: "calc(12px + env(safe-area-inset-bottom, 0px))",
+        height: 62,
+        borderRadius: 31,
         zIndex: 2,
-        borderTop: "1px solid #2C2015",
-        background: "#181209",
+        background: "rgba(30,30,30,.92)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
+        boxShadow: "0 0 0 1px rgba(255,255,255,.07), 0 10px 30px rgba(0,0,0,.7)",
       }}
     >
       <div
         style={{
-          maxWidth: 440,
-          margin: "0 auto",
+          height: "100%",
           display: "grid",
           gridTemplateColumns: "repeat(5,1fr)",
           alignItems: "center",
-          padding: "9px 6px calc(env(safe-area-inset-bottom, 0px) + 14px)",
         }}
       >
         {LEFT.map((it) => (

@@ -94,9 +94,9 @@ export function RouletteMenu() {
         onClick={onClick}
         onContextMenu={(e) => e.preventDefault()}
         style={{
-          width: 56,
-          height: 56,
-          borderRadius: 20,
+          width: 44,
+          height: 44,
+          borderRadius: "50%",
           background: "var(--color-ambar)",
           color: "var(--color-tinta)",
           display: "flex",
@@ -104,15 +104,13 @@ export function RouletteMenu() {
           justifyContent: "center",
           border: "none",
           cursor: "pointer",
-          marginTop: -22,
-          boxShadow: "0 8px 20px rgba(242,160,22,.32)",
           touchAction: "pan-y",
           WebkitTouchCallout: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
       >
-        <Icon name="plus" size={28} />
+        <Icon name="plus" size={22} />
       </button>
 
       {mounted && open &&
