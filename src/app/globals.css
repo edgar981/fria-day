@@ -21,8 +21,8 @@
   /* tono de texto sobre ámbar/espuma (fondos claros) */
   --color-tinta: #241609;
 
-  --font-display: var(--font-syne), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-big-shoulders), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
 }
 
 :root {
@@ -45,6 +45,7 @@ body {
   background: var(--color-noche);
   color: var(--color-crema);
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   /* I-1.3: la selección nativa de iOS en el hold (long-press) resaltaba TODA la app.
      Diagnóstico medido: el user-select:none SOLO en la tarjeta no bastaba — todos los

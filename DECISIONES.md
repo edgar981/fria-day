@@ -1779,3 +1779,23 @@ Dio los mismos 11 archivos que la medición previa a este slice: `prisma/seed.ts
 `scripts/reset-gate.ts`, `scripts/seed-gate-data.ts`, `src/app/actions/account.ts`,
 `src/app/actions/auth.ts`, `src/app/actions/invites.ts`, `src/app/actions/profile.ts`,
 `src/app/actions/requests.ts`, `src/lib/auth.ts` — los 11 están en la frase. Sin drift.
+
+## Pasada FRIADAY-REDISENO-1 — Cartel: la fuente del rediseño (2026-11-18)
+
+Primer slice del rediseño que Edgar aprobó: «Ok to Cartel.» (2026-11-17) y «FRIA-6: Yes» (2026-11-18),
+construir empezando por los slices 1 y 2. Este slice cambia **sólo las fuentes**.
+
+- **Entran:** Big Shoulders (pesos 800 y 900) como `--font-display`, para nombres de lugar y títulos
+  grandes; Schibsted Grotesk (pesos 400 a 700) como `--font-sans`, con cifras tabulares en `body`.
+  Las dos vienen de Google Fonts por `next/font/google`, igual que Syne y Outfit.
+- **Salen:** Syne y Outfit (`src/app/layout.tsx`).
+- **Los nombres de variable CSS se conservan:** `--font-display` y `--font-sans` no cambian de nombre;
+  sólo apuntan a las fuentes nuevas (`--font-big-shoulders`, `--font-schibsted`). Ningún componente cambia.
+- **Quedan para su pantalla:** los usos de `--font-display` con tracking negativo, en minúsculas o con
+  números siguen así hasta que su pantalla se redibuje (slices 3 en adelante). Se van a ver distintos
+  en este paso, y es lo esperado. No se arreglan aquí.
+- **Fuera de alcance:** colores, cabecera y barra inferior (FRIADAY-REDISENO-2). La share card
+  (`src/app/api/share/`) lleva sus propias fuentes embebidas y no se toca.
+- **BACKLOG:** la entrada «El feed como "línea de tiempo con temperatura"» queda marcada decidida:
+  la dosis es **cabecera** (el color de la noche en las noches sin fotos; con fotos manda la foto).
+  Lo construye el slice 4 del rediseño.
