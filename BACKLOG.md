@@ -343,6 +343,7 @@ enlace público temporal), el backend ya lo soporta — solo faltaría reponer e
   tarjetas del feed (la query del feed no trae aún esos campos).
 - **Alcance:** su propia pasada — decidir la dosis de color en el feed (franja fina vs cabecera),
   traer el color en la query del feed, y no competir con la legibilidad del contenido.
+- **Decidido (Edgar, 2026-11-18, vía HQ):** la dosis es **cabecera** — el color de la noche (la cascada de la share card: marca, estilo, foto, hora) es la cabecera del boleto en las noches SIN fotos; con fotos manda la foto y el color no se dibuja; la query del feed debe traer ese color. Sus palabras: «FRIA-4: I’d like to try a mix between A and C. […] But A’s colors» y «I liked Dark + Band, however I feel the sign in ticket does not contrast well» (FRIA-5). Lo construye el slice 4 del rediseño.
 
 ## Hitos con nombre — y con eso, la línea del próximo hito (Pasada PT.1)
 

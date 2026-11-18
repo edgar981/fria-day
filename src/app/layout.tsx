@@ -1,19 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { Syne, Outfit } from "next/font/google";
+import { Big_Shoulders, Schibsted_Grotesk } from "next/font/google";
 import { Sprite } from "@/components/Sprite";
 import "./globals.css";
 
-const syne = Syne({
+const bigShoulders = Big_Shoulders({
   subsets: ["latin"],
-  weight: ["600", "700", "800"],
-  variable: "--font-syne",
+  weight: ["800", "900"],
+  variable: "--font-big-shoulders",
   display: "swap",
 });
 
-const outfit = Outfit({
+const schibsted = Schibsted_Grotesk({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  variable: "--font-outfit",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-schibsted",
   display: "swap",
 });
 
@@ -54,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="es" className={`${syne.variable} ${outfit.variable}`}>
+    <html lang="es" className={`${bigShoulders.variable} ${schibsted.variable}`}>
       <body>
         <Sprite />
         {children}
