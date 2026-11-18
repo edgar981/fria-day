@@ -1799,3 +1799,32 @@ construir empezando por los slices 1 y 2. Este slice cambia **sólo las fuentes*
 - **BACKLOG:** la entrada «El feed como "línea de tiempo con temperatura"» queda marcada decidida:
   la dosis es **cabecera** (el color de la noche en las noches sin fotos; con fotos manda la foto).
   Lo construye el slice 4 del rediseño.
+
+## Pasada FRIADAY-REDISENO-2 — La sala, la cabecera y la barra flotante (2026-11-18)
+
+Segundo slice del rediseño aprobado (mix de A y C, opción 1). Pone la sala, la cabecera y la barra
+inferior; el feed, el detalle, el acceso y la Tabla son slices posteriores.
+
+- **Siete tokens de `@theme` reasignados, sin renombrar ninguno:** `--color-noche` `#000000`
+  (la sala), `--color-barra` `#141414`, `--color-barra-alta` `#1f1f1f`, `--color-borde` `#2a2a2a`,
+  `--color-crema` `#ffffff`, `--color-tenue` `#a3a3a3`, `--color-tenue-2` `#8a8a8a`. No cambian
+  `--color-ambar`, `--color-tinta`, `--color-alerta`, `--color-marca`, `--color-espuma` ni
+  `--color-botella`.
+- **Lo escrito a mano queda para su pantalla:** los colores `#xxxxxx` de otros archivos (marrones
+  cálidos) no se tocan y se van a ver raros sobre el negro hasta que su slice los redibuje. La share
+  card (`src/app/api/share/`) tampoco se toca.
+- **`html`:** su `background` pasa de `#181209` a `#000000` (red cosmética del gap iOS, G.1): con la
+  barra flotante, lo que asoma bajo ella es la sala. `.pb-scroll` suma `padding-bottom` de
+  `96px + safe-area` para que el último elemento quede libre de la barra.
+- **Tema:** `themeColor` en `layout.tsx` y `background_color`/`theme_color` del manifiesto pasan a `#000000`.
+- **Cabecera:** sólo el nombre «FriaDay» en mixto (Big Shoulders 900, 30px, sin tracking) a la
+  izquierda; se quita el ícono de la app. Avatar de 34px a la derecha. Sin `borderBottom`; fondo
+  `--color-noche`. Sigue sticky.
+- **Barra flotante:** `position: absolute` dentro de `.pb-nav` (que ahora es `position: relative`),
+  con `left/right: 14px`, `bottom: 12px + safe-area`, 62px de alto y radio 31px. **No `fixed`**: el
+  `fixed` al viewport deja la franja bajo la barra en iOS standalone (G.1, P-plan-B, B.1), así que
+  sigue anclada al contenedor de `100dvh`. Superficie translúcida con blur; pestañas con ícono de
+  22px y etiqueta de 10.5px/600, gris `#8a8a8a`, ámbar la abierta.
+- **El «+»:** círculo ámbar de 44×44 dentro de la barra; sin saliente ni sombra ámbar. Manejadores
+  (toque = Nueva salida, mantener = la ruleta) y portal de la hoja intactos.
+- **`Icon.tsx`:** no se tocó; los glifos existentes escalan a 22px por el prop `size`.

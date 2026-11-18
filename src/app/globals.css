@@ -5,17 +5,17 @@
    estos nombres sirven tanto como utilidades (bg-noche, text-crema) como en
    estilos inline: var(--color-ambar). */
 @theme {
-  --color-noche: #120e0a;
-  --color-barra: #1c1611;
-  --color-barra-alta: #271e16;
-  --color-borde: #33261c;
+  --color-noche: #000000;
+  --color-barra: #141414;
+  --color-barra-alta: #1f1f1f;
+  --color-borde: #2a2a2a;
   --color-ambar: #f2a016;
   --color-marca: #c4620a;
   --color-espuma: #fbf0d5;
   --color-botella: #3e8f6b;
-  --color-crema: #f7efdd;
-  --color-tenue: #a08d72;
-  --color-tenue-2: #95815f;
+  --color-crema: #ffffff;
+  --color-tenue: #a3a3a3;
+  --color-tenue-2: #8a8a8a;
   --color-alerta: #e4614a;
 
   /* tono de texto sobre ámbar/espuma (fondos claros) */
@@ -29,14 +29,14 @@
   color-scheme: dark;
 }
 
-/* html pinta hasta el fondo real (min-height) y con el COLOR DE LA BARRA (#181209),
-   no el fondo de la app: red cosmética del gap iOS (G.1). El body (fondo noche,
-   100dvh) cubre el html en toda la app, así que este color solo asoma en la franja
-   residual bajo la barra — y al ser el mismo color de la barra, desaparece
-   visualmente. Ver DECISIONES · G.1. */
+/* html pinta hasta el fondo real (min-height) y con el negro de la sala (#000000):
+   red cosmética del gap iOS (G.1). El body (fondo noche, 100dvh) cubre el html en
+   toda la app, así que este color solo asoma en la franja residual bajo la barra.
+   Con la barra flotante (rediseño) lo que asoma bajo ella es la sala misma, así que
+   el html es del mismo negro y la franja desaparece. Ver DECISIONES · G.1. */
 html {
   min-height: 100dvh;
-  background: #181209;
+  background: #000000;
 }
 
 body {
@@ -210,9 +210,11 @@ textarea.field {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  position: relative; /* ancla la barra flotante (position:absolute) al contenedor */
 }
 .pb-scroll {
   flex: 1;
+  padding-bottom: calc(96px + env(safe-area-inset-bottom, 0px)); /* libre de la barra flotante */
   min-height: 0; /* permite que el hijo scrollee dentro del flex */
   overflow-y: auto;
 }
